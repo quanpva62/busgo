@@ -1,0 +1,346 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id              String         @id @default(uuid())
+  fullName        String?
+  email           String         @unique
+  phone           String         @unique
+  passwordHash    String
+  emailVerified   Boolean        @default(false)
+  role            Role           @default(user)
+  isActive        Boolean        @default(true)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  bookings        Booking[]
+  reviews         Review[]
+  notifications   Notification[]
+  reports         Report[]
+  resolvedReports Report[]       @relation("ReportResolver")
+}
+
+enum Role {
+  user
+  admin
+  staff
+}
+
+model Company {
+  id          String   @id @default(uuid())
+  name        String
+  hotline     String
+  email       String   @unique
+  address     String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  buses       Bus[]
+  drivers     Driver[]
+}
+
+model Bus {
+  id           String   @id @default(uuid())
+  licensePlate String   @unique
+  busType      BusType
+  typeName     String
+  totalSeats   Int
+  layout       String
+  amenities    Json
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  companyId    String
+  company      Company  @relation(fields: [companyId], references: [id])
+  trips        Trip[]
+  seats        Seat[]
+}
+
+enum BusType {
+  sleeper
+  standard
+  minibus
+}
+
+model Driver {
+  id               String     @id @default(uuid())
+  fullName         String
+  phone            String     @unique
+  driverRole       DriverRole @default(driver)
+  licenseNo        String?    @unique
+  licenseType      String?
+  rating           Float      @default(0)
+  totalTrips       Int        @default(0)
+  joinDate         DateTime   @default(now())
+  isActive         Boolean    @default(true)
+  companyId        String
+  company          Company    @relation(fields: [companyId], references: [id])
+  tripsAsDriver    Trip[]     @relation("TripDriver")
+  tripsAsAssistant Trip[]     @relation("TripAssistant")
+  reports          Report[]
+}
+
+enum DriverRole {
+  driver
+  assistant
+}
+
+model Route {
+  id                String  @id @default(uuid())
+  fromCity          String
+  toCity            String
+  distanceKm        Int
+  estimatedDuration Int // in minutes
+  isActive          Boolean @default(true)
+  trips             Trip[]
+}
+
+model Trip {
+  id            String        @id @default(uuid())
+  routeId       String
+  route         Route         @relation(fields: [routeId], references: [id])
+  busId         String
+  bus           Bus           @relation(fields: [busId], references: [id])
+  driverId      String
+  driver        Driver        @relation("TripDriver", fields: [driverId], references: [id])
+  assistantId   String?
+  assistant     Driver?       @relation("TripAssistant", fields: [assistantId], references: [id])
+  departureTime DateTime
+  arrivalTime   DateTime
+  price         Int
+  status        TripStatus    @default(scheduled)
+  createdAt     DateTime      @default(now())
+  bookings      Booking[]
+  tripSeats     TripSeat[]
+  bookingSeats  BookingSeat[]
+  reviews       Review[]
+}
+
+enum TripStatus {
+  scheduled
+  running
+  completed
+  cancelled
+}
+
+model Seat {
+  id        String     @id @default(uuid())
+  busId     String
+  bus       Bus        @relation(fields: [busId], references: [id])
+  seatLabel String
+  rowNum    Int
+  colNum    Int
+  floor     Int?
+  level     SeatLevel?
+  isActive  Boolean    @default(true)
+  tripSeats TripSeat[]
+}
+
+enum SeatLevel {
+  lower
+  upper
+}
+
+model TripSeat {
+  id           String        @id @default(uuid())
+  tripId       String
+  trip         Trip          @relation(fields: [tripId], references: [id])
+  seatId       String
+  seat         Seat          @relation(fields: [seatId], references: [id])
+  status       SeatStatus    @default(available)
+  heldUntil    DateTime?
+  bookingId    String?
+  booking      Booking?      @relation(fields: [bookingId], references: [id])
+  bookingSeats BookingSeat[]
+}
+
+enum SeatStatus {
+  available
+  held
+  booked
+}
+
+model Booking {
+  id             String        @id @default(uuid())
+  userId         String
+  user           User          @relation(fields: [userId], references: [id])
+  tripId         String
+  trip           Trip          @relation(fields: [tripId], references: [id])
+  promoId        String?
+  promo          Promotion?    @relation(fields: [promoId], references: [id])
+  status         BookingStatus @default(pending)
+  totalPrice     Int
+  discountAmount Int           @default(0)
+  passengerName  String
+  passengerPhone String
+  passengerEmail String?
+  expiresAt      DateTime
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  tripSeats      TripSeat[]
+  bookingSeats   BookingSeat[]
+  payment        Payment?
+  ticket         Ticket?
+  reports        Report[]
+  review         Review?
+}
+
+enum BookingStatus {
+  pending
+  paid
+  cancelled
+  refunded
+}
+
+model Promotion {
+  id            String       @id @default(uuid())
+  code          String       @unique
+  discountType  DiscountType
+  discountValue Int
+  minPrice      Int?
+  maxUses       Int?
+  usedCount     Int          @default(0)
+  expiresAt     DateTime
+  isActive      Boolean      @default(true)
+  bookings      Booking[]
+}
+
+enum DiscountType {
+  percentage
+  fixed
+}
+
+model BookingSeat {
+  id        String   @id @default(uuid())
+  bookingId String
+  booking   Booking  @relation(fields: [bookingId], references: [id])
+  seatId    String
+  seat      TripSeat @relation(fields: [seatId], references: [id])
+  tripId    String
+  trip      Trip     @relation(fields: [tripId], references: [id])
+}
+
+model Payment {
+  id              String        @id @default(uuid())
+  bookingId       String        @unique
+  booking         Booking       @relation(fields: [bookingId], references: [id])
+  vnpTxnRef       String        @unique
+  amount          Int
+  status          PaymentStatus @default(pending)
+  paymentMethod   PaymentMethod
+  vnpResponseCode String?
+  vnpBankCode     String?
+  vnpRaw          Json
+  paidAt          DateTime?
+  createdAt       DateTime      @default(now())
+}
+
+enum PaymentStatus {
+  pending
+  successful
+  failed
+  refunded
+}
+
+enum PaymentMethod {
+  vnpay
+  cash
+}
+
+model Ticket {
+  id         String    @id @default(uuid())
+  bookingId  String    @unique
+  booking    Booking   @relation(fields: [bookingId], references: [id])
+  ticketCode String    @unique
+  qrCode     String    @unique
+  issuedAt   DateTime  @default(now())
+  isUsed     Boolean   @default(false)
+  usedAt     DateTime?
+}
+
+model Report {
+  id         String         @id @default(uuid())
+  userId     String
+  user       User           @relation(fields: [userId], references: [id])
+  driverId   String
+  driver     Driver         @relation(fields: [driverId], references: [id])
+  bookingId  String
+  booking    Booking        @relation(fields: [bookingId], references: [id])
+  category   ReportCategory
+  details    String
+  severity   ReportSeverity
+  status     ReportStatus   @default(pending)
+  adminNote  String?
+  resolvedBy String?
+  resolveBy  User?          @relation("ReportResolver", fields: [resolvedBy], references: [id])
+  resolvedAt DateTime?
+  createdAt  DateTime       @default(now())
+}
+
+enum ReportCategory {
+  dangerous_driving
+  phone_while_driving
+  wrong_vehicle
+  dirty_vehicle
+  wrong_stop
+  late_departure
+  rude_behavior
+  overcharge
+  other
+}
+
+enum ReportSeverity {
+  low
+  medium
+  high
+}
+
+enum ReportStatus {
+  pending
+  reviewing
+  resolved
+  dismissed
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  tripId    String
+  trip      Trip     @relation(fields: [tripId], references: [id])
+  bookingId String   @unique
+  booking   Booking  @relation(fields: [bookingId], references: [id])
+  rating    Int
+  comment   String?
+  isVisible Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id])
+  type      NotificationType
+  title     String
+  body      String
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+}
+
+enum NotificationType {
+  booking
+  payment
+  trip
+  report
+  promo
+}
