@@ -67,7 +67,7 @@ const login = async (req, res) => {
 
     res.json({
       message: "Đăng nhập thành công",
-      accessToken: token,
+      accessToken: accessToken,
       refreshToken,
       user: {
         id: user.id,
@@ -75,6 +75,30 @@ const login = async (req, res) => {
         role: user.role,
       },
     });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const me = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+        phone: true,
+        role: true,
+        createdAt: true,
+      },
+    });
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    res.json({ user });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
