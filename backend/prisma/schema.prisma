@@ -35,19 +35,21 @@ enum Role {
   user
   admin
   staff
+  company_admin
 }
 
 model Company {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   name        String
   hotline     String
-  email       String   @unique
+  email       String    @unique
   address     String
   description String?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
   buses       Bus[]
   drivers     Driver[]
+  bookings    Booking[]
 }
 
 model Bus {
@@ -64,6 +66,7 @@ model Bus {
   company      Company  @relation(fields: [companyId], references: [id])
   trips        Trip[]
   seats        Seat[]
+  drivers      Driver[]
 }
 
 enum BusType {
@@ -88,6 +91,9 @@ model Driver {
   tripsAsDriver    Trip[]     @relation("TripDriver")
   tripsAsAssistant Trip[]     @relation("TripAssistant")
   reports          Report[]
+  busId            String
+
+  bus Bus @relation(fields: [busId], references: [id])
 }
 
 enum DriverRole {
@@ -96,13 +102,14 @@ enum DriverRole {
 }
 
 model Route {
-  id                String  @id @default(uuid())
+  id                String      @id @default(uuid())
   fromCity          String
   toCity            String
   distanceKm        Int
   estimatedDuration Int // in minutes
-  isActive          Boolean @default(true)
+  isActive          Boolean     @default(true)
   trips             Trip[]
+  stops             RouteStop[]
 }
 
 model Trip {
@@ -193,6 +200,12 @@ model Booking {
   ticket         Ticket?
   reports        Report[]
   review         Review?
+  pickupStopId   String
+  pickupStop     RouteStop     @relation("BookingPickup", fields: [pickupStopId], references: [id])
+  dropoffStopId  String
+  dropoffStop    RouteStop     @relation("BookingDropoff", fields: [dropoffStopId], references: [id])
+  companyId      String
+  company        Company       @relation(fields: [companyId], references: [id])
 }
 
 enum BookingStatus {
@@ -343,4 +356,16 @@ enum NotificationType {
   trip
   report
   promo
+}
+
+model RouteStop {
+  id              String    @id @default(uuid())
+  routeId         String
+  route           Route     @relation(fields: [routeId], references: [id])
+  name            String // VD: "Bến xe Mỹ Đình"
+  address         String
+  order           Int // Thứ tự: 1=điểm đầu, 2,3=giữa, cuối=điểm cuối
+  isActive        Boolean   @default(true)
+  pickupBookings  Booking[] @relation("BookingPickup")
+  dropoffBookings Booking[] @relation("BookingDropoff")
 }
