@@ -20,7 +20,14 @@ const loginValidation = [
   body("password").notEmpty().withMessage("Vui lòng nhập mật khẩu"),
 ];
 
+const refreshTokenValidation = [
+  body("refreshToken")
+    .notEmpty()
+    .withMessage("Vui lòng cung cấp refresh token"),
+];
+
 module.exports = {
   registerValidation,
   loginValidation,
+  refreshTokenValidation,
 };

@@ -11,6 +11,11 @@ const register = async (req, res) => {
     if (existingUser) {
       return res.status(400).json({ error: "Email already in use" });
     }
+
+    const existingPhone = await prisma.user.findUnique({ where: { phone } });
+    if (existingPhone) {
+      return res.status(400).json({ error: "Phone number already in use" });
+    }
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -103,4 +108,29 @@ const me = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
-module.exports = { register, login, me };
+
+const refreshToken = async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+
+    jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET, (err, decoded) => {
+      if (err) {
+        return res
+          .status(403)
+          .json({ error: "Refresh token không hợp lệ hoặc đã hết hạn" });
+      }
+
+      const accessToken = jwt.sign(
+        { userId: decoded.userId },
+        process.env.JWT_SECRET,
+        { expiresIn: "15m" },
+      );
+
+      res.json({ accessToken });
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+module.exports = { register, login, me, refreshToken };
