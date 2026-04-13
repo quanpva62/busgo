@@ -24,7 +24,7 @@ const createBooking = async (req, res) => {
       return res.status(400).json({ error: "Trip không khả dụng để đặt vé" });
     }
     const tripSeats = await prisma.tripSeat.findMany({
-      where: { tripId, seatId: { in: seatIds } },
+      where: { tripId, id: { in: seatIds } },
     });
     if (tripSeats.length !== seatIds.length) {
       return res.status(400).json({
@@ -90,7 +90,7 @@ const createBooking = async (req, res) => {
       await tx.bookingSeat.createMany({
         data: tripSeats.map((ts) => ({
           bookingId: newBooking.id,
-          seatId: ts.seatId,
+          seatId: ts.id,
           tripId,
         })),
       });
