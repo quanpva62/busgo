@@ -131,12 +131,12 @@ const vnpayReturn = async (req, res) => {
       const payment = await prisma.payment.findUnique({
         where: { vnpTxnRef },
       });
-      const bookingId = payment.bookingId;
-      const responseCode = vnpParams["vnp_ResponseCode"];
 
       if (!payment) {
         return res.status(404).json({ error: "Giao dịch không tồn tại" });
       }
+      const bookingId = payment.bookingId;
+      const responseCode = vnpParams["vnp_ResponseCode"];
 
       if (responseCode === "00") {
         await prisma.$transaction([
@@ -156,6 +156,18 @@ const vnpayReturn = async (req, res) => {
           prisma.tripSeat.updateMany({
             where: { bookingId: payment.bookingId },
             data: { status: "booked", heldUntil: null },
+          }),
+          prisma.ticket.create({
+            data: {
+              bookingId: payment.bookingId,
+              ticketCode:
+                "BG-" + Math.random().toString(36).substr(2, 9).toUpperCase(),
+              qrCode: JSON.stringify({
+                bookingId: payment.bookingId,
+                vnpTxnRef,
+              }),
+              isUsed: false,
+            },
           }),
         ]);
         return res.status(200).json({ message: "Thanh toán thành công" });
