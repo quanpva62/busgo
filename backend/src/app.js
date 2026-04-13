@@ -9,6 +9,7 @@ const paymentRoutes = require("./routes/payment.routes");
 const ticketRoutes = require("./routes/ticket.routes");
 const reviewRoutes = require("./routes/review.routes");
 const reportRoutes = require("./routes/report.routes");
+const adminRoutes = require("./routes/admin.routes");
 // Middleware
 app.use(cors()); // cho phep goi api
 app.use(express.json()); //cho phep doc json tu request body
@@ -23,6 +24,7 @@ app.use("/api/payments", paymentRoutes);
 app.use("/api/tickets", ticketRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/reports", reportRoutes);
+app.use("/api/admin", adminRoutes);
 // 404 handler
 app.use((req, res, next) => {
   res.status(404).json({ message: "Không tìm thấy tài nguyên" });

@@ -22,6 +22,8 @@ model User {
   emailVerified   Boolean        @default(false)
   role            Role           @default(user)
   isActive        Boolean        @default(true)
+  companyId       String?
+  company         Company?       @relation(fields: [companyId], references: [id])
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
   bookings        Booking[]
@@ -50,6 +52,7 @@ model Company {
   buses       Bus[]
   drivers     Driver[]
   bookings    Booking[]
+  users       User[]
 }
 
 model Bus {
