@@ -1,0 +1,60 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #003fb1;
+  --color-primary-container: #1a56db;
+  --color-primary-fixed: #dbe1ff;
+  --color-primary-fixed-dim: #b5c4ff;
+  --color-on-primary: #ffffff;
+  --color-on-primary-container: #d4dcff;
+
+  --color-secondary: #555f6d;
+  --color-secondary-container: #d6e0f1;
+  --color-on-secondary: #ffffff;
+  --color-on-secondary-container: #596372;
+
+  --color-surface: #f8f9fa;
+  --color-surface-bright: #f8f9fa;
+  --color-surface-dim: #d9dadb;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #f3f4f5;
+  --color-surface-container: #edeeef;
+  --color-surface-container-high: #e7e8e9;
+  --color-surface-container-highest: #e1e3e4;
+  --color-surface-variant: #e1e3e4;
+  --color-surface-tint: #1353d8;
+
+  --color-on-surface: #191c1d;
+  --color-on-surface-variant: #434654;
+  --color-on-background: #191c1d;
+  --color-background: #f8f9fa;
+
+  --color-outline: #737686;
+  --color-outline-variant: #c3c5d7;
+
+  --color-error: #ba1a1a;
+  --color-error-container: #ffdad6;
+  --color-on-error: #ffffff;
+  --color-on-error-container: #93000a;
+
+  --color-inverse-surface: #2e3132;
+  --color-inverse-on-surface: #f0f1f2;
+  --color-inverse-primary: #b5c4ff;
+
+  --font-headline: "Manrope", sans-serif;
+  --font-body: "Inter", sans-serif;
+  --font-label: "Inter", sans-serif;
+}
+
+body {
+  font-family: "Inter", sans-serif;
+  background-color: #f8f9fa;
+}
+
+h1, h2, h3, h4 {
+  font-family: "Manrope", sans-serif;
+}
+
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
