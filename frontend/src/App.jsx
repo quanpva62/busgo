@@ -1,20 +1,66 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Outlet, Navigate } from "react-router-dom";
+import { useAuth } from "./context/AuthContext.jsx";
 import Navbar from "./components/Navbar.jsx";
+import Footer from "./components/Footer.jsx";
 import Home from "./pages/Home.jsx";
-function App() {
+import Login from "./pages/Login.jsx";
+import Register from "./pages/Register.jsx";
+import Search from "./pages/Search.jsx";
+import TripDetail from "./pages/TripDetail.jsx";
+
+// Chỉ cần đăng nhập
+function ProtectedRoute({ children }) {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/login" replace />;
+  return children;
+}
+
+// Cần đúng role
+function RoleRoute({ children, roles }) {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/login" replace />;
+  if (!roles.includes(user.role)) return <Navigate to="/" replace />;
+  return children;
+}
+
+function MainLayout() {
   return (
     <>
       <Navbar />
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/login" element={<div>Login</div>} />
-        <Route path="/register" element={<div>Register</div>} />
-        <Route path="/search" element={<div>Search Results</div>} />
-        <Route path="/trips/:id" element={<div>Trip Detail</div>} />
-        <Route path="/bookings" element={<div>My Bookings</div>} />
-        <Route path="/tickets/:bookingId" element={<div>Ticket</div>} />
-      </Routes>
+      <Outlet />
+      <Footer />
     </>
+  );
+}
+
+function App() {
+  return (
+    <Routes>
+      <Route element={<MainLayout />}>
+        <Route path="/" element={<Home />} />
+        <Route path="/search" element={<Search />} />
+        <Route path="/trips/:id" element={<TripDetail />} />
+        <Route
+          path="/bookings"
+          element={
+            <ProtectedRoute>
+              <div>Bookings</div>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <RoleRoute roles={["admin"]}>
+              <div>Admin</div>
+            </RoleRoute>
+          }
+        />
+        <Route path="/tickets/:bookingId" element={<div>Ticket</div>} />
+      </Route>
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+    </Routes>
   );
 }
 

@@ -8,8 +8,6 @@ const createBooking = async (req, res) => {
       passengerName,
       passengerPhone,
       passengerEmail,
-      pickupStopId,
-      dropoffStopId,
       promoCode,
     } = req.body;
 
@@ -80,8 +78,8 @@ const createBooking = async (req, res) => {
           passengerName,
           passengerPhone,
           passengerEmail,
-          pickupStopId,
-          dropoffStopId,
+          pickupAddress: trip.pickupAddress,
+          dropoffAddress: trip.dropoffAddress,
           companyId: trip.bus.companyId,
           expiresAt,
         },

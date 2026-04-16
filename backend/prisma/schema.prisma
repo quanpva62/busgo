@@ -105,14 +105,13 @@ enum DriverRole {
 }
 
 model Route {
-  id                String      @id @default(uuid())
+  id                String  @id @default(uuid())
   fromCity          String
   toCity            String
   distanceKm        Int
   estimatedDuration Int // in minutes
-  isActive          Boolean     @default(true)
+  isActive          Boolean @default(true)
   trips             Trip[]
-  stops             RouteStop[]
 }
 
 model Trip {
@@ -125,10 +124,12 @@ model Trip {
   driver        Driver        @relation("TripDriver", fields: [driverId], references: [id])
   assistantId   String?
   assistant     Driver?       @relation("TripAssistant", fields: [assistantId], references: [id])
-  departureTime DateTime
-  arrivalTime   DateTime
-  price         Int
-  status        TripStatus    @default(scheduled)
+  departureTime   DateTime
+  arrivalTime     DateTime
+  price           Int
+  pickupAddress   String
+  dropoffAddress  String
+  status          TripStatus    @default(scheduled)
   createdAt     DateTime      @default(now())
   bookings      Booking[]
   tripSeats     TripSeat[]
@@ -197,16 +198,14 @@ model Booking {
   expiresAt      DateTime
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
+  pickupAddress  String
+  dropoffAddress String
   tripSeats      TripSeat[]
   bookingSeats   BookingSeat[]
   payment        Payment?
   ticket         Ticket?
   reports        Report[]
   review         Review?
-  pickupStopId   String
-  pickupStop     RouteStop     @relation("BookingPickup", fields: [pickupStopId], references: [id])
-  dropoffStopId  String
-  dropoffStop    RouteStop     @relation("BookingDropoff", fields: [dropoffStopId], references: [id])
   companyId      String
   company        Company       @relation(fields: [companyId], references: [id])
 }
@@ -361,14 +360,3 @@ enum NotificationType {
   promo
 }
 
-model RouteStop {
-  id              String    @id @default(uuid())
-  routeId         String
-  route           Route     @relation(fields: [routeId], references: [id])
-  name            String // VD: "Bến xe Mỹ Đình"
-  address         String
-  order           Int // Thứ tự: 1=điểm đầu, 2,3=giữa, cuối=điểm cuối
-  isActive        Boolean   @default(true)
-  pickupBookings  Booking[] @relation("BookingPickup")
-  dropoffBookings Booking[] @relation("BookingDropoff")
-}

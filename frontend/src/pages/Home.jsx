@@ -1,61 +1,75 @@
 import heroImg from "../assets/img/hero-img.png";
 import { useState } from "react";
+import iconLocation from "../assets/icons/location_on.svg";
+import iconFlag from "../assets/icons/flag.svg";
+import iconCalendar from "../assets/icons/calendar.svg";
+import iconDropdown from "../assets/icons/dropdown.svg";
+import iconSearch from "../assets/icons/search_icon.svg";
+import iconArrow from "../assets/icons/right-arrow.svg";
+import iconVerified from "../assets/icons/verified.svg";
+import RouteCard from "../components/RouteCard.jsx";
+import RouteCarousel from "../components/RouteCarousel.jsx";
+import iconPayments from "../assets/icons/payments.svg";
+import iconSupport from "../assets/icons/support.svg";
+import { useNavigate } from "react-router-dom";
 
 export default function Home() {
+  const navigate = useNavigate();
   const [openFrom, setOpenFrom] = useState(false);
   const [selectedFrom, setSelectedFrom] = useState("TP. Hồ Chí Minh");
   const [openTo, setOpenTo] = useState(false);
   const [selectedTo, setSelectedTo] = useState("Đà Lạt");
+  const [date, setDate] = useState("");
 
   return (
     <main>
       {/* ===== HERO SECTION ===== */}
-      <section className="relative min-h-150 flex items-center justify-center px-6 mt-20">
+      <section className="relative min-h-screen lg:min-h-150 flex items-center justify-center mt-20 py-12 lg:py-0">
         <div className="absolute inset-0 z-0">
           <img
             src={heroImg}
             alt="hero"
             className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-linear-to-r from-on-surface/60 to-transparent" />
+          <div className="absolute inset-0 " />
         </div>
 
-        <div className="relative z-10 max-w-7xl w-full">
+        <div className="relative z-10 max-w-360 w-full mx-auto px-6">
           <div className="max-w-2xl mb-12">
-            <h1 className="text-white text-5xl md:text-7xl font-extrabold tracking-tight mb-6 leading-tight">
+            <h1 className="text-white text-4xl sm:text-5xl lg:text-[72px] font-normal mb-4 lg:mb-6 leading-normal">
               Hành trình <br />
-              <span className="text-primary-fixed">Thông minh</span>
+              Thông minh
             </h1>
-            <p className="text-white/90 text-xl font-medium max-w-lg">
+            <p className="text-white/90 text-base lg:text-xl font-medium max-w-lg">
               Trải nghiệm dịch vụ đặt vé xe khách hiện đại hàng đầu Việt Nam.
               Nhanh chóng, tin cậy và tận tâm.
             </p>
           </div>
 
           {/* Form tìm kiếm */}
-          <div className="bg-white/95 backdrop-blur-md p-8 rounded-3xl shadow-2xl border border-outline-variant/20">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="bg-white/95 backdrop-blur-md px-6 py-6 rounded-3xl shadow-2xl border border-outline-variant/20">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Điểm đi */}
               <div className="space-y-2">
                 <label className="block text-[10px] font-bold tracking-widest text-secondary uppercase px-1">
                   Điểm đi
                 </label>
                 <div className="relative">
-                  <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-primary z-10">
-                    location_on
-                  </span>
+                  <img
+                    src={iconLocation}
+                    alt=""
+                    className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 z-10"
+                  />
                   <button
                     type="button"
                     onClick={() => setOpenFrom(!openFrom)}
-                    className="w-full pl-12 pr-4 py-4 bg-surface-container-low rounded-xl text-left font-semibold text-on-surface flex items-center justify-between"
+                    className="w-full pl-12 pr-4 py-4 bg-surface-container-low rounded-xl text-left font-semibold text-on-surface flex items-center justify-between hover:cursor-pointer"
                   >
                     {selectedFrom}
-                    <span className="material-symbols-outlined text-secondary">
-                      expand_more
-                    </span>
+                    <img src={iconDropdown} alt="" className="w-5 h-5" />
                   </button>
                   {openFrom && (
-                    <ul className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-outline-variant/30 z-50 overflow-hidden">
+                    <ul className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-outline-variant/30 z-50 overflow-hidden ">
                       {["TP. Hồ Chí Minh", "Hà Nội", "Đà Nẵng", "Cần Thơ"].map(
                         (city) => (
                           <li
@@ -81,18 +95,18 @@ export default function Home() {
                   Điểm đến
                 </label>
                 <div className="relative">
-                  <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-primary z-10">
-                    flag
-                  </span>
+                  <img
+                    src={iconFlag}
+                    alt=""
+                    className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 z-10"
+                  />
                   <button
                     type="button"
                     onClick={() => setOpenTo(!openTo)}
-                    className="w-full pl-12 pr-4 py-4 bg-surface-container-low rounded-xl text-left font-semibold text-on-surface flex items-center justify-between"
+                    className="w-full pl-12 pr-4 py-4 bg-surface-container-low rounded-xl text-left font-semibold text-on-surface flex items-center justify-between hover:cursor-pointer"
                   >
                     {selectedTo}
-                    <span className="material-symbols-outlined text-secondary">
-                      expand_more
-                    </span>
+                    <img src={iconDropdown} alt="" className="w-5 h-5" />
                   </button>
                   {openTo && (
                     <ul className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-outline-variant/30 z-50 overflow-hidden">
@@ -121,21 +135,36 @@ export default function Home() {
                   NGÀY ĐI
                 </label>
                 <div className="relative">
-                  <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-primary">
-                    calendar_month
-                  </span>
+                  <img
+                    src={iconCalendar}
+                    alt=""
+                    className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5"
+                  />
                   <input
                     type="date"
-                    className="w-full pl-12 pr-4 py-4 bg-surface-container-low rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-fixed font-semibold text-on-surface"
+                    min={new Date().toISOString().split("T")[0]}
+                    max="2028-12-31"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    className="w-full pl-12 pr-4 py-4 bg-surface-container-low rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-fixed font-semibold text-on-surface hover:cursor-pointer"
                   />
                 </div>
               </div>
 
               {/* Button tìm */}
               <div className="flex items-end">
-                <button className="w-full py-4 bg-linear-to-br from-primary-container to-primary text-white font-bold rounded-xl shadow-lg hover:opacity-95 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
-                  <span className="material-symbols-outlined">search</span>
-                  Tìm vé
+                <button
+                  onClick={() =>
+                    navigate(`/search?from=${encodeURIComponent(selectedFrom)}&to=${encodeURIComponent(selectedTo)}&date=${date}`)
+                  }
+                  className="w-full py-4 bg-linear-to-br from-primary-container to-primary text-white font-bold rounded-xl shadow-lg hover:opacity-95 active:scale-[0.98] transition-all flex items-center justify-center gap-2 hover:cursor-pointer"
+                >
+                  <img
+                    src={iconSearch}
+                    alt=""
+                    className="w-5 h-5 brightness-0 invert"
+                  />
+                  Tìm chuyến
                 </button>
               </div>
             </div>
@@ -144,23 +173,23 @@ export default function Home() {
       </section>
 
       {/* ===== TUYẾN PHỔ BIẾN ===== */}
-      <section className="py-24 max-w-7xl mx-auto px-6">
-        <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-4">
+      <section className="py-12 lg:py-24 max-w-360 mx-auto px-6">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 lg:mb-12 gap-3">
           <div>
-            <span className="text-primary font-bold tracking-widest text-xs uppercase mb-3 block">
+            <span className="text-primary font-bold tracking-widest text-xs uppercase mb-2 block">
               KHÁM PHÁ VIỆT NAM
             </span>
-            <h2 className="text-4xl md:text-5xl font-extrabold text-on-surface tracking-tight">
+            <h2 className="text-3xl lg:text-5xl font-extrabold text-on-surface tracking-tight">
               Tuyến đường phổ biến
             </h2>
           </div>
-          <button className="flex items-center gap-2 text-primary font-bold hover:gap-3 transition-all">
-            Xem tất cả{" "}
-            <span className="material-symbols-outlined">arrow_forward</span>
+          <button className="flex items-center gap-2 text-primary font-bold hover:gap-3 transition-all self-start sm:self-auto">
+            Xem tất cả
+            <img src={iconArrow} alt="" className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {[
             {
               from: "Sài Gòn",
@@ -171,84 +200,51 @@ export default function Home() {
             },
             { from: "Sài Gòn", to: "Đà Nẵng", hours: 16, price: "450.000đ" },
             { from: "Sài Gòn", to: "Nha Trang", hours: 8, price: "320.000đ" },
-          ].map((route) => (
-            <div
-              key={route.to}
-              className="group bg-surface-container-lowest rounded-3xl overflow-hidden hover:shadow-xl transition-all duration-500 border border-transparent hover:border-outline-variant/20"
-            >
-              <div className="relative h-64 overflow-hidden bg-surface-container-high">
-                {route.badge && (
-                  <div className="absolute top-4 left-4 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-primary uppercase z-10">
-                    {route.badge}
-                  </div>
-                )}
-              </div>
-              <div className="p-8">
-                <h3 className="text-2xl font-bold text-on-surface mb-1">
-                  {route.from} → {route.to}
-                </h3>
-                <p className="text-secondary text-sm flex items-center gap-1">
-                  <span className="material-symbols-outlined text-sm">
-                    schedule
-                  </span>
-                  {route.hours} giờ di chuyển
-                </p>
-                <div className="flex items-center justify-between mt-8">
-                  <div className="flex flex-col">
-                    <span className="text-[10px] font-bold text-secondary tracking-widest uppercase">
-                      CHỈ TỪ
-                    </span>
-                    <span className="text-2xl font-black text-primary">
-                      {route.price}
-                    </span>
-                  </div>
-                  <button className="w-12 h-12 rounded-full bg-surface-container-low flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-colors duration-300">
-                    <span className="material-symbols-outlined">
-                      arrow_forward
-                    </span>
-                  </button>
-                </div>
-              </div>
+          ].map((route, i) => (
+            <div key={route.to} className={i === 2 ? "sm:hidden lg:block" : ""}>
+              <RouteCard {...route} />
             </div>
           ))}
+        </div>
+
+        {/* Carousel thêm tuyến */}
+        <div className="mt-16">
+          <RouteCarousel />
         </div>
       </section>
 
       {/* ===== TẠI SAO CHỌN BUSGO ===== */}
-      <section className="py-24 bg-surface-container-low">
-        <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
+      <section className="py-12 lg:py-24 bg-surface-container-low">
+        <div className="max-w-360 mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
           <div className="relative">
             <div className="aspect-square bg-primary/5 rounded-[3rem] absolute -top-8 -left-8 w-full h-full -z-10" />
             <div className="rounded-[2.5rem] bg-surface-container-high h-125 w-full" />
           </div>
           <div>
             <h2 className="text-4xl md:text-5xl font-extrabold text-on-surface tracking-tight mb-8">
-              Tại sao chọn <br />
-              BusGo Vietnam?
+              Tại sao chọn BusGo?
             </h2>
             <div className="space-y-8">
               {[
                 {
-                  icon: "verified",
+                  icon: iconVerified,
                   title: "Đối tác uy tín",
                   desc: "Kết nối với hơn 500 nhà xe chất lượng cao trên toàn quốc.",
                 },
                 {
-                  icon: "payments",
+                  icon: iconPayments,
                   title: "Thanh toán an toàn",
                   desc: "Đa dạng phương thức thanh toán bảo mật tuyệt đối thông tin khách hàng.",
                 },
                 {
-                  icon: "support_agent",
+                  icon: iconSupport,
                   title: "Hỗ trợ 24/7",
                   desc: "Đội ngũ CSKH chuyên nghiệp luôn sẵn sàng giải quyết mọi vấn đề của bạn.",
                 },
               ].map((item) => (
                 <div key={item.title} className="flex gap-6">
                   <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
-                    <span className="material-symbols-outlined text-primary text-3xl">
-                      {item.icon}
-                    </span>
+                    <img src={item.icon} alt="" className="w-7 h-7" />
                   </div>
                   <div>
                     <h4 className="text-xl font-bold mb-2">{item.title}</h4>
