@@ -7,6 +7,10 @@ import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
 import Search from "./pages/Search.jsx";
 import TripDetail from "./pages/TripDetail.jsx";
+import Checkout from "./pages/Checkout.jsx";
+import Profile from "./pages/Profile.jsx";
+import BookingConfirm from "./pages/BookingConfirm.jsx";
+import PaymentResult from "./pages/PaymentResult.jsx";
 
 // Chỉ cần đăng nhập
 function ProtectedRoute({ children }) {
@@ -56,6 +60,17 @@ function App() {
             </RoleRoute>
           }
         />
+        <Route path="/checkout/:id" element={<Checkout />} />
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <Profile />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/booking/:id" element={<ProtectedRoute><BookingConfirm /></ProtectedRoute>} />
+        <Route path="/payment/result" element={<PaymentResult />} />
         <Route path="/tickets/:bookingId" element={<div>Ticket</div>} />
       </Route>
       <Route path="/login" element={<Login />} />

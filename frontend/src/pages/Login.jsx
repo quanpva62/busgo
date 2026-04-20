@@ -32,7 +32,7 @@ export default function Login() {
       );
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Login failed");
-      login(data.user, data.accessToken); // Lưu token vào context
+      login(data.user, data.accessToken, data.refreshToken); // Lưu token vào context
       navigate("/"); // Điều hướng về trang chủ sau khi login thành công
     } catch (err) {
       setError(err.message);

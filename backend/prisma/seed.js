@@ -325,13 +325,15 @@ async function main() {
     update: {},
     create: {
       id: "trip-hn-hp-1",
-      routeId: routes[0].id, // HN → Hải Phòng
+      routeId: routes[0].id,
       busId: busStandard.id,
       driverId: driver2.id,
       departureTime: tomorrow,
       arrivalTime: new Date(tomorrow.getTime() + 150 * 60000),
       price: 120000,
       status: "scheduled",
+      pickupAddress: "Bến xe Mỹ Đình, Hà Nội",
+      dropoffAddress: "Bến xe Hải Phòng, TP. Hải Phòng",
     },
   });
   console.log("✅ Trip 1:", trip1.id);
@@ -341,34 +343,39 @@ async function main() {
     update: {},
     create: {
       id: "trip-hn-qn-1",
-      routeId: routes[1].id, // HN → Quảng Ninh
+      routeId: routes[1].id,
       busId: busSleeper.id,
       driverId: driver2.id,
       departureTime: tomorrow,
       arrivalTime: new Date(tomorrow.getTime() + 180 * 60000),
       price: 180000,
       status: "scheduled",
+      pickupAddress: "Bến xe Gia Lâm, Hà Nội",
+      dropoffAddress: "Bến xe Bãi Cháy, Quảng Ninh",
     },
   });
   console.log("✅ Trip 2:", trip2.id);
+
   const night = new Date();
   night.setDate(night.getDate() + 1);
   night.setHours(20, 0, 0, 0);
+
   const trip3 = await prisma.trip.upsert({
     where: { id: "trip-hn-v-1" },
     update: {},
     create: {
       id: "trip-hn-v-1",
-      routeId: routes[2].id, // HN → Vinh
+      routeId: routes[2].id,
       busId: busSleeper.id,
       driverId: driver3.id,
       departureTime: night,
       arrivalTime: new Date(night.getTime() + 360 * 60000),
       price: 250000,
       status: "scheduled",
+      pickupAddress: "Bến xe Giáp Bát, Hà Nội",
+      dropoffAddress: "Bến xe Vinh, Nghệ An",
     },
   });
-
   console.log("✅ Trip 3:", trip3.id);
 
   const bcrypt = require("bcryptjs");

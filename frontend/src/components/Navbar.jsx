@@ -3,7 +3,7 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { Link, NavLink } from "react-router-dom";
 
 export default function Navbar() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
@@ -27,31 +27,21 @@ export default function Navbar() {
           >
             Trang chủ
           </NavLink>
-          {user && (
-            <NavLink
-              to="/bookings"
-              className={({ isActive }) =>
-                isActive
-                  ? "text-blue-700 font-bold border-b-2 border-blue-700 pb-1"
-                  : "text-slate-600 font-medium hover:text-blue-600 transition-colors"
-              }
-            >
-              Lịch sử đặt vé
-            </NavLink>
-          )}
         </div>
 
         {/* Auth buttons — desktop */}
         <div className="hidden md:flex items-center space-x-4">
           {user ? (
             <>
-              <span className="text-slate-700 text-sm font-medium">{user.fullName}</span>
-              <button
-                onClick={logout}
-                className="px-5 py-2 text-slate-600 font-semibold hover:bg-slate-50 transition-colors rounded-xl"
+              <Link
+                to="/profile"
+                className="flex items-center gap-2 px-4 py-2 hover:bg-slate-50 rounded-xl transition-colors"
               >
-                Đăng xuất
-              </button>
+                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center font-black text-primary text-xs">
+                  {user.fullName?.split(" ").slice(-1)[0]?.[0]?.toUpperCase()}
+                </div>
+                <span className="text-slate-700 text-sm font-semibold">{user.fullName}</span>
+              </Link>
             </>
           ) : (
             <>
@@ -88,22 +78,15 @@ export default function Navbar() {
           >
             Trang chủ
           </NavLink>
-          {user && (
-            <NavLink
-              to="/bookings"
-              onClick={() => setMenuOpen(false)}
-              className={({ isActive }) =>
-                isActive ? "text-blue-700 font-bold" : "text-slate-600 font-medium"
-              }
-            >
-              Lịch sử đặt vé
-            </NavLink>
-          )}
           <div className="flex gap-3 pt-2 border-t border-slate-100">
             {user ? (
-              <button onClick={logout} className="text-slate-600 font-semibold">
-                Đăng xuất
-              </button>
+              <Link
+                to="/profile"
+                onClick={() => setMenuOpen(false)}
+                className="text-slate-600 font-semibold"
+              >
+                Tài khoản
+              </Link>
             ) : (
               <>
                 <Link to="/login" onClick={() => setMenuOpen(false)} className="flex-1 text-center py-2 border border-slate-200 rounded-xl text-slate-600 font-semibold">

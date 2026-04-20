@@ -77,6 +77,8 @@ const login = async (req, res) => {
       user: {
         id: user.id,
         email: user.email,
+        fullName: user.fullName,
+        phone: user.phone,
         role: user.role,
       },
     });
@@ -109,6 +111,48 @@ const me = async (req, res) => {
   }
 };
 
+const updateMe = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { fullName, phone } = req.body;
+
+    const existing = await prisma.user.findFirst({
+      where: { phone, NOT: { id: userId } },
+    });
+    if (existing) {
+      return res.status(400).json({ error: "Số điện thoại đã được sử dụng" });
+    }
+
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { fullName, phone },
+      select: { id: true, fullName: true, email: true, phone: true, role: true },
+    });
+    res.json({ user });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const changePassword = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { currentPassword, newPassword } = req.body;
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!valid) {
+      return res.status(400).json({ error: "Mật khẩu hiện tại không đúng" });
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await prisma.user.update({ where: { id: userId }, data: { passwordHash } });
+    res.json({ message: "Đổi mật khẩu thành công" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 const refreshToken = async (req, res) => {
   try {
     const { refreshToken } = req.body;
@@ -133,4 +177,4 @@ const refreshToken = async (req, res) => {
   }
 };
 
-module.exports = { register, login, me, refreshToken };
+module.exports = { register, login, me, updateMe, changePassword, refreshToken };

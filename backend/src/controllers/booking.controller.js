@@ -68,6 +68,21 @@ const createBooking = async (req, res) => {
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
     const booking = await prisma.$transaction(async (tx) => {
+      // Lock + check trong cùng 1 câu UPDATE — atomic
+      // Chỉ update những ghế CÒN available, đếm số rows bị update
+      const locked = await tx.tripSeat.updateMany({
+        where: {
+          id: { in: tripSeats.map((ts) => ts.id) },
+          status: "available", // chỉ match nếu vẫn còn trống
+        },
+        data: { status: "held", heldUntil: expiresAt },
+      });
+
+      // Nếu số ghế lock được < số ghế yêu cầu → có người đặt trước rồi
+      if (locked.count !== seatIds.length) {
+        throw new Error("Một hoặc nhiều ghế vừa được đặt bởi người khác");
+      }
+
       const newBooking = await tx.booking.create({
         data: {
           userId: req.user.userId,
@@ -95,12 +110,9 @@ const createBooking = async (req, res) => {
 
       await tx.tripSeat.updateMany({
         where: { id: { in: tripSeats.map((ts) => ts.id) } },
-        data: {
-          status: "held",
-          heldUntil: expiresAt,
-          bookingId: newBooking.id,
-        },
+        data: { bookingId: newBooking.id },
       });
+
       return newBooking;
     });
     res.status(201).json({
@@ -116,20 +128,20 @@ const createBooking = async (req, res) => {
 const getBooking = async (req, res) => {
   try {
     const { id } = req.params;
-    const bookings = await prisma.booking.findUnique({
+    const booking = await prisma.booking.findUnique({
       where: { id },
+      include: {
+        trip: { include: { route: true } },
+        bookingSeats: { include: { seat: { include: { seat: true } } } },
+      },
     });
-    if (!bookings) {
-      return res
-        .status(404)
-        .json({ error: "Không tìm thấy booking nào cho user này" });
+    if (!booking) {
+      return res.status(404).json({ error: "Không tìm thấy booking" });
     }
-    if (bookings.userId !== req.user.userId) {
-      return res
-        .status(403)
-        .json({ error: "Bạn không có quyền xem booking này" });
+    if (booking.userId !== req.user.userId) {
+      return res.status(403).json({ error: "Bạn không có quyền xem booking này" });
     }
-    res.status(200).json({ bookings });
+    res.status(200).json({ booking });
   } catch (error) {
     console.error("Error fetching bookings:", error);
     res.status(500).json({ error: "Lỗi máy chủ nội bộ" });
@@ -171,8 +183,48 @@ const cancelBooking = async (req, res) => {
     res.status(500).json({ error: "Lỗi máy chủ nội bộ" });
   }
 };
+const getMyBookings = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    // Lazy expiry: cancel các booking pending đã quá hạn + trả ghế về available
+    const expired = await prisma.booking.findMany({
+      where: { userId, status: "pending", expiresAt: { lt: new Date() } },
+      select: { id: true },
+    });
+    if (expired.length > 0) {
+      const expiredIds = expired.map((b) => b.id);
+      await prisma.$transaction([
+        prisma.booking.updateMany({
+          where: { id: { in: expiredIds } },
+          data: { status: "cancelled" },
+        }),
+        prisma.tripSeat.updateMany({
+          where: { bookingId: { in: expiredIds } },
+          data: { status: "available", bookingId: null, heldUntil: null },
+        }),
+      ]);
+    }
+
+    const bookings = await prisma.booking.findMany({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+      include: {
+        trip: { include: { route: true } },
+        bookingSeats: {
+          include: { seat: { include: { seat: true } } }, // TripSeat → Seat
+        },
+      },
+    });
+    res.json(bookings);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 module.exports = {
   createBooking,
   getBooking,
   cancelBooking,
+  getMyBookings,
 };

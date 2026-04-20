@@ -30,4 +30,10 @@ router.post(
 // GET  /api/auth/me        → authController.me
 router.get("/me", authMiddleware, authController.me);
 
+// PATCH /api/auth/me       → authController.updateMe
+router.patch("/me", authMiddleware, authController.updateMe);
+
+// PATCH /api/auth/password → authController.changePassword
+router.patch("/password", authMiddleware, authController.changePassword);
+
 module.exports = router;

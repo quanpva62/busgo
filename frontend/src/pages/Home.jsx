@@ -16,10 +16,12 @@ import { useNavigate } from "react-router-dom";
 export default function Home() {
   const navigate = useNavigate();
   const [openFrom, setOpenFrom] = useState(false);
-  const [selectedFrom, setSelectedFrom] = useState("TP. Hồ Chí Minh");
+  const [selectedFrom, setSelectedFrom] = useState("Hà Nội");
   const [openTo, setOpenTo] = useState(false);
-  const [selectedTo, setSelectedTo] = useState("Đà Lạt");
-  const [date, setDate] = useState("");
+  const [selectedTo, setSelectedTo] = useState("Hải Phòng");
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const [date, setDate] = useState(tomorrow.toISOString().split("T")[0]);
 
   return (
     <main>
@@ -70,7 +72,7 @@ export default function Home() {
                   </button>
                   {openFrom && (
                     <ul className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-outline-variant/30 z-50 overflow-hidden ">
-                      {["TP. Hồ Chí Minh", "Hà Nội", "Đà Nẵng", "Cần Thơ"].map(
+                      {["Hà Nội", "TP. Hồ Chí Minh", "Đà Nẵng", "Cần Thơ"].map(
                         (city) => (
                           <li
                             key={city}
@@ -110,7 +112,7 @@ export default function Home() {
                   </button>
                   {openTo && (
                     <ul className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-outline-variant/30 z-50 overflow-hidden">
-                      {["Đà Lạt", "Nha Trang", "Vũng Tàu", "Đà Nẵng"].map(
+                      {["Hải Phòng", "Quảng Ninh", "Vinh", "Thanh Hóa", "Nam Định"].map(
                         (city) => (
                           <li
                             key={city}

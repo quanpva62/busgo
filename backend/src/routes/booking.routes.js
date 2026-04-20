@@ -14,7 +14,10 @@ router.post(
   bookingController.createBooking,
 );
 
-// GET /api/bookings → bookingController.getBookings
+// GET /api/bookings/my → bookingController.getMyBookings
+router.get("/my", authMiddleware, bookingController.getMyBookings);
+
+// GET /api/bookings/:id → bookingController.getBooking
 router.get("/:id", authMiddleware, bookingController.getBooking);
 
 router.delete(

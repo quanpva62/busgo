@@ -32,10 +32,10 @@ const getTripDetail = async (req, res) => {
     const trip = await prisma.trip.findUnique({
       where: { id: id },
       include: {
-        bus: true,
+        bus: { include: { company: true } },
         driver: true,
         assistant: true,
-        route: { include: { stops: true } },
+        route: true,
       },
     });
     res.json(trip);
@@ -49,7 +49,10 @@ const getTripSeats = async (req, res) => {
     const { id } = req.params;
     const tripSeats = await prisma.tripSeat.findMany({
       where: { tripId: id },
-      include: { seat: true },
+      include: {
+        seat: true,
+        booking: { select: { userId: true } },
+      },
     });
     res.json(tripSeats);
   } catch (error) {

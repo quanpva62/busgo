@@ -138,6 +138,7 @@ const vnpayReturn = async (req, res) => {
       const bookingId = payment.bookingId;
       const responseCode = vnpParams["vnp_ResponseCode"];
 
+      const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
       if (responseCode === "00") {
         await prisma.$transaction([
           prisma.payment.update({
@@ -162,28 +163,22 @@ const vnpayReturn = async (req, res) => {
               bookingId: payment.bookingId,
               ticketCode:
                 "BG-" + Math.random().toString(36).substr(2, 9).toUpperCase(),
-              qrCode: JSON.stringify({
-                bookingId: payment.bookingId,
-                vnpTxnRef,
-              }),
+              qrCode: JSON.stringify({ bookingId: payment.bookingId, vnpTxnRef }),
               isUsed: false,
             },
           }),
         ]);
-        return res.status(200).json({ message: "Thanh toán thành công" });
+        return res.redirect(`${frontendUrl}/payment/result?status=success&bookingId=${bookingId}`);
       } else {
         await prisma.payment.update({
           where: { vnpTxnRef },
-          data: {
-            status: "failed",
-            vnpResponseCode: responseCode,
-            vnpRaw: vnpParams,
-          },
+          data: { status: "failed", vnpResponseCode: responseCode, vnpRaw: vnpParams },
         });
-        return res.status(400).json({ error: "Thanh toán thất bại" });
+        return res.redirect(`${frontendUrl}/payment/result?status=failed&bookingId=${bookingId}`);
       }
     } else {
-      return res.status(400).json({ error: "Dữ liệu trả về không hợp lệ" });
+      const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+      return res.redirect(`${frontendUrl}/payment/result?status=invalid`);
     }
   } catch (error) {
     console.error("Error handling VNPAY return:", error);

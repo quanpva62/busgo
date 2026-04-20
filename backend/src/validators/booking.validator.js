@@ -9,10 +9,6 @@ const bookingValidation = [
   body("passengerPhone")
     .isMobilePhone("vi-VN")
     .withMessage("Vui lòng nhập số điện thoại hợp lệ"),
-  body("pickupStopId").notEmpty().withMessage("Vui lòng cung cấp pickupStopId"),
-  body("dropoffStopId")
-    .notEmpty()
-    .withMessage("Vui lòng cung cấp dropoffStopId"),
   body("passengerEmail")
     .optional()
     .isEmail()
