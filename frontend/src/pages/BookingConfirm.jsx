@@ -172,6 +172,14 @@ export default function BookingConfirm() {
               {paying ? "Đang xử lý..." : "Thanh toán ngay"}
             </button>
           )}
+          {booking.status === "paid" && (
+            <button
+              onClick={() => navigate(`/tickets/${booking.id}`)}
+              className="flex-1 py-3 bg-linear-to-br from-primary-container to-primary text-white font-bold rounded-xl hover:opacity-95 transition-all hover:cursor-pointer"
+            >
+              Xem vé
+            </button>
+          )}
           <button
             onClick={() => navigate("/profile", { state: { tab: 2 } })}
             className="flex-1 py-3 bg-white border border-outline-variant/30 text-on-surface font-bold rounded-xl hover:bg-surface-container-low transition-all hover:cursor-pointer"

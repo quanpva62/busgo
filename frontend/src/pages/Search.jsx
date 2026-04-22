@@ -256,21 +256,19 @@ export default function Search() {
 function TripCard({ trip, onSelect }) {
   return (
     <div className="bg-white rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300">
-      <div className="p-6 md:p-8 flex flex-col md:flex-row gap-6 md:gap-8">
+      <div className="p-5 md:p-8 flex flex-row items-center gap-4 md:gap-6">
         {/* Operator */}
-        <div className="md:w-1/4 flex flex-col justify-between border-b md:border-b-0 md:border-r border-outline-variant/10 pb-6 md:pb-0 md:pr-6 gap-4">
-          <div className="space-y-2">
-            <h2 className="text-xl font-black text-on-surface">
-              {trip.bus.typeName}
-            </h2>
-            <span className="inline-block px-3 py-1 bg-surface-container-low text-secondary text-xs font-bold rounded-full uppercase tracking-wider">
-              {BUS_TYPE_LABELS[trip.bus.busType]} · {trip.bus.totalSeats} chỗ
-            </span>
-          </div>
+        <div className="w-36 md:w-44 shrink-0 flex flex-col justify-center border-r border-outline-variant/10 pr-4 md:pr-6 gap-1">
+          <h2 className="text-base md:text-lg font-black text-on-surface leading-tight">
+            {trip.bus.company?.name}
+          </h2>
+          <span className="inline-block w-fit px-2 py-0.5 bg-surface-container-low text-secondary text-[10px] font-bold rounded-full uppercase tracking-wider">
+            {BUS_TYPE_LABELS[trip.bus.busType]} · {trip.bus.totalSeats} chỗ
+          </span>
         </div>
 
         {/* Journey */}
-        <div className="flex-1 flex items-center gap-4">
+        <div className="flex-1 flex items-center gap-3">
           <div className="text-center">
             <p className="text-2xl font-black text-on-surface">
               {formatTime(trip.departureTime)}
@@ -288,9 +286,6 @@ function TripCard({ trip, onSelect }) {
               <div className="flex-1 h-px border-t border-dashed border-outline-variant" />
               <div className="w-2 h-2 rounded-full border-2 border-primary shrink-0" />
             </div>
-            <span className="text-xs text-secondary mt-1 font-medium">
-              Trực tiếp
-            </span>
           </div>
           <div className="text-center">
             <p className="text-2xl font-black text-on-surface">
@@ -303,7 +298,7 @@ function TripCard({ trip, onSelect }) {
         </div>
 
         {/* Price & Action */}
-        <div className="md:w-1/4 flex flex-col justify-center items-center md:items-end gap-4">
+        <div className="shrink-0 flex flex-col items-end gap-3">
           <p className="text-3xl font-black text-primary">
             {formatPrice(trip.price)}
           </p>

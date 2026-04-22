@@ -3,12 +3,6 @@ import { useParams, useNavigate } from "react-router-dom";
 import heroImg from "../assets/img/hero-img.png";
 import { useAuth } from "../context/AuthContext";
 
-function formatDuration(departure, arrival) {
-  const diffMs = new Date(arrival) - new Date(departure);
-  const hours = Math.floor(diffMs / 3600000);
-  const mins = Math.floor((diffMs % 3600000) / 60000);
-  return `${hours}h${mins > 0 ? mins + "m" : ""}`;
-}
 
 function formatTime(isoString) {
   return new Date(isoString).toLocaleTimeString("vi-VN", {
@@ -30,11 +24,6 @@ function formatPrice(price) {
   return price.toLocaleString("vi-VN") + "đ";
 }
 
-const BUS_TYPE_LABELS = {
-  sleeper: "Sleeper",
-  standard: "Standard",
-  minibus: "Minibus",
-};
 
 const AMENITY_MAP = {
   wifi: { label: "Wifi", icon: "wifi" },
@@ -181,14 +170,6 @@ export default function TripDetail() {
 
             <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
               <div className="text-white min-w-0">
-                <div className="flex flex-wrap gap-x-4 md:gap-x-6 gap-y-1 text-white/80 text-[10px] font-bold uppercase tracking-widest mb-2">
-                  <span>Khởi hành: {formatTime(trip.departureTime)}</span>
-                  <span>Đến: {formatTime(trip.arrivalTime)}</span>
-                  <span>
-                    Thời gian:{" "}
-                    {formatDuration(trip.departureTime, trip.arrivalTime)}
-                  </span>
-                </div>
                 <h1 className="text-2xl sm:text-3xl md:text-5xl font-extrabold tracking-tight wrap-break-word">
                   {trip.route.fromCity} → {trip.route.toCity}
                 </h1>
@@ -199,8 +180,7 @@ export default function TripDetail() {
                   {trip.bus.company?.name}
                 </p>
                 <p className="text-white/70 text-xs mt-0.5">
-                  {trip.bus.typeName} · {BUS_TYPE_LABELS[trip.bus.busType]} ·{" "}
-                  {trip.bus.totalSeats} ghế
+                  {{ sleeper: "Giường nằm", standard: "Ghế ngồi", minibus: "Limousine" }[trip.bus.busType]} · {trip.bus.totalSeats} ghế
                 </p>
               </div>
               <div className="text-left sm:text-right shrink-0 bg-white/1 backdrop-blur-xs rounded-2xl px-4 py-3 md:px-7 md:py-5 self-start sm:self-auto">
@@ -341,18 +321,20 @@ export default function TripDetail() {
             {isSleeper ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <SeatGrid
-                  label="Tầng trên (Upper)"
-                  seats={upperSeats}
-                  selectedIds={selectedIds}
-                  onToggle={toggleSeat}
-                  getSeatStatus={getSeatStatus}
-                />
-                <SeatGrid
-                  label="Tầng dưới (Lower)"
+                  label="Tầng dưới"
                   seats={lowerSeats}
                   selectedIds={selectedIds}
                   onToggle={toggleSeat}
                   getSeatStatus={getSeatStatus}
+                  isSleeper
+                />
+                <SeatGrid
+                  label="Tầng trên"
+                  seats={upperSeats}
+                  selectedIds={selectedIds}
+                  onToggle={toggleSeat}
+                  getSeatStatus={getSeatStatus}
+                  isSleeper
                 />
               </div>
             ) : (
@@ -361,6 +343,7 @@ export default function TripDetail() {
                 selectedIds={selectedIds}
                 onToggle={toggleSeat}
                 getSeatStatus={getSeatStatus}
+                noAisle={trip.bus.busType === "minibus"}
               />
             )}
           </section>
@@ -410,8 +393,7 @@ export default function TripDetail() {
   );
 }
 
-function SeatGrid({ label, seats, onToggle, getSeatStatus }) {
-  // Build 2D grid from rowNum/colNum
+function SeatGrid({ label, seats, onToggle, getSeatStatus, noAisle = false, isSleeper = false }) {
   const maxRow = Math.max(...seats.map((s) => s.seat.rowNum), 0);
   const maxCol = Math.max(...seats.map((s) => s.seat.colNum), 0);
 
@@ -425,6 +407,32 @@ function SeatGrid({ label, seats, onToggle, getSeatStatus }) {
     grid.push(row);
   }
 
+  const sleeperW = maxCol <= 2 ? "w-16" : "w-12";
+  const seatClass = isSleeper ? `${sleeperW} h-22` : "w-13 h-13";
+  const emptyClass = isSleeper ? `${sleeperW} h-22` : "w-13 h-13";
+
+  const renderSeat = (ts, cIdx) =>
+    ts ? (
+      <button
+        key={ts.id}
+        onClick={() => onToggle(ts)}
+        className={`${seatClass} rounded-xl border-2 text-[10px] font-bold transition-all flex flex-col items-center justify-center gap-0.5 ${
+          SEAT_STATUS[getSeatStatus(ts)]?.bg
+        }`}
+      >
+        {isSleeper ? (
+          <div className="flex flex-col items-center justify-between h-full w-full px-1.5 py-2">
+            <span className="text-[10px] font-bold">{ts.seat.seatLabel}</span>
+            <div className="w-full h-3 rounded-sm border-2 border-current opacity-40" />
+          </div>
+        ) : (
+          ts.seat.seatLabel
+        )}
+      </button>
+    ) : (
+      <div key={`empty-${cIdx}`} className={emptyClass} />
+    );
+
   return (
     <div>
       {label && (
@@ -435,28 +443,29 @@ function SeatGrid({ label, seats, onToggle, getSeatStatus }) {
       <div className="space-y-2">
         {grid.map((row, rIdx) => {
           const seatsInRow = row.filter(Boolean);
-          const rowSeatCount = seatsInRow.length;
-          const hasAisle = maxCol >= 4 && rowSeatCount <= 4;
+          const hasAisle = !noAisle && !isSleeper && maxCol >= 4 && seatsInRow.length <= 4;
           const left = hasAisle ? seatsInRow.slice(0, 2) : seatsInRow;
           const right = hasAisle ? seatsInRow.slice(2) : [];
-          const renderSeat = (ts, cIdx) =>
-            ts ? (
-              <button
-                key={ts.id}
-                onClick={() => onToggle(ts)}
-                className={`w-12 h-12 rounded-xl border-2 text-xs font-bold transition-all ${
-                  SEAT_STATUS[getSeatStatus(ts)]?.bg
-                }`}
-              >
-                {ts.seat.seatLabel}
-              </button>
-            ) : (
-              <div key={cIdx} className="w-12 h-12" />
+          const isFirstRow = rIdx === 0;
+
+          if (isSleeper) {
+            return (
+              <div key={rIdx} className="flex justify-center" style={{ gap: "20px" }}>
+                {seatsInRow.map(renderSeat)}
+              </div>
             );
+          }
+
           return (
-            <div key={rIdx} className="flex gap-2 justify-center">
+            <div key={rIdx} className="flex gap-1.5 justify-center">
+              {noAisle && isFirstRow && (
+                <div className={`${seatClass} rounded-xl border-2 border-outline-variant/20 bg-surface-container-low flex flex-col items-center justify-center gap-0.5 text-secondary`}>
+                  <span className="material-symbols-outlined text-sm leading-none">steering</span>
+                  <span className="text-[9px] font-bold">Tài xế</span>
+                </div>
+              )}
               {left.map(renderSeat)}
-              {hasAisle && <div className="w-12" />}
+              {hasAisle && <div className="w-13" />}
               {right.map(renderSeat)}
             </div>
           );

@@ -15,6 +15,14 @@ const getTicketsByBooking = async (req, res) => {
     }
     const ticket = await prisma.ticket.findUnique({
       where: { bookingId },
+      include: {
+        booking: {
+          include: {
+            trip: { include: { route: true } },
+            bookingSeats: { include: { seat: { include: { seat: true } } } },
+          },
+        },
+      },
     });
 
     if (!ticket) {

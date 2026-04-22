@@ -16,7 +16,7 @@ const searchTrip = async (req, res) => {
       },
       include: {
         route: true,
-        bus: true,
+        bus: { include: { company: true } },
         driver: true,
       },
     });

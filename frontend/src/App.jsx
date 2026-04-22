@@ -11,6 +11,7 @@ import Checkout from "./pages/Checkout.jsx";
 import Profile from "./pages/Profile.jsx";
 import BookingConfirm from "./pages/BookingConfirm.jsx";
 import PaymentResult from "./pages/PaymentResult.jsx";
+import Ticket from "./pages/Ticket.jsx";
 
 // Chỉ cần đăng nhập
 function ProtectedRoute({ children }) {
@@ -71,7 +72,7 @@ function App() {
         />
         <Route path="/booking/:id" element={<ProtectedRoute><BookingConfirm /></ProtectedRoute>} />
         <Route path="/payment/result" element={<PaymentResult />} />
-        <Route path="/tickets/:bookingId" element={<div>Ticket</div>} />
+        <Route path="/tickets/:bookingId" element={<ProtectedRoute><Ticket /></ProtectedRoute>} />
       </Route>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />

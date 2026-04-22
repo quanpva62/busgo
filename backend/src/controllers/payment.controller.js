@@ -1,6 +1,7 @@
 const prisma = require("../lib/prisma");
 const crypto = require("crypto");
 const qs = require("qs");
+const { sendTicketEmail } = require("../lib/mailer");
 
 const buildVnpUrl = (booking, vnpTxnRef, ipAddr) => {
   const date = new Date();
@@ -72,31 +73,31 @@ const createPayment = async (req, res) => {
       });
     }
 
-    // check nếu đã có payment pending
+    // Luôn tạo vnpTxnRef mới để tránh VNPay từ chối transaction cũ
+    const vnpTxnRef = `${bookingId}-${Date.now()}`;
+
     const existingPayment = await prisma.payment.findUnique({
       where: { bookingId },
     });
-    if (existingPayment && existingPayment.status === "pending") {
-      const paymentUrl = buildVnpUrl(
-        booking,
-        existingPayment.vnpTxnRef,
-        req.ip || "127.0.0.1",
-      );
-      return res.json({ paymentUrl });
-    }
 
-    // tạo payment mới
-    const vnpTxnRef = `${bookingId}-${Date.now()}`;
-    await prisma.payment.create({
-      data: {
-        bookingId,
-        vnpTxnRef,
-        amount: booking.totalPrice,
-        status: "pending",
-        paymentMethod: "vnpay",
-        vnpRaw: {},
-      },
-    });
+    if (existingPayment) {
+      // Cập nhật lại txnRef mới cho lần retry
+      await prisma.payment.update({
+        where: { bookingId },
+        data: { vnpTxnRef, status: "pending", vnpRaw: {} },
+      });
+    } else {
+      await prisma.payment.create({
+        data: {
+          bookingId,
+          vnpTxnRef,
+          amount: booking.totalPrice,
+          status: "pending",
+          paymentMethod: "vnpay",
+          vnpRaw: {},
+        },
+      });
+    }
 
     const paymentUrl = buildVnpUrl(booking, vnpTxnRef, req.ip || "127.0.0.1");
     res.json({ paymentUrl });
@@ -140,7 +141,7 @@ const vnpayReturn = async (req, res) => {
 
       const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
       if (responseCode === "00") {
-        await prisma.$transaction([
+        const [, , , ticket] = await prisma.$transaction([
           prisma.payment.update({
             where: { vnpTxnRef },
             data: {
@@ -168,6 +169,29 @@ const vnpayReturn = async (req, res) => {
             },
           }),
         ]);
+
+        // Gửi email xác nhận vé (fire-and-forget, không block redirect)
+        prisma.booking.findUnique({
+          where: { id: bookingId },
+          include: {
+            trip: { include: { route: true } },
+            bookingSeats: { include: { seat: { include: { seat: true } } } },
+          },
+        }).then((booking) => {
+          if (!booking?.passengerEmail) return;
+          const seats = booking.bookingSeats.map((bs) => bs.seat.seat.seatLabel).join(", ");
+          return sendTicketEmail({
+            to: booking.passengerEmail,
+            passengerName: booking.passengerName,
+            ticketCode: ticket.ticketCode,
+            fromCity: booking.trip.route.fromCity,
+            toCity: booking.trip.route.toCity,
+            departureTime: booking.trip.departureTime,
+            seats,
+            totalPrice: booking.totalPrice,
+          });
+        }).catch((err) => console.error("Send email failed:", err));
+
         return res.redirect(`${frontendUrl}/payment/result?status=success&bookingId=${bookingId}`);
       } else {
         await prisma.payment.update({
@@ -182,7 +206,8 @@ const vnpayReturn = async (req, res) => {
     }
   } catch (error) {
     console.error("Error handling VNPAY return:", error);
-    return res.status(500).json({ error: "Lỗi máy chủ" });
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+    return res.redirect(`${frontendUrl}/payment/result?status=failed`);
   }
 };
 
