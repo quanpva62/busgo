@@ -60,12 +60,14 @@ const login = async (req, res) => {
       return res.status(403).json({ error: "Tài khoản đã bị khoá" });
     }
 
-    const accessToken = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, {
-      expiresIn: "15m",
-    });
+    const accessToken = jwt.sign(
+      { userId: user.id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "15m" },
+    );
 
     const refreshToken = jwt.sign(
-      { userId: user.id },
+      { userId: user.id, role: user.role },
       process.env.JWT_REFRESH_SECRET,
       { expiresIn: "7d" },
     );
@@ -165,7 +167,7 @@ const refreshToken = async (req, res) => {
       }
 
       const accessToken = jwt.sign(
-        { userId: decoded.userId },
+        { userId: decoded.userId, role: decoded.role },
         process.env.JWT_SECRET,
         { expiresIn: "15m" },
       );

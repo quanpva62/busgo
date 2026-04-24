@@ -111,6 +111,7 @@ model Route {
   distanceKm        Int
   estimatedDuration Int // in minutes
   isActive          Boolean @default(true)
+  imageUrl          String?
   trips             Trip[]
 }
 
@@ -130,6 +131,8 @@ model Trip {
   pickupAddress   String
   dropoffAddress  String
   status          TripStatus    @default(scheduled)
+  seriesId      String?
+  interval      String?       // daily / weekly / monthly
   createdAt     DateTime      @default(now())
   bookings      Booking[]
   tripSeats     TripSeat[]

@@ -33,6 +33,12 @@ export default function Navbar() {
         <div className="hidden md:flex items-center space-x-4">
           {user ? (
             <>
+              {(user.role === "admin" || user.role === "company_admin") && (
+                <Link to="/admin" className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-primary hover:bg-primary/5 rounded-xl transition-colors">
+                  <span className="material-symbols-outlined text-base">admin_panel_settings</span>
+                  Quản lý
+                </Link>
+              )}
               <Link
                 to="/profile"
                 className="flex items-center gap-2 px-4 py-2 hover:bg-slate-50 rounded-xl transition-colors"

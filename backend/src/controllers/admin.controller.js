@@ -1,4 +1,6 @@
 const prisma = require("../lib/prisma");
+const bcrypt = require("bcryptjs");
+const supabase = require("../lib/supabase");
 
 const getUsers = async (req, res) => {
   try {
@@ -133,10 +135,811 @@ const getCompanyStats = async (req, res) => {
   }
 };
 
+const getAdminStats = async (req, res) => {
+  try {
+    const [totalUsers, totalBookings, revenue, pendingReports] =
+      await Promise.all([
+        prisma.user.count({ where: { role: "user" } }),
+        prisma.booking.count({ where: { status: "paid" } }),
+        prisma.booking.aggregate({
+          where: { status: "paid" },
+          _sum: { totalPrice: true },
+        }),
+        prisma.report.count({ where: { status: "pending" } }),
+      ]);
+    res.json({
+      totalUsers,
+      totalBookings,
+      totalRevenue: revenue._sum.totalPrice ?? 0,
+      pendingReports,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+const getCompanyReports = async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.userId },
+    });
+    const reports = await prisma.report.findMany({
+      where: { driver: { companyId: user.companyId } },
+      include: {
+        user: { select: { id: true, fullName: true } },
+        driver: { select: { id: true, fullName: true } },
+        booking: { include: { trip: { include: { route: true } } } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    res.json({ reports });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+const updateTripStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.userId },
+    });
+    const trip = await prisma.trip.findUnique({
+      where: { id },
+      include: { bus: true },
+    });
+    if (!trip) return res.status(404).json({ error: "Trip không tồn tại" });
+    if (
+      req.user.role === "company_admin" &&
+      trip.bus.companyId !== user.companyId
+    ) {
+      return res
+        .status(403)
+        .json({ error: "Bạn không có quyền cập nhật chuyến này" });
+    }
+    const updated = await prisma.trip.update({
+      where: { id },
+      data: { status },
+    });
+    res.json({ message: "Đã cập nhật trạng thái", trip: updated });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+const createUser = async (req, res) => {
+  try {
+    const { email, password, fullName, phone, role, companyId } = req.body;
+    if (!["admin", "company_admin", "staff"].includes(role)) {
+      return res.status(400).json({ error: "Role không hợp lệ" });
+    }
+    if (role === "company_admin" && !companyId) {
+      return res
+        .status(400)
+        .json({ error: "Cần chọn doanh nghiệp cho company_admin" });
+    }
+
+    const existingEmail = await prisma.user.findUnique({ where: { email } });
+    if (existingEmail)
+      return res.status(400).json({ error: "Email đã tồn tại" });
+    const existingPhone = await prisma.user.findUnique({ where: { phone } });
+    if (existingPhone) return res.status(400).json({ error: "SĐT đã tồn tại" });
+
+    if (companyId) {
+      const company = await prisma.company.findUnique({
+        where: { id: companyId },
+      });
+      if (!company)
+        return res.status(400).json({ error: "Doanh nghiệp không tồn tại" });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    const user = await prisma.user.create({
+      data: {
+        email,
+        passwordHash,
+        fullName,
+        phone,
+        role,
+        companyId: role === "company_admin" ? companyId : null,
+      },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        phone: true,
+        role: true,
+        isActive: true,
+        companyId: true,
+      },
+    });
+    res.status(201).json({ message: "Tạo tài khoản thành công", user });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+const getCompanies = async (req, res) => {
+  try {
+    const companies = await prisma.company.findMany({
+      orderBy: { createdAt: "desc" },
+      include: {
+        _count: { select: { buses: true, drivers: true, users: true } },
+      },
+    });
+    res.json(companies);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+const createCompany = async (req, res) => {
+  try {
+    const { name, hotline, email, address, description } = req.body;
+    const existing = await prisma.company.findUnique({ where: { email } });
+    if (existing)
+      return res.status(400).json({ error: "Email doanh nghiệp đã tồn tại" });
+
+    const company = await prisma.company.create({
+      data: { name, hotline, email, address, description },
+    });
+    res.status(201).json({ message: "Tạo doanh nghiệp thành công", company });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+// ─── Helpers ────────────────────────────────────────────────────────
+
+async function getCompanyId(req, res) {
+  const user = await prisma.user.findUnique({ where: { id: req.user.userId } });
+  if (!user?.companyId) {
+    res.status(400).json({ error: "Tài khoản không thuộc doanh nghiệp nào" });
+    return null;
+  }
+  return user.companyId;
+}
+
+async function generateSeatsForBus(busId, busType) {
+  if (busType === "standard") {
+    const cols = ["A", "B", "C", "D"];
+    const data = [];
+    for (let row = 1; row <= 6; row++) {
+      for (let i = 0; i < cols.length; i++) {
+        data.push({
+          busId,
+          seatLabel: `${cols[i]}${row}`,
+          rowNum: row,
+          colNum: i + 1,
+        });
+      }
+    }
+    const lastRow = ["A", "B", "C", "D", "E"];
+    for (let i = 0; i < lastRow.length; i++) {
+      data.push({
+        busId,
+        seatLabel: `${lastRow[i]}7`,
+        rowNum: 7,
+        colNum: i + 1,
+      });
+    }
+    await prisma.seat.createMany({ data });
+    return data.length;
+  }
+  if (busType === "minibus") {
+    const data = [
+      { rowNum: 1, colNum: 2 },
+      { rowNum: 1, colNum: 3 },
+      { rowNum: 2, colNum: 1 },
+      { rowNum: 2, colNum: 2 },
+      { rowNum: 2, colNum: 3 },
+      { rowNum: 3, colNum: 1 },
+      { rowNum: 3, colNum: 2 },
+      { rowNum: 3, colNum: 3 },
+      { rowNum: 4, colNum: 1 },
+      { rowNum: 4, colNum: 2 },
+      { rowNum: 4, colNum: 3 },
+      { rowNum: 5, colNum: 1 },
+      { rowNum: 5, colNum: 2 },
+      { rowNum: 5, colNum: 3 },
+      { rowNum: 5, colNum: 4 },
+    ].map((s, i) => ({
+      busId,
+      seatLabel: String(i + 1).padStart(2, "0"),
+      ...s,
+    }));
+    await prisma.seat.createMany({ data });
+    return data.length;
+  }
+  if (busType === "sleeper") {
+    const cols = ["A", "B", "C"];
+    const data = [];
+    for (let floor = 1; floor <= 2; floor++) {
+      for (let row = 1; row <= 6; row++) {
+        for (let i = 0; i < cols.length; i++) {
+          data.push({
+            busId,
+            seatLabel: `${cols[i]}${row}-T${floor}`,
+            rowNum: row,
+            colNum: i + 1,
+            floor,
+            level: floor === 1 ? "lower" : "upper",
+          });
+        }
+      }
+    }
+    await prisma.seat.createMany({ data });
+    return data.length;
+  }
+  return 0;
+}
+
+// ─── Driver / Assistant CRUD ────────────────────────────────────────
+
+const getCompanyDrivers = async (req, res) => {
+  try {
+    const companyId = await getCompanyId(req, res);
+    if (!companyId) return;
+    const where = { companyId };
+    if (req.query.role === "driver" || req.query.role === "assistant") {
+      where.driverRole = req.query.role;
+    }
+    const drivers = await prisma.driver.findMany({
+      where,
+      include: {
+        bus: { select: { id: true, licensePlate: true, typeName: true } },
+      },
+      orderBy: { joinDate: "desc" },
+    });
+    res.json(drivers);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+const createCompanyDriver = async (req, res) => {
+  try {
+    const companyId = await getCompanyId(req, res);
+    if (!companyId) return;
+    const { fullName, phone, driverRole, licenseNo, licenseType, busId } =
+      req.body;
+    if (!["driver", "assistant"].includes(driverRole)) {
+      return res.status(400).json({ error: "Vai trò không hợp lệ" });
+    }
+    const bus = await prisma.bus.findUnique({ where: { id: busId } });
+    if (!bus || bus.companyId !== companyId) {
+      return res.status(400).json({ error: "Xe không thuộc doanh nghiệp" });
+    }
+    const driver = await prisma.driver.create({
+      data: {
+        companyId,
+        busId,
+        fullName,
+        phone,
+        driverRole,
+        licenseNo,
+        licenseType,
+      },
+      include: {
+        bus: { select: { id: true, licensePlate: true, typeName: true } },
+      },
+    });
+    res.status(201).json({ driver });
+  } catch (error) {
+    console.error(error);
+    if (error.code === "P2002")
+      return res.status(400).json({ error: "SĐT hoặc số bằng đã tồn tại" });
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+const updateCompanyDriver = async (req, res) => {
+  try {
+    const companyId = await getCompanyId(req, res);
+    if (!companyId) return;
+    const { id } = req.params;
+    const driver = await prisma.driver.findUnique({ where: { id } });
+    if (!driver || driver.companyId !== companyId) {
+      return res.status(404).json({ error: "Tài xế không tồn tại" });
+    }
+    const { fullName, phone, licenseNo, licenseType, busId, isActive } =
+      req.body;
+    if (busId) {
+      const bus = await prisma.bus.findUnique({ where: { id: busId } });
+      if (!bus || bus.companyId !== companyId)
+        return res.status(400).json({ error: "Xe không hợp lệ" });
+    }
+    const updated = await prisma.driver.update({
+      where: { id },
+      data: { fullName, phone, licenseNo, licenseType, busId, isActive },
+      include: {
+        bus: { select: { id: true, licensePlate: true, typeName: true } },
+      },
+    });
+    res.json({ driver: updated });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+const deleteCompanyDriver = async (req, res) => {
+  try {
+    const companyId = await getCompanyId(req, res);
+    if (!companyId) return;
+    const { id } = req.params;
+    const driver = await prisma.driver.findUnique({ where: { id } });
+    if (!driver || driver.companyId !== companyId) {
+      return res.status(404).json({ error: "Tài xế không tồn tại" });
+    }
+    await prisma.driver.update({ where: { id }, data: { isActive: false } });
+    res.json({ message: "Đã ngưng hoạt động tài xế" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+// ─── Bus CRUD ───────────────────────────────────────────────────────
+
+const getCompanyBuses = async (req, res) => {
+  try {
+    const companyId = await getCompanyId(req, res);
+    if (!companyId) return;
+    const buses = await prisma.bus.findMany({
+      where: { companyId },
+      orderBy: { createdAt: "desc" },
+      include: { _count: { select: { trips: true, drivers: true } } },
+    });
+    res.json(buses);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+const createCompanyBus = async (req, res) => {
+  try {
+    const companyId = await getCompanyId(req, res);
+    if (!companyId) return;
+    const { licensePlate, busType, typeName, layout, amenities } = req.body;
+    if (!["standard", "sleeper", "minibus"].includes(busType)) {
+      return res.status(400).json({ error: "Loại xe không hợp lệ" });
+    }
+    const totalSeatsByType = { standard: 29, sleeper: 36, minibus: 16 };
+    const bus = await prisma.bus.create({
+      data: {
+        companyId,
+        licensePlate,
+        busType,
+        typeName,
+        totalSeats: totalSeatsByType[busType],
+        layout: layout ?? (busType === "sleeper" ? "2-1" : "2-2"),
+        amenities: amenities ?? {},
+      },
+    });
+    await generateSeatsForBus(bus.id, busType);
+    res.status(201).json({ bus });
+  } catch (error) {
+    console.error(error);
+    if (error.code === "P2002")
+      return res.status(400).json({ error: "Biển số đã tồn tại" });
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+const updateCompanyBus = async (req, res) => {
+  try {
+    const companyId = await getCompanyId(req, res);
+    if (!companyId) return;
+    const { id } = req.params;
+    const bus = await prisma.bus.findUnique({ where: { id } });
+    if (!bus || bus.companyId !== companyId)
+      return res.status(404).json({ error: "Xe không tồn tại" });
+    const { licensePlate, typeName, layout, amenities, isActive } = req.body;
+    const updated = await prisma.bus.update({
+      where: { id },
+      data: { licensePlate, typeName, layout, amenities, isActive },
+    });
+    res.json({ bus: updated });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+const deleteCompanyBus = async (req, res) => {
+  try {
+    const companyId = await getCompanyId(req, res);
+    if (!companyId) return;
+    const { id } = req.params;
+    const bus = await prisma.bus.findUnique({ where: { id } });
+    if (!bus || bus.companyId !== companyId)
+      return res.status(404).json({ error: "Xe không tồn tại" });
+    await prisma.bus.update({ where: { id }, data: { isActive: false } });
+    res.json({ message: "Đã ngưng hoạt động xe" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+// ─── Trip create / delete ───────────────────────────────────────────
+
+const INTERVAL_MS = { daily: 86400000, weekly: 604800000, monthly: null };
+
+async function createSingleTrip(tx, { routeId, busId, driverId, assistantId, dep, route, price, pickupAddress, dropoffAddress, seriesId, interval }) {
+  const arr = new Date(dep.getTime() + route.estimatedDuration * 60000);
+  const t = await tx.trip.create({
+    data: {
+      routeId, busId, driverId,
+      assistantId: assistantId || null,
+      departureTime: dep, arrivalTime: arr,
+      price: parseInt(price), pickupAddress, dropoffAddress,
+      seriesId: seriesId || null,
+      interval: interval || null,
+    },
+  });
+  const seats = await tx.seat.findMany({ where: { busId } });
+  if (seats.length === 0) throw new Error("Xe chưa có ghế. Vui lòng tạo lại xe.");
+  await tx.tripSeat.createMany({
+    data: seats.map((s) => ({ tripId: t.id, seatId: s.id, status: "available" })),
+  });
+  return t;
+}
+
+const createCompanyTrip = async (req, res) => {
+  try {
+    const companyId = await getCompanyId(req, res);
+    if (!companyId) return;
+    const {
+      routeId, busId, driverId, assistantId,
+      departureTime, price, pickupAddress, dropoffAddress,
+      interval, occurrences,
+    } = req.body;
+
+    const [bus, driver, route] = await Promise.all([
+      prisma.bus.findUnique({ where: { id: busId } }),
+      prisma.driver.findUnique({ where: { id: driverId } }),
+      prisma.route.findUnique({ where: { id: routeId } }),
+    ]);
+    if (!bus || bus.companyId !== companyId)
+      return res.status(400).json({ error: "Xe không hợp lệ" });
+    if (!driver || driver.companyId !== companyId)
+      return res.status(400).json({ error: "Tài xế không hợp lệ" });
+    if (!route) return res.status(400).json({ error: "Tuyến không tồn tại" });
+    if (assistantId) {
+      const assistant = await prisma.driver.findUnique({ where: { id: assistantId } });
+      if (!assistant || assistant.companyId !== companyId)
+        return res.status(400).json({ error: "Phụ xe không hợp lệ" });
+    }
+
+    const isRecurring = interval && occurrences > 1;
+    const seriesId = isRecurring ? require("crypto").randomUUID() : null;
+    const count = isRecurring ? Math.min(parseInt(occurrences), 52) : 1;
+    const base = new Date(departureTime);
+
+    const trips = [];
+    for (let i = 0; i < count; i++) {
+      let dep = new Date(base);
+      if (i > 0) {
+        if (interval === "daily") dep = new Date(base.getTime() + i * 86400000);
+        else if (interval === "weekly") dep = new Date(base.getTime() + i * 7 * 86400000);
+        else if (interval === "monthly") { dep = new Date(base); dep.setMonth(dep.getMonth() + i); }
+      }
+      const t = await prisma.$transaction(async (tx) =>
+        createSingleTrip(tx, { routeId, busId, driverId, assistantId, dep, route, price, pickupAddress, dropoffAddress, seriesId, interval: isRecurring ? interval : null })
+      );
+      trips.push(t);
+    }
+
+    const firstTrip = await prisma.trip.findUnique({
+      where: { id: trips[0].id },
+      include: { bus: true, driver: true, assistant: true, route: true },
+    });
+    res.status(201).json({ trip: firstTrip, total: trips.length, seriesId });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: error.message ?? "Internal Server Error" });
+  }
+};
+
+const deleteCompanyTripSeries = async (req, res) => {
+  try {
+    const companyId = await getCompanyId(req, res);
+    if (!companyId) return;
+    const { seriesId } = req.params;
+    const trips = await prisma.trip.findMany({
+      where: { seriesId },
+      include: { bus: true, _count: { select: { bookings: true } } },
+    });
+    if (trips.length === 0) return res.status(404).json({ error: "Không tìm thấy chuỗi chuyến" });
+    if (trips.some((t) => t.bus.companyId !== companyId))
+      return res.status(403).json({ error: "Không có quyền" });
+    const hasBooking = trips.some((t) => t._count.bookings > 0);
+    if (hasBooking)
+      return res.status(400).json({ error: "Một số chuyến đã có booking. Hãy đổi trạng thái sang 'Đã huỷ' thay vì xoá." });
+    const tripIds = trips.map((t) => t.id);
+    await prisma.$transaction([
+      prisma.tripSeat.deleteMany({ where: { tripId: { in: tripIds } } }),
+      prisma.trip.deleteMany({ where: { id: { in: tripIds } } }),
+    ]);
+    res.json({ message: `Đã xoá ${tripIds.length} chuyến trong chuỗi` });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+const deleteCompanyTrip = async (req, res) => {
+  try {
+    const companyId = await getCompanyId(req, res);
+    if (!companyId) return;
+    const { id } = req.params;
+    const trip = await prisma.trip.findUnique({
+      where: { id },
+      include: { bus: true, _count: { select: { bookings: true } } },
+    });
+    if (!trip || trip.bus.companyId !== companyId)
+      return res.status(404).json({ error: "Chuyến không tồn tại" });
+    if (trip._count.bookings > 0) {
+      return res.status(400).json({
+        error:
+          "Chuyến đã có booking, không thể xoá. Hãy đổi sang trạng thái 'Đã huỷ'.",
+      });
+    }
+    await prisma.$transaction([
+      prisma.tripSeat.deleteMany({ where: { tripId: id } }),
+      prisma.trip.delete({ where: { id } }),
+    ]);
+    res.json({ message: "Đã xoá chuyến" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+// ─── Routes (global) ────────────────────────────────────────────────
+
+const getRoutes = async (req, res) => {
+  try {
+    const routes = await prisma.route.findMany({
+      orderBy: { fromCity: "asc" },
+    });
+    res.json(routes);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+const createRoute = async (req, res) => {
+  try {
+    const { fromCity, toCity, distanceKm, estimatedDuration } = req.body;
+    if (!fromCity || !toCity || !distanceKm || !estimatedDuration)
+      return res.status(400).json({ error: "Thiếu thông tin tuyến đường" });
+    const route = await prisma.route.create({
+      data: {
+        fromCity: fromCity.trim(),
+        toCity: toCity.trim(),
+        distanceKm: parseInt(distanceKm),
+        estimatedDuration: parseInt(estimatedDuration),
+      },
+    });
+    res.status(201).json(route);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+const updateCompany = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, hotline, email, address, description, isActive } = req.body;
+    const company = await prisma.company.update({
+      where: { id },
+      data: { name, hotline, email, address, description, isActive },
+    });
+    res.json({ message: "Cập nhật thành công", company });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+// ─── Chart ────────────────────────────────────────────────
+
+const totalRevenueChart = async (req, res) => {
+  try {
+    const groupBy = req.query.groupBy === "year" ? "year" : "month";
+    const year = req.query.year
+      ? parseInt(req.query.year)
+      : new Date().getFullYear();
+
+    let result;
+    if (groupBy === "month") {
+      result = await prisma.$queryRaw`
+        SELECT DATE_TRUNC('month', "createdAt") as period,
+               SUM("totalPrice") as revenue
+        FROM "Booking"
+        WHERE status = 'paid'
+          AND EXTRACT(year FROM "createdAt") = ${year}
+        GROUP BY period
+        ORDER BY period ASC
+      `;
+    } else {
+      result = await prisma.$queryRaw`
+        SELECT DATE_TRUNC('year', "createdAt") as period,
+               SUM("totalPrice") as revenue
+        FROM "Booking"
+        WHERE status = 'paid'
+        GROUP BY period
+        ORDER BY period ASC
+        LIMIT 5
+      `;
+    }
+
+    const data = result.map((r) => ({
+      period: r.period,
+      revenue: parseInt(r.revenue),
+    }));
+    const total = data.reduce((sum, r) => sum + r.revenue, 0);
+    res.json({ data, total });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+const totalBookingsChart = async (req, res) => {
+  try {
+    const groupBy = req.query.groupBy === "year" ? "year" : "month";
+    const year = req.query.year
+      ? parseInt(req.query.year)
+      : new Date().getFullYear();
+
+    let result;
+    if (groupBy === "month") {
+      result = await prisma.$queryRaw`
+        SELECT DATE_TRUNC('month', "createdAt") as period,
+               COUNT(*) as bookings
+        FROM "Booking"
+        WHERE status = 'paid'
+          AND EXTRACT(year FROM "createdAt") = ${year}
+        GROUP BY period
+        ORDER BY period ASC
+      `;
+    } else {
+      result = await prisma.$queryRaw`
+        SELECT DATE_TRUNC('year', "createdAt") as period,
+               COUNT(*) as bookings
+        FROM "Booking"
+        WHERE status = 'paid'
+        GROUP BY period
+        ORDER BY period ASC
+        LIMIT 5
+      `;
+    }
+
+    const data = result.map((r) => ({
+      period: r.period,
+      bookings: parseInt(r.bookings),
+    }));
+    const total = data.reduce((sum, r) => sum + r.bookings, 0);
+    res.json({ data, total });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+const companyRevenueChart = async (req, res) => {
+  try {
+    const result = await prisma.$queryRaw`
+      SELECT c.name, SUM(b."totalPrice") as revenue
+      FROM "Booking" b
+      JOIN "Trip" t ON t.id = b."tripId"
+      JOIN "Bus" bus ON bus.id = t."busId"
+      JOIN "Company" c ON c.id = bus."companyId"
+      WHERE b.status = 'paid'
+      GROUP BY c.id, c.name
+      ORDER BY revenue DESC`;
+    const data = result.map((r) => ({
+      name: r.name,
+      revenue: parseInt(r.revenue),
+    }));
+    res.json({ data });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+const topRoutesChart = async (req, res) => {
+  try {
+    const result = await prisma.$queryRaw`
+    SELECT r."fromCity", r."toCity", COUNT(*) as bookings
+      FROM "Booking" b
+      JOIN "Trip" t ON t.id = b."tripId"
+      JOIN "Route" r ON r.id = t."routeId"
+      WHERE b.status = 'paid'
+      GROUP BY r.id, r."fromCity", r."toCity"
+      ORDER BY bookings DESC
+      LIMIT 5`;
+    const data = result.map((r) => ({
+      fromCity: r.fromCity,
+      toCity: r.toCity,
+      bookings: parseInt(r.bookings),
+    }));
+    res.json({ data });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+const uploadRouteImage = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const route = await prisma.route.findUnique({ where: { id } });
+    if (!route) return res.status(404).json({ error: "Route không tồn tại" });
+    if (!req.file) return res.status(400).json({ error: "Không có file ảnh" });
+
+    const ext = req.file.mimetype.split("/")[1];
+    const fileName = `${id}.${ext}`;
+
+    const { error } = await supabase.storage
+      .from("route-image")
+      .upload(fileName, req.file.buffer, {
+        contentType: req.file.mimetype,
+        upsert: true,
+      });
+    if (error) return res.status(500).json({ error: error.message });
+
+    const { data } = supabase.storage.from("route-image").getPublicUrl(fileName);
+    await prisma.route.update({ where: { id }, data: { imageUrl: data.publicUrl } });
+
+    res.json({ imageUrl: data.publicUrl });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
 module.exports = {
   getUsers,
   toggleUserStatus,
   getCompanyTrips,
   getCompanyBookings,
   getCompanyStats,
+  getAdminStats,
+  getCompanyReports,
+  updateTripStatus,
+  createUser,
+  getCompanies,
+  createCompany,
+  updateCompany,
+  getCompanyDrivers,
+  createCompanyDriver,
+  updateCompanyDriver,
+  deleteCompanyDriver,
+  getCompanyBuses,
+  createCompanyBus,
+  updateCompanyBus,
+  deleteCompanyBus,
+  createCompanyTrip,
+  deleteCompanyTrip,
+  deleteCompanyTripSeries,
+  getRoutes,
+  createRoute,
+  uploadRouteImage,
+  totalRevenueChart,
+  totalBookingsChart,
+  topRoutesChart,
+  companyRevenueChart,
 };

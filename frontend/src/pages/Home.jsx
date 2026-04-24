@@ -1,5 +1,5 @@
 import heroImg from "../assets/img/hero-img.png";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import iconLocation from "../assets/icons/location_on.svg";
 import iconFlag from "../assets/icons/flag.svg";
 import iconCalendar from "../assets/icons/calendar.svg";
@@ -13,15 +13,28 @@ import iconPayments from "../assets/icons/payments.svg";
 import iconSupport from "../assets/icons/support.svg";
 import { useNavigate } from "react-router-dom";
 
+const API = import.meta.env.VITE_API_URL;
+
+function localDateStr(date = new Date()) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
 export default function Home() {
   const navigate = useNavigate();
   const [openFrom, setOpenFrom] = useState(false);
+  const [popularRoutes, setPopularRoutes] = useState([]);
+
+  useEffect(() => {
+    fetch(`${API}/api/trips/popular`)
+      .then((r) => r.json())
+      .then((d) => setPopularRoutes(Array.isArray(d) ? d : []));
+  }, []);
   const [selectedFrom, setSelectedFrom] = useState("Hà Nội");
   const [openTo, setOpenTo] = useState(false);
-  const [selectedTo, setSelectedTo] = useState("Hải Phòng");
+  const [selectedTo, setSelectedTo] = useState("TP.HCM");
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
-  const [date, setDate] = useState(tomorrow.toISOString().split("T")[0]);
+  const [date, setDate] = useState(localDateStr(tomorrow));
 
   return (
     <main>
@@ -72,7 +85,7 @@ export default function Home() {
                   </button>
                   {openFrom && (
                     <ul className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-outline-variant/30 z-50 overflow-hidden ">
-                      {["Hà Nội", "TP. Hồ Chí Minh", "Đà Nẵng", "Cần Thơ"].map(
+                      {["Hà Nội", "TP.HCM", "Đà Nẵng", "Hải Phòng", "Huế", "Cần Thơ"].map(
                         (city) => (
                           <li
                             key={city}
@@ -112,7 +125,7 @@ export default function Home() {
                   </button>
                   {openTo && (
                     <ul className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-outline-variant/30 z-50 overflow-hidden">
-                      {["Hải Phòng", "Quảng Ninh", "Vinh", "Thanh Hóa", "Nam Định"].map(
+                      {["Hải Phòng", "Quảng Ninh", "Vinh", "Thanh Hóa", "Nam Định", "TP.HCM", "Đà Nẵng", "Đà Lạt", "Vũng Tàu", "Huế", "Cần Thơ"].map(
                         (city) => (
                           <li
                             key={city}
@@ -144,7 +157,7 @@ export default function Home() {
                   />
                   <input
                     type="date"
-                    min={new Date().toISOString().split("T")[0]}
+                    min={localDateStr()}
                     max="2028-12-31"
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
@@ -185,32 +198,50 @@ export default function Home() {
               Tuyến đường phổ biến
             </h2>
           </div>
-          <button className="flex items-center gap-2 text-primary font-bold hover:gap-3 transition-all self-start sm:self-auto">
+          <button
+            onClick={() => navigate("/routes")}
+            className="flex items-center gap-2 text-primary font-bold hover:gap-3 transition-all self-start sm:self-auto"
+          >
             Xem tất cả
             <img src={iconArrow} alt="" className="w-5 h-5" />
           </button>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[
-            {
-              from: "Sài Gòn",
-              to: "Đà Lạt",
-              hours: 7,
-              price: "280.000đ",
-              badge: "Bán chạy",
-            },
-            { from: "Sài Gòn", to: "Đà Nẵng", hours: 16, price: "450.000đ" },
-            { from: "Sài Gòn", to: "Nha Trang", hours: 8, price: "320.000đ" },
-          ].map((route, i) => (
-            <div key={route.to} className={i === 2 ? "sm:hidden lg:block" : ""}>
-              <RouteCard {...route} />
+          {popularRoutes.map((r, i) => (
+            <div
+              key={r.id}
+              className={`cursor-pointer ${i === 2 ? "sm:hidden lg:block" : ""}`}
+              onClick={() =>
+                navigate(
+                  `/search?from=${encodeURIComponent(r.fromCity)}&to=${encodeURIComponent(r.toCity)}`,
+                )
+              }
+            >
+              <RouteCard
+                from={r.fromCity}
+                to={r.toCity}
+                hours={Math.round(r.estimatedDuration / 60)}
+                price={r.minPrice.toLocaleString("vi-VN") + "đ"}
+                badge={i === 0 ? "Phổ biến nhất" : null}
+                img={r.imageUrl}
+              />
             </div>
           ))}
         </div>
 
-        {/* Carousel thêm tuyến */}
+        {/* Chuyến sắp khởi hành */}
         <div className="mt-16">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 gap-3">
+            <div>
+              <span className="text-primary font-bold tracking-widest text-xs uppercase mb-2 block">
+                TRONG 24 GIỜ TỚI
+              </span>
+              <h2 className="text-3xl lg:text-4xl font-extrabold text-on-surface tracking-tight">
+                Chuyến sắp khởi hành
+              </h2>
+            </div>
+          </div>
           <RouteCarousel />
         </div>
       </section>

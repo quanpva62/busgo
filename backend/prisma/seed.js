@@ -1,407 +1,482 @@
 const { PrismaClient } = require("@prisma/client");
+const bcrypt = require("bcryptjs");
+const crypto = require("crypto");
+
 const prisma = new PrismaClient();
 
-async function createStandardSeats(busId) {
-  const seats = await prisma.seat.findMany({ where: { busId } });
-  const seatIds = seats.map((s) => s.id);
-  await prisma.tripSeat.deleteMany({ where: { seatId: { in: seatIds } } });
-  await prisma.seat.deleteMany({ where: { busId } });
-  const cols = ["A", "B", "C", "D"];
+// ─── Helpers ────────────────────────────────────────────────────────
 
-  for (let row = 1; row <= 6; row++) {
-    for (let i = 0; i < cols.length; i++) {
-      const seatLabel = `${cols[i]}${row}`;
-      await prisma.seat.create({
-        data: {
-          busId,
-          seatLabel,
-          rowNum: row,
-          colNum: i + 1,
-        },
-      });
-    }
-  }
-  const lastRowCols = ["A", "B", "C", "D", "E"];
-  for (let i = 0; i < lastRowCols.length; i++) {
-    const seatLabel = `${lastRowCols[i]}7`;
-    await prisma.seat.create({
-      data: {
-        busId,
-        seatLabel,
-        rowNum: 7,
-        colNum: i + 1,
-      },
+function uuid() { return crypto.randomUUID(); }
+function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5); }
+
+function addMonths(date, n) {
+  const d = new Date(date);
+  d.setMonth(d.getMonth() + n);
+  return d;
+}
+
+function addDays(date, n) {
+  return new Date(new Date(date).getTime() + n * 86400000);
+}
+
+async function hash(pw) {
+  return bcrypt.hash(pw, 10);
+}
+
+async function generateSeats(busId, busType) {
+  if (busType === "standard") {
+    const cols = ["A", "B", "C", "D"];
+    const data = [];
+    for (let row = 1; row <= 6; row++)
+      for (let i = 0; i < cols.length; i++)
+        data.push({ busId, seatLabel: `${cols[i]}${row}`, rowNum: row, colNum: i + 1 });
+    const lastRow = ["A", "B", "C", "D", "E"];
+    for (let i = 0; i < lastRow.length; i++)
+      data.push({ busId, seatLabel: `${lastRow[i]}7`, rowNum: 7, colNum: i + 1 });
+    await prisma.seat.createMany({ data });
+  } else if (busType === "sleeper") {
+    const cols = ["A", "B", "C"];
+    const data = [];
+    for (let floor = 1; floor <= 2; floor++)
+      for (let row = 1; row <= 6; row++)
+        for (let i = 0; i < cols.length; i++)
+          data.push({ busId, seatLabel: `${cols[i]}${row}-T${floor}`, rowNum: row, colNum: i + 1, floor, level: floor === 1 ? "lower" : "upper" });
+    await prisma.seat.createMany({ data });
+  } else if (busType === "minibus") {
+    const positions = [
+      { rowNum: 1, colNum: 2 }, { rowNum: 1, colNum: 3 },
+      { rowNum: 2, colNum: 1 }, { rowNum: 2, colNum: 2 }, { rowNum: 2, colNum: 3 },
+      { rowNum: 3, colNum: 1 }, { rowNum: 3, colNum: 2 }, { rowNum: 3, colNum: 3 },
+      { rowNum: 4, colNum: 1 }, { rowNum: 4, colNum: 2 }, { rowNum: 4, colNum: 3 },
+      { rowNum: 5, colNum: 1 }, { rowNum: 5, colNum: 2 }, { rowNum: 5, colNum: 3 }, { rowNum: 5, colNum: 4 },
+    ];
+    await prisma.seat.createMany({
+      data: positions.map((s, i) => ({ busId, seatLabel: String(i + 1).padStart(2, "0"), ...s })),
     });
   }
-  console.log("✅ Standard seats created");
 }
 
-async function createMinibusSeats(busId) {
-  const seats = await prisma.seat.findMany({ where: { busId } });
-  const seatIds = seats.map((s) => s.id);
-  await prisma.tripSeat.deleteMany({ where: { seatId: { in: seatIds } } });
-  await prisma.seat.deleteMany({ where: { busId } });
-  const cols = ["A", "B", "C", "D"];
-  for (let row = 1; row <= 4; row++) {
-    for (let i = 0; i < cols.length; i++) {
-      const seatLabel = `${cols[i]}${row}`;
-      await prisma.seat.create({
-        data: {
-          busId,
-          seatLabel,
-          rowNum: row,
-          colNum: i + 1,
-        },
-      });
-    }
-  }
-  const lastRowCols = ["A", "B", "C", "D", "E"];
-  for (let i = 0; i < lastRowCols.length; i++) {
-    const seatLabel = `${lastRowCols[i]}5`;
-    await prisma.seat.create({
-      data: {
-        busId,
-        seatLabel,
-        rowNum: 5,
-        colNum: i + 1,
-      },
-    });
-  }
-  console.log("✅ Minibus seats created");
-}
+// ─── Seed data ──────────────────────────────────────────────────────
 
-async function createSleeperSeats(busId) {
-  const seats = await prisma.seat.findMany({ where: { busId } });
-  const seatIds = seats.map((s) => s.id);
-  await prisma.tripSeat.deleteMany({ where: { seatId: { in: seatIds } } });
-  await prisma.seat.deleteMany({ where: { busId } });
+const COMPANIES = [
+  { name: "Phương Trang", hotline: "1900 6067", email: "info@phuongtrang.vn", address: "Bến xe Miền Tây, TP.HCM", description: "Hãng xe khách lớn nhất miền Nam" },
+  { name: "Thành Bưởi", hotline: "028 3838 3838", email: "info@thanhbuoi.vn", address: "72 Trần Hưng Đạo, TP.HCM", description: "Chuyên tuyến HCM - Đà Lạt" },
+  { name: "Hoàng Long", hotline: "1900 599 904", email: "info@hoanglong.vn", address: "Bến xe Giáp Bát, Hà Nội", description: "Hãng xe hàng đầu miền Bắc" },
+];
 
-  const cols = ["A", "B", "C"];
+const ROUTES = [
+  { fromCity: "TP.HCM", toCity: "Hà Nội", distanceKm: 1726, estimatedDuration: 1080 },
+  { fromCity: "TP.HCM", toCity: "Đà Nẵng", distanceKm: 964, estimatedDuration: 720 },
+  { fromCity: "TP.HCM", toCity: "Đà Lạt", distanceKm: 310, estimatedDuration: 360 },
+  { fromCity: "TP.HCM", toCity: "Vũng Tàu", distanceKm: 128, estimatedDuration: 150 },
+  { fromCity: "TP.HCM", toCity: "Cần Thơ", distanceKm: 180, estimatedDuration: 180 },
+  { fromCity: "TP.HCM", toCity: "Huế", distanceKm: 1050, estimatedDuration: 720 },
+  { fromCity: "Hà Nội", toCity: "TP.HCM", distanceKm: 1726, estimatedDuration: 1080 },
+  { fromCity: "Hà Nội", toCity: "Đà Nẵng", distanceKm: 763, estimatedDuration: 600 },
+  { fromCity: "Hà Nội", toCity: "Hải Phòng", distanceKm: 105, estimatedDuration: 90 },
+  { fromCity: "Hà Nội", toCity: "Quảng Ninh", distanceKm: 155, estimatedDuration: 150 },
+  { fromCity: "Hà Nội", toCity: "Thanh Hóa", distanceKm: 150, estimatedDuration: 180 },
+  { fromCity: "Hà Nội", toCity: "Nam Định", distanceKm: 90, estimatedDuration: 90 },
+  { fromCity: "Hà Nội", toCity: "Vinh", distanceKm: 295, estimatedDuration: 300 },
+  { fromCity: "Hà Nội", toCity: "Huế", distanceKm: 700, estimatedDuration: 540 },
+];
 
-  for (let floor = 1; floor <= 2; floor++) {
-    for (let row = 1; row <= 6; row++) {
-      for (let i = 0; i < cols.length; i++) {
-        const seatLabel = `${cols[i]}${row}-T${floor}`;
-        await prisma.seat.create({
-          data: {
-            busId,
-            seatLabel,
-            rowNum: row,
-            colNum: i + 1,
-            floor,
-            level: floor === 1 ? "lower" : "upper",
-          },
-        });
-      }
-    }
-  }
-  console.log("✅ Sleeper seats created");
-}
-async function createTripSeats(tripId, busId) {
-  // Xoá TripSeats cũ của chuyến này trước
-  await prisma.tripSeat.deleteMany({ where: { tripId } });
+const DRIVER_NAMES = [
+  "Nguyễn Văn An", "Trần Văn Bình", "Lê Văn Cường", "Phạm Văn Dũng",
+  "Hoàng Văn Em", "Vũ Văn Phú", "Đỗ Văn Giang", "Bùi Văn Hải",
+  "Ngô Văn Hùng", "Đinh Văn Khoa", "Phan Văn Lâm", "Võ Văn Minh",
+  "Trương Văn Nam", "Dương Văn Oai", "Lý Văn Phong", "Tô Văn Quân",
+  "Mai Văn Rồng", "Cao Văn Sơn",
+];
 
-  // Lấy tất cả ghế của xe
-  const seats = await prisma.seat.findMany({ where: { busId } });
+const USER_NAMES = [
+  ["Nguyễn Thị Mai", "mai.nguyen"], ["Trần Văn Hùng", "hung.tran"],
+  ["Lê Thị Lan", "lan.le"], ["Phạm Minh Tuấn", "tuan.pham"],
+  ["Hoàng Thị Thu", "thu.hoang"], ["Vũ Đức Mạnh", "manh.vu"],
+  ["Đỗ Thị Hoa", "hoa.do"], ["Bùi Văn Sơn", "son.bui"],
+  ["Ngô Thị Linh", "linh.ngo"], ["Đinh Văn Tài", "tai.dinh"],
+];
 
-  // Tạo TripSeat cho từng ghế
-  await prisma.tripSeat.createMany({
-    data: seats.map((seat) => ({
-      tripId,
-      seatId: seat.id,
-      status: "available",
-    })),
-  });
+const PASSENGER_NAMES = [
+  "Nguyễn Văn A", "Trần Thị B", "Lê Minh C", "Phạm Thị D", "Hoàng Văn E",
+  "Vũ Thị F", "Đỗ Văn G", "Bùi Thị H", "Ngô Văn I", "Đinh Thị J",
+  "Phan Văn K", "Võ Thị L", "Trương Văn M", "Dương Thị N", "Lý Văn O",
+];
 
-  console.log(`✅ TripSeats created: ${seats.length} ghế`);
-}
+// ─── Main ────────────────────────────────────────────────────────────
+
 async function main() {
-  console.log("Seeding...");
+  console.log("🌱 Bắt đầu seed...");
 
-  // 1. Company
-  const company = await prisma.company.upsert({
-    where: { email: "contact@busgo.vn" },
-    update: {},
-    create: {
-      name: "BusGo",
-      hotline: "1900 6789",
-      email: "contact@busgo.vn",
-      address: "86 Lê Trọng Tấn, Hà Nội",
-      description: "Nhà xe BusGo - Chuyên tuyến miền Bắc",
-    },
-  });
-  console.log("✅ Company:", company.name);
-
-  const busSleeper = await prisma.bus.upsert({
-    where: { licensePlate: "29B-12345" },
-    update: {},
-    create: {
-      companyId: company.id,
-      licensePlate: "29B-12345",
-      busType: "sleeper",
-      typeName: "Giường nằm 2 tầng",
-      totalSeats: 36,
-      layout: "2-1",
-      amenities: {
-        wifi: true,
-        airConditioner: true,
-        usb: true,
-        blanket: true,
-        water: true,
-      },
-    },
-  });
-  console.log("✅ Bus sleeper:", busSleeper.licensePlate);
-
-  const busStandard = await prisma.bus.upsert({
-    where: { licensePlate: "29B-54321" },
-    update: {},
-    create: {
-      companyId: company.id,
-      licensePlate: "29B-54321",
-      busType: "standard",
-      typeName: "Xe khách 29 chỗ",
-      totalSeats: 29,
-      layout: "2-2",
-      amenities: {
-        wifi: true,
-        airConditioner: true,
-        usb: true,
-        blanket: true,
-        water: true,
-      },
-    },
-  });
-  console.log("✅ Bus standard:", busStandard.licensePlate);
-
-  const busMinibus = await prisma.bus.upsert({
-    where: { licensePlate: "29B-67890" },
-    update: {},
-    create: {
-      companyId: company.id,
-      licensePlate: "29B-67890",
-      busType: "minibus",
-      typeName: "Xe khách 16 chỗ",
-      totalSeats: 16,
-      layout: "2-2",
-      amenities: {
-        wifi: true,
-        airConditioner: true,
-        usb: true,
-        blanket: true,
-        water: true,
-      },
-    },
-  });
-  console.log("✅ Bus minibus:", busMinibus.licensePlate);
-
-  const driver1 = await prisma.driver.upsert({
-    where: { phone: "0901234567" },
-    update: {},
-    create: {
-      companyId: company.id,
-      busId: busSleeper.id,
-      fullName: "Nguyễn Văn An",
-      phone: "0901234567",
-      driverRole: "driver",
-      licenseType: "B2",
-      joinDate: new Date("2020-01-01"),
-      licenseNo: "123123123123",
-    },
-  });
-  console.log("✅ Driver:", driver1.fullName);
-
-  const driver2 = await prisma.driver.upsert({
-    where: { phone: "0901234569" },
-    update: {},
-    create: {
-      companyId: company.id,
-      busId: busStandard.id,
-      fullName: "Trần Thị Bình",
-      phone: "0901234569",
-      driverRole: "driver",
-      licenseType: "B2",
-      joinDate: new Date("2020-01-01"),
-      licenseNo: "321321321321",
-    },
-  });
-  console.log("✅ Driver:", driver2.fullName);
-
-  const driver3 = await prisma.driver.upsert({
-    where: { phone: "0901234560" },
-    update: {},
-    create: {
-      companyId: company.id,
-      busId: busMinibus.id,
-      fullName: "Lê Văn C",
-      phone: "0901234560",
-      driverRole: "driver",
-      licenseType: "B2",
-      joinDate: new Date("2020-01-01"),
-      licenseNo: "456456456456",
-    },
-  });
-  console.log("✅ Driver:", driver3.fullName);
-
-  const assistant1 = await prisma.driver.upsert({
-    where: { phone: "0901234570" },
-    update: {},
-    create: {
-      companyId: company.id,
-      busId: busSleeper.id,
-      fullName: "Phạm Thị D",
-      phone: "0901234570",
-      driverRole: "assistant",
-      joinDate: new Date("2020-01-01"),
-    },
-  });
-  console.log("✅ Assistant:", assistant1.fullName);
-
-  // Routes
-  const routes = await Promise.all([
-    prisma.route.upsert({
-      where: { id: "route-hn-hp" },
-      update: {},
-      create: {
-        id: "route-hn-hp",
-        fromCity: "Hà Nội",
-        toCity: "Hải Phòng",
-        distanceKm: 120,
-        estimatedDuration: 150,
-      },
-    }),
-    prisma.route.upsert({
-      where: { id: "route-hn-qn" },
-      update: {},
-      create: {
-        id: "route-hn-qn",
-        fromCity: "Hà Nội",
-        toCity: "Quảng Ninh",
-        distanceKm: 160,
-        estimatedDuration: 180,
-      },
-    }),
-    prisma.route.upsert({
-      where: { id: "route-hn-v" },
-      update: {},
-      create: {
-        id: "route-hn-v",
-        fromCity: "Hà Nội",
-        toCity: "Vinh",
-        distanceKm: 300,
-        estimatedDuration: 360,
-      },
-    }),
-    prisma.route.upsert({
-      where: { id: "route-hn-th" },
-      update: {},
-      create: {
-        id: "route-hn-th",
-        fromCity: "Hà Nội",
-        toCity: "Thanh Hóa",
-        distanceKm: 166,
-        estimatedDuration: 190,
-      },
-    }),
-    prisma.route.upsert({
-      where: { id: "route-hn-nd" },
-      update: {},
-      create: {
-        id: "route-hn-nd",
-        fromCity: "Hà Nội",
-        toCity: "Nam Định",
-        distanceKm: 90,
-        estimatedDuration: 120,
-      },
-    }),
-  ]);
-
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  tomorrow.setHours(6, 0, 0, 0);
-
-  const trip1 = await prisma.trip.upsert({
-    where: { id: "trip-hn-hp-1" },
-    update: {},
-    create: {
-      id: "trip-hn-hp-1",
-      routeId: routes[0].id,
-      busId: busStandard.id,
-      driverId: driver2.id,
-      departureTime: tomorrow,
-      arrivalTime: new Date(tomorrow.getTime() + 150 * 60000),
-      price: 120000,
-      status: "scheduled",
-      pickupAddress: "Bến xe Mỹ Đình, Hà Nội",
-      dropoffAddress: "Bến xe Hải Phòng, TP. Hải Phòng",
-    },
-  });
-  console.log("✅ Trip 1:", trip1.id);
-
-  const trip2 = await prisma.trip.upsert({
-    where: { id: "trip-hn-qn-1" },
-    update: {},
-    create: {
-      id: "trip-hn-qn-1",
-      routeId: routes[1].id,
-      busId: busSleeper.id,
-      driverId: driver2.id,
-      departureTime: tomorrow,
-      arrivalTime: new Date(tomorrow.getTime() + 180 * 60000),
-      price: 180000,
-      status: "scheduled",
-      pickupAddress: "Bến xe Gia Lâm, Hà Nội",
-      dropoffAddress: "Bến xe Bãi Cháy, Quảng Ninh",
-    },
-  });
-  console.log("✅ Trip 2:", trip2.id);
-
-  const night = new Date();
-  night.setDate(night.getDate() + 1);
-  night.setHours(20, 0, 0, 0);
-
-  const trip3 = await prisma.trip.upsert({
-    where: { id: "trip-hn-v-1" },
-    update: {},
-    create: {
-      id: "trip-hn-v-1",
-      routeId: routes[2].id,
-      busId: busSleeper.id,
-      driverId: driver3.id,
-      departureTime: night,
-      arrivalTime: new Date(night.getTime() + 360 * 60000),
-      price: 250000,
-      status: "scheduled",
-      pickupAddress: "Bến xe Giáp Bát, Hà Nội",
-      dropoffAddress: "Bến xe Vinh, Nghệ An",
-    },
-  });
-  console.log("✅ Trip 3:", trip3.id);
-
-  const bcrypt = require("bcryptjs");
-
-  const adminPassword = await bcrypt.hash("admin123456", 10);
-  await prisma.user.upsert({
+  // 1. Admin account
+  const adminPw = await hash("admin123");
+  const admin = await prisma.user.upsert({
     where: { email: "admin@busgo.vn" },
     update: {},
     create: {
-      email: "admin@busgo.vn",
-      passwordHash: adminPassword,
-      fullName: "Admin BusGo",
-      phone: "0900000001",
-      role: "admin",
-      emailVerified: true,
+      email: "admin@busgo.vn", phone: "0900000000",
+      fullName: "Super Admin", passwordHash: adminPw,
+      role: "admin", emailVerified: true,
     },
   });
-  console.log("✅ Admin account created");
-  await createStandardSeats(busStandard.id);
-  await createTripSeats(trip1.id, busStandard.id);
-  await createMinibusSeats(busMinibus.id);
-  await createSleeperSeats(busSleeper.id);
-  await createTripSeats(trip2.id, busSleeper.id);
-  await createTripSeats(trip3.id, busSleeper.id);
+  console.log("✅ Admin:", admin.email);
+
+  // 2. Routes
+  const routes = [];
+  for (const r of ROUTES) {
+    const existing = await prisma.route.findFirst({ where: { fromCity: r.fromCity, toCity: r.toCity } });
+    if (existing) { routes.push(existing); continue; }
+    routes.push(await prisma.route.create({ data: r }));
+  }
+  console.log("✅ Routes:", routes.length);
+
+  // 3. Companies + company admins + buses + drivers
+  const companyData = [];
+
+  for (let ci = 0; ci < COMPANIES.length; ci++) {
+    const comp = COMPANIES[ci];
+
+    let company = await prisma.company.findUnique({ where: { email: comp.email } });
+    if (!company) company = await prisma.company.create({ data: comp });
+
+    const caPw = await hash("company123");
+    const caEmail = [, "admin@futa.vn", "admin@thanhbuoi.vn", "admin@hola.vn"][ci + 1];
+    const caPhone = `090000000${ci + 1}`;
+    await prisma.user.upsert({
+      where: { email: caEmail },
+      update: { companyId: company.id },
+      create: {
+        email: caEmail, phone: caPhone,
+        fullName: `Quản lý ${comp.name}`, passwordHash: caPw,
+        role: "company_admin", emailVerified: true, companyId: company.id,
+      },
+    }).catch(async () => {
+      // phone conflict từ run cũ — update email
+      await prisma.user.updateMany({
+        where: { phone: caPhone },
+        data: { email: caEmail, companyId: company.id, role: "company_admin" },
+      });
+    });
+
+    const totalSeatsByType = { standard: 29, sleeper: 36, minibus: 16 };
+    const busConfigs = [
+      { licensePlate: `5${ci + 1}A-${10000 + ci * 100}`, busType: "sleeper", typeName: "Giường nằm VIP", layout: "2-1", amenities: { wifi: true, ac: true, usb: true, blanket: true } },
+      { licensePlate: `5${ci + 1}B-${10100 + ci * 100}`, busType: "sleeper", typeName: "Giường nằm", layout: "2-1", amenities: { ac: true, usb: true } },
+      { licensePlate: `5${ci + 1}C-${20000 + ci * 100}`, busType: "standard", typeName: "Ghế ngồi", layout: "2-2", amenities: { ac: true, usb: true } },
+      { licensePlate: `5${ci + 1}D-${30000 + ci * 100}`, busType: "minibus", typeName: "Xe limousine", layout: "1-1", amenities: { wifi: true, ac: true, usb: true } },
+    ];
+    const buses = [];
+    for (const bt of busConfigs) {
+      let bus = await prisma.bus.findUnique({ where: { licensePlate: bt.licensePlate } });
+      if (!bus) {
+        bus = await prisma.bus.create({
+          data: { ...bt, companyId: company.id, totalSeats: totalSeatsByType[bt.busType], isActive: true },
+        });
+        await generateSeats(bus.id, bt.busType);
+      }
+      buses.push(bus);
+    }
+    // buses[0,1] = sleeper, buses[2] = standard, buses[3] = minibus
+    const sleeperBuses = buses.filter((b) => b.busType === "sleeper");
+    const standardBuses = buses.filter((b) => b.busType === "standard");
+    const minibusBuses = buses.filter((b) => b.busType === "minibus");
+
+    const busForRoute = (route) => {
+      if (route.distanceKm >= 500) return pick(sleeperBuses);
+      if (route.distanceKm >= 150) return pick(standardBuses);
+      return pick(minibusBuses);
+    };
+
+    const drivers = [];
+    for (let di = 0; di < 4; di++) {
+      const phone = `097${ci}00000${di}`;
+      let driver = await prisma.driver.findFirst({ where: { phone } });
+      if (!driver)
+        driver = await prisma.driver.create({
+          data: {
+            fullName: DRIVER_NAMES[ci * 6 + di], phone,
+            driverRole: "driver",
+            licenseNo: `TX${ci}${di}${rand(100000, 999999)}`,
+            licenseType: di < 2 ? "E" : "D",
+            rating: rand(40, 50) / 10,
+            totalTrips: rand(80, 500), companyId: company.id,
+            busId: buses[di % buses.length].id,
+          },
+        });
+      drivers.push(driver);
+    }
+
+    const assistants = [];
+    for (let ai = 0; ai < 2; ai++) {
+      const phone = `098${ci}00000${ai}`;
+      let assistant = await prisma.driver.findFirst({ where: { phone } });
+      if (!assistant)
+        assistant = await prisma.driver.create({
+          data: {
+            fullName: DRIVER_NAMES[ci * 6 + 4 + ai], phone,
+            driverRole: "assistant", companyId: company.id,
+            busId: sleeperBuses[ai % sleeperBuses.length].id,
+            rating: rand(35, 50) / 10, totalTrips: rand(30, 200),
+          },
+        });
+      assistants.push(assistant);
+    }
+
+    companyData.push({ company, buses, drivers, assistants, busForRoute });
+    console.log(`✅ Company ${ci + 1}: ${company.name}`);
+  }
+
+  // 4. Regular users
+  const users = [];
+  for (let i = 0; i < USER_NAMES.length; i++) {
+    const [fullName, uname] = USER_NAMES[i];
+    const email = `${uname}@gmail.com`;
+    const phone = `091${String(i).padStart(7, "0")}`;
+    let user = await prisma.user.findUnique({ where: { email } });
+    if (!user)
+      user = await prisma.user.create({
+        data: {
+          email, phone, fullName,
+          passwordHash: await hash("user123"),
+          role: "user", emailVerified: true,
+        },
+      });
+    users.push(user);
+  }
+  console.log("✅ Users:", users.length);
+
+  // 5. Trips + Bookings (past 6 months → completed)
+  const now = new Date();
+  let totalBookings = 0;
+
+  const PRICE_BY_TYPE = { sleeper: [350, 900], standard: [150, 400], minibus: [80, 250] };
+
+  for (let monthOffset = -5; monthOffset <= 0; monthOffset++) {
+    for (let ci = 0; ci < companyData.length; ci++) {
+      const { company, drivers, assistants, busForRoute } = companyData[ci];
+      const companyRoutes = routes.slice(0, 8); // dùng 8 routes đầu cho past trips
+
+      for (let ri = 0; ri < companyRoutes.length; ri++) {
+        const route = companyRoutes[ri];
+        const bus = busForRoute(route);
+        const [pMin, pMax] = PRICE_BY_TYPE[bus.busType];
+
+        for (let t = 0; t < 2; t++) {
+          const baseDate = addMonths(now, monthOffset);
+          baseDate.setDate(rand(1, 25));
+          baseDate.setHours(pick([6, 8, 12, 15, 18, 22]), 0, 0, 0);
+          const dep = baseDate;
+          const arr = new Date(dep.getTime() + route.estimatedDuration * 60000);
+          const price = rand(pMin, pMax) * 1000;
+          const driver = pick(drivers);
+          const assistant = route.distanceKm >= 300 ? pick(assistants) : null;
+
+          const trip = await prisma.trip.create({
+            data: {
+              routeId: route.id, busId: bus.id,
+              driverId: driver.id, assistantId: assistant?.id ?? null,
+              departureTime: dep, arrivalTime: arr, price,
+              pickupAddress: `Bến xe ${route.fromCity}`,
+              dropoffAddress: `Bến xe ${route.toCity}`,
+              status: "completed",
+            },
+          });
+
+          const seats = await prisma.seat.findMany({ where: { busId: bus.id } });
+          await prisma.tripSeat.createMany({
+            data: seats.map((s) => ({ tripId: trip.id, seatId: s.id, status: "available" })),
+          });
+          const tripSeats = await prisma.tripSeat.findMany({ where: { tripId: trip.id } });
+
+          const maxSeats = bus.busType === "minibus" ? 10 : bus.busType === "standard" ? 20 : 25;
+          const bookingCount = rand(Math.floor(maxSeats * 0.5), maxSeats);
+          const selectedSeats = shuffle(tripSeats).slice(0, bookingCount);
+
+          // Pre-generate UUIDs to enable batch inserts
+          const bookingRows = selectedSeats.map((tripSeat) => {
+            const bookingId = uuid();
+            const bookingDate = new Date(dep.getTime() - rand(1, 10) * 86400000);
+            return { bookingId, tripSeat, bookingDate, user: pick(users), passenger: pick(PASSENGER_NAMES) };
+          });
+
+          await prisma.booking.createMany({
+            data: bookingRows.map(({ bookingId, bookingDate, user, passenger }) => ({
+              id: bookingId, userId: user.id, tripId: trip.id, companyId: company.id,
+              status: "paid", totalPrice: price,
+              passengerName: passenger,
+              passengerPhone: `09${rand(10000000, 99999999)}`,
+              passengerEmail: `passenger${rand(100, 999)}@gmail.com`,
+              pickupAddress: `Bến xe ${route.fromCity}`,
+              dropoffAddress: `Bến xe ${route.toCity}`,
+              expiresAt: new Date(bookingDate.getTime() + 15 * 60000),
+              createdAt: bookingDate,
+            })),
+          });
+
+          await prisma.bookingSeat.createMany({
+            data: bookingRows.map(({ bookingId, tripSeat }) => ({
+              bookingId, seatId: tripSeat.id, tripId: trip.id,
+            })),
+          });
+
+          await prisma.payment.createMany({
+            data: bookingRows.map(({ bookingId, bookingDate }) => ({
+              bookingId,
+              vnpTxnRef: `TXN${uuid().replace(/-/g, "").slice(0, 16)}`,
+              amount: price, status: "successful", paymentMethod: "vnpay",
+              vnpResponseCode: "00",
+              vnpBankCode: pick(["NCB", "VIETCOMBANK", "TECHCOMBANK", "MBBANK"]),
+              vnpRaw: { code: "00" }, paidAt: bookingDate,
+            })),
+          });
+
+          await prisma.ticket.createMany({
+            data: bookingRows.map(({ bookingId }) => ({
+              bookingId,
+              ticketCode: uuid().replace(/-/g, "").slice(0, 12).toUpperCase(),
+              qrCode: `QR${uuid()}`,
+              isUsed: true, usedAt: dep,
+            })),
+          });
+
+          await prisma.$transaction(
+            bookingRows.map(({ tripSeat, bookingId }) =>
+              prisma.tripSeat.update({ where: { id: tripSeat.id }, data: { status: "booked", bookingId } })
+            )
+          );
+
+          totalBookings += bookingCount;
+        }
+      }
+    }
+  }
+  console.log("✅ Bookings (paid):", totalBookings);
+
+  // 6. Future trips (scheduled) — mỗi ngày trong 30 ngày tới
+  const routeByCity = (from, to) => routes.find((r) => r.fromCity === from && r.toCity === to);
+
+  // Tuyến chính theo nhà xe
+  const SCHEDULE = [
+    {
+      ci: 0, // Phương Trang — miền Bắc
+      daily: [
+        { route: routeByCity("Hà Nội", "Hải Phòng"), hours: [6, 10, 15], price: 120000 },
+        { route: routeByCity("Hà Nội", "Quảng Ninh"), hours: [7, 13], price: 180000 },
+        { route: routeByCity("Hà Nội", "Thanh Hóa"), hours: [8, 14], price: 150000 },
+        { route: routeByCity("Hà Nội", "Nam Định"), hours: [9, 16], price: 100000 },
+        { route: routeByCity("Hà Nội", "Vinh"), hours: [7], price: 250000 },
+      ],
+      occasional: [
+        { route: routeByCity("Hà Nội", "Đà Nẵng"), hours: [18], price: 450000, everyNDays: 2 },
+        { route: routeByCity("Hà Nội", "TP.HCM"), hours: [19], price: 800000, everyNDays: 3 },
+      ],
+    },
+    {
+      ci: 1, // Thành Bưởi — miền Nam
+      daily: [
+        { route: routeByCity("TP.HCM", "Đà Lạt"), hours: [6, 12, 20], price: 200000 },
+        { route: routeByCity("TP.HCM", "Vũng Tàu"), hours: [7, 11, 15], price: 120000 },
+        { route: routeByCity("TP.HCM", "Cần Thơ"), hours: [8, 14], price: 150000 },
+      ],
+      occasional: [
+        { route: routeByCity("TP.HCM", "Đà Nẵng"), hours: [19], price: 400000, everyNDays: 2 },
+        { route: routeByCity("TP.HCM", "Huế"), hours: [18], price: 500000, everyNDays: 3 },
+      ],
+    },
+    {
+      ci: 2, // Hoàng Long — miền Nam
+      daily: [
+        { route: routeByCity("TP.HCM", "Đà Lạt"), hours: [7, 13, 21], price: 210000 },
+        { route: routeByCity("TP.HCM", "Cần Thơ"), hours: [9, 16], price: 155000 },
+        { route: routeByCity("TP.HCM", "Hà Nội"), hours: [18], price: 780000 },
+      ],
+      occasional: [
+        { route: routeByCity("TP.HCM", "Đà Nẵng"), hours: [20], price: 420000, everyNDays: 2 },
+        { route: routeByCity("TP.HCM", "Huế"), hours: [19], price: 480000, everyNDays: 3 },
+      ],
+    },
+  ];
+
+  let futureTripCount = 0;
+
+  async function createScheduledTrip(route, dep, price, { drivers, assistants, busForRoute }) {
+    if (!route) return;
+    const bus = busForRoute(route);
+    const driver = pick(drivers);
+    const assistantId = route.distanceKm >= 300 ? pick(assistants).id : null;
+    const arr = new Date(dep.getTime() + route.estimatedDuration * 60000);
+    const trip = await prisma.trip.create({
+      data: {
+        routeId: route.id, busId: bus.id,
+        driverId: driver.id, assistantId,
+        departureTime: dep, arrivalTime: arr, price,
+        pickupAddress: `Bến xe ${route.fromCity}`,
+        dropoffAddress: `Bến xe ${route.toCity}`,
+        status: "scheduled",
+      },
+    });
+    const seats = await prisma.seat.findMany({ where: { busId: bus.id } });
+    await prisma.tripSeat.createMany({
+      data: seats.map((s) => ({ tripId: trip.id, seatId: s.id, status: "available" })),
+    });
+    futureTripCount++;
+  }
+
+  for (const { ci, daily, occasional } of SCHEDULE) {
+    const cd = companyData[ci];
+
+    for (let d = 1; d <= 30; d++) {
+      for (const { route, hours, price } of daily) {
+        for (const hour of hours) {
+          const dep = addDays(now, d);
+          dep.setHours(hour, 0, 0, 0);
+          await createScheduledTrip(route, dep, price, cd);
+        }
+      }
+      for (const { route, hours, price, everyNDays } of occasional) {
+        if (d % everyNDays === 0) {
+          const dep = addDays(now, d);
+          dep.setHours(hours[0], 0, 0, 0);
+          await createScheduledTrip(route, dep, price, cd);
+        }
+      }
+    }
+    console.log(`  ✅ Scheduled trips: Company ${ci + 1} done`);
+  }
+  console.log("✅ Future trips:", futureTripCount);
+
+  // 7. Reports
+  const paidBookings = await prisma.booking.findMany({
+    where: { status: "paid" }, take: 6,
+    include: { trip: true },
+  });
+  const CATEGORIES = ["dangerous_driving", "late_departure", "rude_behavior", "dirty_vehicle", "wrong_stop", "phone_while_driving"];
+  for (let i = 0; i < paidBookings.length; i++) {
+    const b = paidBookings[i];
+    await prisma.report.create({
+      data: {
+        userId: b.userId, driverId: b.trip.driverId, bookingId: b.id,
+        category: CATEGORIES[i],
+        details: "Khiếu nại từ khách hàng trong quá trình sử dụng dịch vụ.",
+        severity: pick(["low", "medium", "high"]),
+        status: pick(["pending", "reviewing", "resolved"]),
+      },
+    });
+  }
+  console.log("✅ Reports: 6");
+
+  console.log("\n🎉 Seed hoàn tất!");
+  console.log("─────────────────────────────────────────────────");
+  console.log("  Admin:         admin@busgo.vn        / admin123");
+  console.log("  Company admin: admin@futa.vn          / company123  (Phương Trang)");
+  console.log("                 admin@thanhbuoi.vn    / company123  (Thành Bưởi)");
+  console.log("                 admin@hola.vn         / company123  (Hoàng Long)");
+  console.log("  User:          mai.nguyen@gmail.com  / user123");
+  console.log("─────────────────────────────────────────────────");
 }
 
 main()
-  .catch(console.error)
+  .catch((e) => { console.error(e); process.exit(1); })
   .finally(() => prisma.$disconnect());

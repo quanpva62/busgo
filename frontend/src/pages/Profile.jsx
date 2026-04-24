@@ -22,6 +22,30 @@ const STATUS_LABELS = {
   completed: { label: "Hoàn thành",     cls: "bg-blue-100 text-blue-700" },
 };
 
+const CATEGORY_LABELS = {
+  dangerous_driving: "Lái xe nguy hiểm",
+  phone_while_driving: "Dùng điện thoại khi lái",
+  wrong_vehicle: "Sai phương tiện",
+  dirty_vehicle: "Xe bẩn",
+  wrong_stop: "Sai điểm dừng",
+  late_departure: "Trễ giờ khởi hành",
+  rude_behavior: "Thái độ thô lỗ",
+  other: "Khác",
+};
+
+const SEVERITY_LABELS = {
+  low: { label: "Nhẹ", cls: "bg-yellow-100 text-yellow-700" },
+  medium: { label: "Trung bình", cls: "bg-orange-100 text-orange-700" },
+  high: { label: "Nghiêm trọng", cls: "bg-red-100 text-red-600" },
+};
+
+const REPORT_STATUS_LABELS = {
+  pending: { label: "Chờ xử lý", cls: "bg-gray-100 text-gray-600" },
+  reviewing: { label: "Đang xem xét", cls: "bg-blue-100 text-blue-700" },
+  resolved: { label: "Đã xử lý", cls: "bg-green-100 text-green-700" },
+  dismissed: { label: "Đã bác bỏ", cls: "bg-red-100 text-red-500" },
+};
+
 const TABS = ["Thông tin", "Mật khẩu", "Lịch sử đặt vé"];
 
 export default function Profile() {
@@ -48,6 +72,53 @@ export default function Profile() {
   // Tab 2 — bookings
   const [bookings, setBookings] = useState([]);
   const [bookingsLoading, setBookingsLoading] = useState(false);
+
+  // Report form state
+  const [reportingId, setReportingId] = useState(null);
+  const [reportForm, setReportForm] = useState({ category: "", severity: "medium", details: "" });
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [reportError, setReportError] = useState("");
+
+  // Cancel booking
+  const [cancellingId, setCancellingId] = useState(null);
+
+  async function handleCancelBooking(booking) {
+    const isPaid = booking.status === "paid";
+    const hoursLeft = (new Date(booking.trip.departureTime) - new Date()) / 3600000;
+
+    let refundMsg = "";
+    if (isPaid) {
+      if (hoursLeft > 24) refundMsg = "Bạn sẽ được hoàn 100% giá vé.";
+      else if (hoursLeft > 12) refundMsg = "Bạn sẽ được hoàn 50% giá vé.";
+      else refundMsg = "Không được hoàn tiền (huỷ dưới 12 giờ trước khởi hành).";
+    }
+
+    const msg = isPaid
+      ? `Huỷ vé đã thanh toán?\n${refundMsg}\n\nXác nhận huỷ?`
+      : "Bạn có chắc muốn huỷ đặt vé này không?";
+    if (!window.confirm(msg)) return;
+
+    setCancellingId(booking.id);
+    try {
+      const res = await authFetch(
+        `${import.meta.env.VITE_API_URL}/api/bookings/${booking.id}/cancel`,
+        { method: "DELETE" },
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setBookings((prev) =>
+        prev.map((b) => (b.id === booking.id ? { ...b, status: data.status } : b))
+      );
+      if (data.refundAmount > 0) {
+        alert(`Hoàn tiền: ${data.refundAmount.toLocaleString("vi-VN")}đ\n${data.refundNote}`);
+      }
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setCancellingId(null);
+    }
+  }
+
 
   useEffect(() => {
     if (!user) navigate("/login");
@@ -116,6 +187,31 @@ export default function Profile() {
       setPwErr(err.message);
     } finally {
       setPwSaving(false);
+    }
+  }
+
+  async function handleSubmitReport(bookingId, driverId) {
+    if (!reportForm.category || !reportForm.details.trim()) return;
+    setReportSubmitting(true);
+    setReportError("");
+    try {
+      const res = await authFetch(`${import.meta.env.VITE_API_URL}/api/reports`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bookingId, driverId, ...reportForm }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      // đánh dấu booking đã có report
+      setBookings((prev) =>
+        prev.map((b) => (b.id === bookingId ? { ...b, reports: [data.report] } : b))
+      );
+      setReportingId(null);
+      setReportForm({ category: "", severity: "medium", details: "" });
+    } catch (err) {
+      setReportError(err.message);
+    } finally {
+      setReportSubmitting(false);
     }
   }
 
@@ -265,28 +361,153 @@ export default function Profile() {
             {bookings.map((b) => {
               const status = STATUS_LABELS[b.status] || { label: b.status, cls: "bg-gray-100 text-gray-600" };
               const seats = b.bookingSeats?.map((bs) => bs.seat.seat.seatLabel).join(", ");
+              const eligible = b.status === "paid" && b.trip.status === "completed";
+              const hasReport = b.reports?.length > 0;
               return (
-                <div
-                  key={b.id}
-                  onClick={() => navigate(`/booking/${b.id}`)}
-                  className="bg-white rounded-2xl p-5 shadow-sm flex flex-col sm:flex-row sm:items-center gap-4 cursor-pointer hover:shadow-md hover:bg-surface-container-low/50 active:scale-[0.99] transition-all"
-                >
-                  <div className="flex-1 min-w-0">
-                    <p className="font-black text-on-surface">
-                      {b.trip.route.fromCity} → {b.trip.route.toCity}
-                    </p>
-                    <p className="text-secondary text-sm mt-0.5">
-                      {formatDate(b.trip.departureTime)} · Ghế: {seats}
-                    </p>
+                <div key={b.id} className="bg-white rounded-2xl shadow-sm overflow-hidden">
+                  {/* Clickable booking info */}
+                  <div
+                    onClick={() => {
+                      if (b.status === "paid") navigate(`/tickets/${b.id}`);
+                      else if (b.status === "pending") navigate(`/booking/${b.id}`);
+                    }}
+                    className={`p-5 flex flex-col sm:flex-row sm:items-center gap-4 transition-all ${b.status === "paid" || b.status === "pending" ? "cursor-pointer hover:bg-surface-container-low/50 active:scale-[0.99]" : ""}`}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="font-black text-on-surface">
+                        {b.trip.route.fromCity} → {b.trip.route.toCity}
+                      </p>
+                      <p className="text-secondary text-sm mt-0.5">
+                        {formatDate(b.trip.departureTime)} · Ghế: {seats}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-4 shrink-0">
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${status.cls}`}>
+                        {status.label}
+                      </span>
+                      <p className="font-black text-primary">
+                        {formatPrice(b.totalPrice)}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-4 shrink-0">
-                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${status.cls}`}>
-                      {status.label}
-                    </span>
-                    <p className="font-black text-primary">
-                      {formatPrice(b.totalPrice)}
-                    </p>
-                  </div>
+
+                  {/* Huỷ vé */}
+                  {(b.status === "pending" || b.status === "paid") && new Date(b.trip.departureTime) > new Date() && (
+                    <div className="px-5 pb-4 border-t border-surface-container-low pt-3 flex items-center justify-between">
+                      <button
+                        onClick={() => handleCancelBooking(b)}
+                        disabled={cancellingId === b.id}
+                        className="text-sm text-red-500 font-bold flex items-center gap-1 hover:opacity-70 disabled:opacity-50 transition-opacity"
+                      >
+                        <span className="material-symbols-outlined text-sm">cancel</span>
+                        {cancellingId === b.id ? "Đang huỷ..." : "Huỷ đặt vé"}
+                      </button>
+                      {b.status === "paid" && (
+                        <span className="text-xs text-secondary">
+                          {(() => {
+                            const h = (new Date(b.trip.departureTime) - new Date()) / 3600000;
+                            if (h > 24) return "Hoàn 100%";
+                            if (h > 12) return "Hoàn 50%";
+                            return "Không hoàn tiền";
+                          })()}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Report section */}
+                  {eligible && (
+                    <div className="px-5 pb-4 border-t border-surface-container-low">
+                      {hasReport ? (
+                        <div className="pt-3 space-y-1.5">
+                          <p className="text-[10px] font-bold tracking-widest text-secondary uppercase">Báo cáo của bạn</p>
+                          {(() => {
+                            const r = b.reports[0];
+                            const sev = SEVERITY_LABELS[r.severity];
+                            const st = REPORT_STATUS_LABELS[r.status];
+                            return (
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-sm font-medium text-on-surface">{CATEGORY_LABELS[r.category] ?? r.category}</span>
+                                {sev && <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${sev.cls}`}>{sev.label}</span>}
+                                {st && <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${st.cls}`}>{st.label}</span>}
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      ) : reportingId === b.id ? (
+                        <div className="pt-3 space-y-3">
+                          <p className="text-sm font-bold">Báo cáo sự cố</p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-bold tracking-widest text-secondary uppercase">Loại sự cố</label>
+                              <select
+                                value={reportForm.category}
+                                onChange={(e) => setReportForm((f) => ({ ...f, category: e.target.value }))}
+                                className="w-full px-3 py-2 text-sm bg-surface-container-low rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30"
+                              >
+                                <option value="">-- Chọn loại --</option>
+                                {[
+                                  ["dangerous_driving", "Lái xe nguy hiểm"],
+                                  ["phone_while_driving", "Dùng điện thoại khi lái"],
+                                  ["wrong_vehicle", "Sai phương tiện"],
+                                  ["dirty_vehicle", "Xe bẩn"],
+                                  ["wrong_stop", "Sai điểm dừng"],
+                                  ["late_departure", "Trễ giờ khởi hành"],
+                                  ["rude_behavior", "Thái độ thô lỗ"],
+                                  ["other", "Khác"],
+                                ].map(([val, label]) => (
+                                  <option key={val} value={val}>{label}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-bold tracking-widest text-secondary uppercase">Mức độ</label>
+                              <select
+                                value={reportForm.severity}
+                                onChange={(e) => setReportForm((f) => ({ ...f, severity: e.target.value }))}
+                                className="w-full px-3 py-2 text-sm bg-surface-container-low rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30"
+                              >
+                                <option value="low">Nhẹ</option>
+                                <option value="medium">Trung bình</option>
+                                <option value="high">Nghiêm trọng</option>
+                              </select>
+                            </div>
+                          </div>
+                          <textarea
+                            value={reportForm.details}
+                            onChange={(e) => setReportForm((f) => ({ ...f, details: e.target.value }))}
+                            placeholder="Mô tả chi tiết sự cố..."
+                            rows={3}
+                            className="w-full px-3 py-2 text-sm bg-surface-container-low rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-primary/30"
+                          />
+                          {reportError && <p className="text-red-500 text-xs">{reportError}</p>}
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleSubmitReport(b.id, b.trip.driverId)}
+                              disabled={!reportForm.category || !reportForm.details.trim() || reportSubmitting}
+                              className="px-4 py-1.5 bg-red-500 text-white text-sm font-bold rounded-xl disabled:opacity-50 hover:opacity-90 transition-opacity"
+                            >
+                              {reportSubmitting ? "Đang gửi..." : "Gửi báo cáo"}
+                            </button>
+                            <button
+                              onClick={() => { setReportingId(null); setReportError(""); }}
+                              className="px-4 py-1.5 text-sm text-secondary hover:text-on-surface transition-colors"
+                            >
+                              Huỷ
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => { setReportingId(b.id); setReportForm({ category: "", severity: "medium", details: "" }); setReportError(""); }}
+                          className="mt-3 text-sm text-red-500 font-bold flex items-center gap-1 cursor-pointer group"
+                        >
+                          <span className="material-symbols-outlined text-sm">flag</span>
+                          <span className="group-hover:underline">Báo cáo sự cố</span>
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}

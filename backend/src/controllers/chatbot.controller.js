@@ -73,20 +73,17 @@ const executeTool = async (toolName, input) => {
 };
 
 const chat = async (req, res) => {
-  const { message } = req.body;
-  const messages = [
-    {
-      role: "user",
-      content: message,
-    },
-  ];
+  const { message, history = [] } = req.body;
+  // history: [{ role: "user"|"assistant", content: string }, ...]
+  const messages = [...history, { role: "user", content: message }];
 
   try {
     while (true) {
       const response = await client.messages.create({
         model: "claude-sonnet-4-6",
         max_tokens: 1024,
-        system: `
+        system: `Hôm nay là ${new Date().toLocaleDateString("vi-VN", { weekday: "long", day: "numeric", month: "numeric", year: "numeric", timeZone: "Asia/Ho_Chi_Minh" })}.
+
             Bạn là trợ lý đặt vé BusGo.
                 Chức năng:
                 - Tìm chuyến xe phù hợp
@@ -99,6 +96,8 @@ const chat = async (req, res) => {
                 - Luôn hỏi thêm nếu thiếu thông tin (điểm đi, điểm đến, ngày)
                 - Ưu tiên đề xuất chuyến phù hợp nhất
                 - Dùng ngôn ngữ theo người dùng (VI/EN)
+                - Khi liệt kê chuyến xe, luôn thêm link đặt vé ở cuối mỗi chuyến theo đúng định dạng: [Chọn chuyến này →](/trips/TRIP_ID) (thay TRIP_ID bằng id thật của chuyến)
+                - Khi khách hàng muốn đặt vé, hãy gửi theo định dạng: [Đặt vé ngay! →](/trips/TRIP_ID) (thay TRIP_ID bằng id thật của chuyến)
             `,
         tools,
         messages: messages,

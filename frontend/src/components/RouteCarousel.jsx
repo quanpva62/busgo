@@ -1,42 +1,98 @@
 import { useState, useEffect, useRef } from "react";
-import RouteCard from "./RouteCard.jsx";
+import { useNavigate } from "react-router-dom";
 import iconArrow from "../assets/icons/right-arrow.svg";
 
-const routes = [
-  { from: "Sài Gòn", to: "Đà Lạt",    hours: 7,  price: "280.000đ", badge: "Bán chạy" },
-  { from: "Sài Gòn", to: "Đà Nẵng",   hours: 16, price: "450.000đ" },
-  { from: "Sài Gòn", to: "Nha Trang",  hours: 8,  price: "320.000đ" },
-  { from: "Sài Gòn", to: "Vũng Tàu",  hours: 4,  price: "150.000đ" },
-  { from: "Hà Nội",  to: "Đà Nẵng",   hours: 12, price: "380.000đ" },
-  { from: "Hà Nội",  to: "Huế",        hours: 10, price: "280.000đ" },
-  { from: "Đà Nẵng", to: "Hội An",    hours: 1,  price: "80.000đ",  badge: "Hot" },
-];
+const API = import.meta.env.VITE_API_URL;
+
+const BUS_TYPE_LABELS = {
+  sleeper: "Giường nằm",
+  standard: "Ghế ngồi",
+  minibus: "Limousine",
+};
+
+function formatTime(iso) {
+  return new Date(iso).toLocaleTimeString("vi-VN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
+function formatDate(iso) {
+  return new Date(iso).toLocaleDateString("vi-VN", {
+    day: "numeric",
+    month: "numeric",
+  });
+}
+
+function formatPrice(p) {
+  return p.toLocaleString("vi-VN") + "đ";
+}
+
+function UpcomingTripCard({ trip, onClick }) {
+  const low = trip.availableSeats <= 5;
+  return (
+    <div
+      onClick={onClick}
+      className="bg-white rounded-2xl p-5 shadow-sm border border-transparent hover:border-primary/20 hover:shadow-md transition-all cursor-pointer flex flex-col gap-3"
+    >
+      <div className="flex items-center justify-between">
+        <p className="font-black text-on-surface text-base leading-tight">
+          {trip.fromCity} → {trip.toCity}
+        </p>
+        <span className="text-xs font-bold text-secondary bg-surface-container-low px-2 py-0.5 rounded-full">
+          {BUS_TYPE_LABELS[trip.busType]}
+        </span>
+      </div>
+
+      <p className="text-xs text-secondary font-medium truncate">{trip.companyName}</p>
+
+      <div className="flex items-end justify-between gap-2">
+        <div>
+          <p className="text-2xl font-black text-on-surface">{formatTime(trip.departureTime)}</p>
+          <p className="text-xs text-secondary">{formatDate(trip.departureTime)}</p>
+        </div>
+        <div className="text-right">
+          <p className="text-lg font-black text-primary">{formatPrice(trip.price)}</p>
+          <p className={`text-xs font-bold ${low ? "text-red-500" : "text-green-600"}`}>
+            {low ? `Còn ${trip.availableSeats} chỗ!` : `${trip.availableSeats} chỗ trống`}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const GAP = 24;
 
-// Số card hiển thị theo màn hình
 function getVisible() {
-  if (window.innerWidth >= 1024) return 4; // desktop
-  if (window.innerWidth >= 640)  return 2; // tablet
-  return 1;                                 // mobile
+  if (window.innerWidth >= 1024) return 3;
+  if (window.innerWidth >= 640) return 2;
+  return 1;
 }
 
 export default function RouteCarousel() {
+  const navigate = useNavigate();
+  const [trips, setTrips] = useState([]);
   const [index, setIndex] = useState(0);
   const [visible, setVisible] = useState(getVisible);
   const [cardWidth, setCardWidth] = useState(0);
   const containerRef = useRef(null);
 
-  const maxIndex = Math.max(0, routes.length - visible);
+  useEffect(() => {
+    fetch(`${API}/api/trips/upcoming`)
+      .then((r) => r.json())
+      .then((d) => setTrips(Array.isArray(d) ? d : []));
+  }, []);
+
+  const maxIndex = Math.max(0, trips.length - visible);
   const step = cardWidth + GAP;
 
-  // Cập nhật visible + cardWidth khi resize
   useEffect(() => {
     const update = () => {
       const v = getVisible();
-      const newMaxIndex = Math.max(0, routes.length - v);
       setVisible(v);
-      setIndex((i) => Math.min(i, newMaxIndex)); // reset index trong cùng callback
+      setIndex((i) => Math.min(i, Math.max(0, trips.length - v)));
       if (containerRef.current) {
         const w = (containerRef.current.offsetWidth - GAP * (v - 1)) / v;
         setCardWidth(w);
@@ -45,56 +101,50 @@ export default function RouteCarousel() {
     update();
     window.addEventListener("resize", update);
     return () => window.removeEventListener("resize", update);
-  }, []);
+  }, [trips.length]);
 
-  const prev = () => setIndex((i) => (i <= 0 ? maxIndex : i - 1));
-  const next = () => setIndex((i) => (i >= maxIndex ? 0 : i + 1));
-
-  // Auto scroll mỗi 3 giây
   useEffect(() => {
+    if (trips.length === 0) return;
     const timer = setInterval(() => {
       setIndex((i) => (i >= maxIndex ? 0 : i + 1));
-    }, 3000);
+    }, 3500);
     return () => clearInterval(timer);
-  }, [maxIndex]);
+  }, [maxIndex, trips.length]);
+
+  if (trips.length === 0) return null;
 
   return (
     <div className="relative px-12">
-      {/* Nút prev */}
       <button
-        onClick={prev}
-        className="absolute left-0 top-[45%] -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white shadow-lg border border-outline-variant/30 flex items-center justify-center hover:bg-surface-container-low transition-colors"
+        onClick={() => setIndex((i) => (i <= 0 ? maxIndex : i - 1))}
+        className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white shadow-lg border border-outline-variant/30 flex items-center justify-center hover:bg-surface-container-low transition-colors"
       >
         <img src={iconArrow} alt="prev" className="w-5 h-5 rotate-180" />
       </button>
 
-      {/* Track */}
       <div ref={containerRef} style={{ overflowX: "clip" }} className="py-4 -my-4">
         <div
           className="flex gap-6 transition-transform duration-500 ease-in-out"
           style={{ transform: `translateX(-${index * step}px)` }}
         >
-          {routes.map((route) => (
-            <div
-              key={`${route.from}-${route.to}`}
-              className="shrink-0"
-              style={{ width: cardWidth || "auto" }}
-            >
-              <RouteCard {...route} />
+          {trips.map((trip) => (
+            <div key={trip.id} className="shrink-0" style={{ width: cardWidth || "auto" }}>
+              <UpcomingTripCard
+                trip={trip}
+                onClick={() => navigate(`/trips/${trip.id}`)}
+              />
             </div>
           ))}
         </div>
       </div>
 
-      {/* Nút next */}
       <button
-        onClick={next}
-        className="absolute right-0 top-[45%] -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white shadow-lg border border-outline-variant/30 flex items-center justify-center hover:bg-surface-container-low transition-colors"
+        onClick={() => setIndex((i) => (i >= maxIndex ? 0 : i + 1))}
+        className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white shadow-lg border border-outline-variant/30 flex items-center justify-center hover:bg-surface-container-low transition-colors"
       >
         <img src={iconArrow} alt="next" className="w-5 h-5" />
       </button>
 
-      {/* Dots indicator */}
       <div className="flex justify-center gap-2 mt-6">
         {Array.from({ length: maxIndex + 1 }).map((_, i) => (
           <button

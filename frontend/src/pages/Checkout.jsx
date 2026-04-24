@@ -75,7 +75,8 @@ const Checkout = () => {
         },
       );
       const paymentData = await paymentRes.json();
-      if (!paymentRes.ok) throw new Error(paymentData.error || "Không thể tạo link thanh toán");
+      if (!paymentRes.ok)
+        throw new Error(paymentData.error || "Không thể tạo link thanh toán");
 
       window.location.href = paymentData.paymentUrl;
     } catch (err) {
@@ -101,21 +102,31 @@ const Checkout = () => {
       <div className="max-w-360 mx-auto px-6">
         {/* Stepper */}
         <div className="flex items-center gap-3 mb-10">
-          {["Chọn chuyến", "Thông tin đặt vé", "Thanh toán"].map((step, idx) => (
-            <div key={step} className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-black shrink-0 ${
-                  idx === 1 ? "bg-primary text-white" : idx < 1 ? "bg-primary/20 text-primary" : "bg-surface-container-highest text-secondary"
-                }`}>
-                  {idx + 1}
+          {["Chọn chuyến", "Thông tin đặt vé", "Thanh toán"].map(
+            (step, idx) => (
+              <div key={step} className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <div
+                    className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-black shrink-0 ${
+                      idx === 1
+                        ? "bg-primary text-white"
+                        : idx < 1
+                          ? "bg-primary/20 text-primary"
+                          : "bg-surface-container-highest text-secondary"
+                    }`}
+                  >
+                    {idx + 1}
+                  </div>
+                  <span
+                    className={`text-sm font-bold ${idx === 1 ? "text-primary" : "text-secondary"}`}
+                  >
+                    {step}
+                  </span>
                 </div>
-                <span className={`text-sm font-bold ${idx === 1 ? "text-primary" : "text-secondary"}`}>
-                  {step}
-                </span>
+                {idx < 2 && <div className="w-8 h-px bg-outline-variant/40" />}
               </div>
-              {idx < 2 && <div className="w-8 h-px bg-outline-variant/40" />}
-            </div>
-          ))}
+            ),
+          )}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -124,7 +135,9 @@ const Checkout = () => {
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Thông tin hành khách */}
               <div className="bg-white rounded-2xl p-6 shadow-sm space-y-5">
-                <h2 className="text-lg font-bold text-on-surface">Thông tin hành khách</h2>
+                <h2 className="text-lg font-bold text-on-surface">
+                  Thông tin hành khách
+                </h2>
 
                 {error && (
                   <div className="p-3 bg-red-50 text-red-600 rounded-xl text-sm font-medium">
@@ -163,7 +176,7 @@ const Checkout = () => {
 
                 <div className="space-y-1.5">
                   <label className="block text-[10px] font-bold tracking-widest text-secondary uppercase">
-                    Email
+                    Email nhận vé
                   </label>
                   <input
                     type="email"
@@ -177,20 +190,30 @@ const Checkout = () => {
 
               {/* Điểm đón / trả */}
               <div className="bg-white rounded-2xl p-6 shadow-sm space-y-4">
-                <h2 className="text-lg font-bold text-on-surface">Điểm đón và trả khách</h2>
+                <h2 className="text-lg font-bold text-on-surface">
+                  Điểm đón và trả khách
+                </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="block text-[10px] font-bold tracking-widest text-secondary uppercase">Điểm đón</label>
+                    <label className="block text-[10px] font-bold tracking-widest text-secondary uppercase">
+                      Điểm đón
+                    </label>
                     <div className="flex items-start gap-3 p-4 bg-surface-container-low rounded-xl">
                       <div className="w-2 h-2 rounded-full bg-primary mt-1 shrink-0" />
-                      <p className="text-on-surface font-medium text-sm">{trip.pickupAddress}</p>
+                      <p className="text-on-surface font-medium text-sm">
+                        {trip.pickupAddress}
+                      </p>
                     </div>
                   </div>
                   <div className="space-y-1.5">
-                    <label className="block text-[10px] font-bold tracking-widest text-secondary uppercase">Điểm trả</label>
+                    <label className="block text-[10px] font-bold tracking-widest text-secondary uppercase">
+                      Điểm trả
+                    </label>
                     <div className="flex items-start gap-3 p-4 bg-surface-container-low rounded-xl">
                       <div className="w-2 h-2 rounded-full border-2 border-primary mt-1 shrink-0" />
-                      <p className="text-on-surface font-medium text-sm">{trip.dropoffAddress}</p>
+                      <p className="text-on-surface font-medium text-sm">
+                        {trip.dropoffAddress}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -209,11 +232,7 @@ const Checkout = () => {
                     onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
                     className="flex-1 px-4 py-3 bg-surface-container-low rounded-xl text-on-surface font-medium placeholder:text-secondary/40 focus:outline-none focus:ring-2 focus:ring-primary/30"
                   />
-                  <button
-                    type="submit"
-                    className="hidden"
-                    id="submit-btn"
-                  />
+                  <button type="submit" className="hidden" id="submit-btn" />
                 </div>
               </div>
             </form>
@@ -222,15 +241,24 @@ const Checkout = () => {
           {/* Right — Order summary */}
           <aside className="lg:col-span-5">
             <div className="bg-white rounded-2xl p-6 shadow-sm sticky top-28 space-y-5">
-              <h2 className="text-lg font-bold text-on-surface">Thông tin đơn hàng</h2>
+              <h2 className="text-lg font-bold text-on-surface">
+                Thông tin đơn hàng
+              </h2>
 
               {/* Tuyến */}
               <div>
-                <p className="text-xs font-bold text-secondary uppercase tracking-widest mb-1">Lộ trình</p>
-                <p className="font-black text-on-surface">{trip.route.fromCity} → {trip.route.toCity}</p>
+                <p className="text-xs font-bold text-secondary uppercase tracking-widest mb-1">
+                  Lộ trình
+                </p>
+                <p className="font-black text-on-surface">
+                  {trip.route.fromCity} → {trip.route.toCity}
+                </p>
                 <p className="text-secondary text-sm">
                   {new Date(trip.departureTime).toLocaleDateString("vi-VN", {
-                    weekday: "short", day: "numeric", month: "numeric", year: "numeric"
+                    weekday: "short",
+                    day: "numeric",
+                    month: "numeric",
+                    year: "numeric",
                   })}
                 </p>
               </div>
@@ -241,18 +269,29 @@ const Checkout = () => {
                   <div className="w-2 h-2 rounded-full bg-primary mt-1.5 shrink-0" />
                   <div>
                     <p className="font-bold text-on-surface">
-                      {new Date(trip.departureTime).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", hour12: false })}
+                      {new Date(trip.departureTime).toLocaleTimeString(
+                        "vi-VN",
+                        { hour: "2-digit", minute: "2-digit", hour12: false },
+                      )}
                     </p>
-                    <p className="text-secondary text-xs">{trip.pickupAddress}</p>
+                    <p className="text-secondary text-xs">
+                      {trip.pickupAddress}
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
                   <div className="w-2 h-2 rounded-full border-2 border-primary mt-1.5 shrink-0" />
                   <div>
                     <p className="font-bold text-on-surface">
-                      {new Date(trip.arrivalTime).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", hour12: false })}
+                      {new Date(trip.arrivalTime).toLocaleTimeString("vi-VN", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: false,
+                      })}
                     </p>
-                    <p className="text-secondary text-xs">{trip.dropoffAddress}</p>
+                    <p className="text-secondary text-xs">
+                      {trip.dropoffAddress}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -260,23 +299,33 @@ const Checkout = () => {
               {/* Ghế */}
               <div className="flex justify-between items-center">
                 <div>
-                  <p className="text-xs font-bold text-secondary uppercase tracking-widest mb-1">Ghế đã chọn</p>
+                  <p className="text-xs font-bold text-secondary uppercase tracking-widest mb-1">
+                    Ghế đã chọn
+                  </p>
                   <p className="font-bold text-primary">
                     {selectedSeats.map((ts) => ts.seat.seatLabel).join(", ")}
                   </p>
                 </div>
-                <p className="font-bold text-on-surface">x{selectedSeats.length}</p>
+                <p className="font-bold text-on-surface">
+                  x{selectedSeats.length}
+                </p>
               </div>
 
               {/* Giá */}
               <div className="space-y-2 pt-4 border-t border-outline-variant/20">
                 <div className="flex justify-between text-sm">
-                  <span className="text-secondary font-medium">Giá vé cơ bản</span>
-                  <span className="font-bold">{totalPrice.toLocaleString("vi-VN")}đ</span>
+                  <span className="text-secondary font-medium">
+                    Giá vé cơ bản
+                  </span>
+                  <span className="font-bold">
+                    {totalPrice.toLocaleString("vi-VN")}đ
+                  </span>
                 </div>
                 <div className="flex justify-between items-center pt-2 border-t border-outline-variant/20">
                   <span className="font-bold text-on-surface">Tổng cộng</span>
-                  <span className="text-2xl font-black text-primary">{totalPrice.toLocaleString("vi-VN")}đ</span>
+                  <span className="text-2xl font-black text-primary">
+                    {totalPrice.toLocaleString("vi-VN")}đ
+                  </span>
                 </div>
               </div>
 

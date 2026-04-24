@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import heroImg from "../assets/img/hero-img.png";
+import steeringWheelIcon from "../assets/icons/steering-wheel.svg";
 import { useAuth } from "../context/AuthContext";
-
 
 function formatTime(isoString) {
   return new Date(isoString).toLocaleTimeString("vi-VN", {
@@ -23,7 +23,6 @@ function formatDate(isoString) {
 function formatPrice(price) {
   return price.toLocaleString("vi-VN") + "đ";
 }
-
 
 const AMENITY_MAP = {
   wifi: { label: "Wifi", icon: "wifi" },
@@ -157,7 +156,7 @@ export default function TripDetail() {
         {/* Banner */}
         <div className="relative rounded-2xl md:rounded-3xl overflow-hidden mb-6 md:mb-8 min-h-56 md:h-72">
           <img
-            src={heroImg}
+            src={trip.route.imageUrl || heroImg}
             alt=""
             className="absolute inset-0 w-full h-full object-cover"
           />
@@ -180,7 +179,14 @@ export default function TripDetail() {
                   {trip.bus.company?.name}
                 </p>
                 <p className="text-white/70 text-xs mt-0.5">
-                  {{ sleeper: "Giường nằm", standard: "Ghế ngồi", minibus: "Limousine" }[trip.bus.busType]} · {trip.bus.totalSeats} ghế
+                  {
+                    {
+                      sleeper: "Giường nằm",
+                      standard: "Ghế ngồi",
+                      minibus: "Limousine",
+                    }[trip.bus.busType]
+                  }{" "}
+                  · {trip.bus.totalSeats} ghế
                 </p>
               </div>
               <div className="text-left sm:text-right shrink-0 bg-white/1 backdrop-blur-xs rounded-2xl px-4 py-3 md:px-7 md:py-5 self-start sm:self-auto">
@@ -393,7 +399,14 @@ export default function TripDetail() {
   );
 }
 
-function SeatGrid({ label, seats, onToggle, getSeatStatus, noAisle = false, isSleeper = false }) {
+function SeatGrid({
+  label,
+  seats,
+  onToggle,
+  getSeatStatus,
+  noAisle = false,
+  isSleeper = false,
+}) {
   const maxRow = Math.max(...seats.map((s) => s.seat.rowNum), 0);
   const maxCol = Math.max(...seats.map((s) => s.seat.colNum), 0);
 
@@ -443,27 +456,50 @@ function SeatGrid({ label, seats, onToggle, getSeatStatus, noAisle = false, isSl
       <div className="space-y-2">
         {grid.map((row, rIdx) => {
           const seatsInRow = row.filter(Boolean);
-          const hasAisle = !noAisle && !isSleeper && maxCol >= 4 && seatsInRow.length <= 4;
+          const hasAisle =
+            !noAisle && !isSleeper && maxCol >= 4 && seatsInRow.length <= 4;
           const left = hasAisle ? seatsInRow.slice(0, 2) : seatsInRow;
           const right = hasAisle ? seatsInRow.slice(2) : [];
           const isFirstRow = rIdx === 0;
 
           if (isSleeper) {
             return (
-              <div key={rIdx} className="flex justify-center" style={{ gap: "20px" }}>
+              <div
+                key={rIdx}
+                className="flex justify-center"
+                style={{ gap: "20px" }}
+              >
                 {seatsInRow.map(renderSeat)}
+              </div>
+            );
+          }
+
+          if (noAisle) {
+            return (
+              <div key={rIdx} className="flex gap-1.5 justify-center">
+                {row.map((ts, cIdx) => {
+                  if (isFirstRow && cIdx === 0) {
+                    return (
+                      <div
+                        key="driver"
+                        className={`${seatClass} rounded-xl border-2 border-outline-variant/20 bg-surface-container-low flex flex-col items-center justify-center gap-0.5 text-secondary`}
+                      >
+                        <img
+                          src={steeringWheelIcon}
+                          alt="Driver"
+                          className="w-8 h-8"
+                        />
+                      </div>
+                    );
+                  }
+                  return renderSeat(ts, cIdx);
+                })}
               </div>
             );
           }
 
           return (
             <div key={rIdx} className="flex gap-1.5 justify-center">
-              {noAisle && isFirstRow && (
-                <div className={`${seatClass} rounded-xl border-2 border-outline-variant/20 bg-surface-container-low flex flex-col items-center justify-center gap-0.5 text-secondary`}>
-                  <span className="material-symbols-outlined text-sm leading-none">steering</span>
-                  <span className="text-[9px] font-bold">Tài xế</span>
-                </div>
-              )}
               {left.map(renderSeat)}
               {hasAisle && <div className="w-13" />}
               {right.map(renderSeat)}

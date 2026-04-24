@@ -140,10 +140,10 @@ export default function Ticket() {
         {/* Actions */}
         <div className="mt-4 flex gap-3">
           <button
-            onClick={() => navigate(`/booking/${bookingId}`)}
+            onClick={() => navigate("/profile", { state: { tab: 2 } })}
             className="flex-1 py-3 bg-white border border-outline-variant/30 text-on-surface font-bold rounded-xl hover:bg-surface-container-low transition-all"
           >
-            Chi tiết đơn
+            Lịch sử đặt vé
           </button>
           <button
             onClick={() => navigate("/")}

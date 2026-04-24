@@ -19,6 +19,10 @@ function formatPrice(price) {
   return price.toLocaleString("vi-VN") + "đ";
 }
 
+function localDateStr(date = new Date()) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
 function formatDate(dateStr) {
   return new Date(dateStr + "T00:00:00").toLocaleDateString("vi-VN", {
     weekday: "long",
@@ -34,6 +38,20 @@ const BUS_TYPE_LABELS = {
   minibus: "Minibus (Limousine)",
 };
 
+const AMENITY_MAP = {
+  wifi: { label: "Wifi", icon: "wifi" },
+  airConditioner: { label: "Điều hòa", icon: "ac_unit" },
+  usb: { label: "Sạc USB", icon: "usb" },
+  blanket: { label: "Chăn", icon: "airline_seat_flat" },
+  water: { label: "Nước uống", icon: "water_drop" },
+};
+
+const CANCEL_POLICY = [
+  { when: "Trước khởi hành hơn 24 giờ", refund: "Hoàn 100% giá vé" },
+  { when: "Trước khởi hành 12 – 24 giờ", refund: "Hoàn 50% giá vé" },
+  { when: "Trước khởi hành dưới 12 giờ", refund: "Không hoàn tiền (0%)" },
+];
+
 const TIME_SLOTS = [
   { label: "Sáng sớm", start: 4, end: 11 },
   { label: "Buổi trưa", start: 11, end: 14 },
@@ -47,26 +65,28 @@ export default function Search() {
 
   const from = searchParams.get("from") || "";
   const to = searchParams.get("to") || "";
-  const date = searchParams.get("date") || "";
+  const dateParam = searchParams.get("date") || "";
 
   const [trips, setTrips] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [filterDate, setFilterDate] = useState(dateParam);
 
   const [selectedTypes, setSelectedTypes] = useState([]);
   const [maxPrice, setMaxPrice] = useState(10000000);
   const [selectedSlots, setSelectedSlots] = useState([]);
 
   useEffect(() => {
-    if (!from || !to || !date) return;
+    if (!from || !to) return;
 
     async function fetchTrips() {
       setLoading(true);
       setError("");
       try {
-        const res = await fetch(
-          `${import.meta.env.VITE_API_URL}/api/trips?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&date=${date}`,
-        );
+        const url = filterDate
+          ? `${import.meta.env.VITE_API_URL}/api/trips?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&date=${filterDate}`
+          : `${import.meta.env.VITE_API_URL}/api/trips?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
+        const res = await fetch(url);
         const data = await res.json();
         if (data.error) throw new Error(data.error);
         setTrips(data);
@@ -78,7 +98,7 @@ export default function Search() {
     }
 
     fetchTrips();
-  }, [from, to, date]);
+  }, [from, to, filterDate]);
 
   const filtered = trips.filter((trip) => {
     if (selectedTypes.length > 0 && !selectedTypes.includes(trip.bus.busType))
@@ -120,7 +140,7 @@ export default function Search() {
                 {from} → {to}
               </h1>
               <p className="text-secondary font-medium">
-                {date ? formatDate(date) : ""}
+                {filterDate ? formatDate(filterDate) : "Tất cả chuyến sắp tới"}
               </p>
             </div>
             <button
@@ -138,6 +158,30 @@ export default function Search() {
         {/* Sidebar */}
         <aside className="md:col-span-3 space-y-6">
           <div className="bg-white p-6 rounded-xl shadow-sm space-y-8">
+            {/* Ngày đi */}
+            <div>
+              <h3 className="text-xs font-bold text-secondary uppercase tracking-widest mb-4">
+                Ngày đi
+              </h3>
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  value={filterDate}
+                  min={localDateStr()}
+                  onChange={(e) => setFilterDate(e.target.value)}
+                  className="flex-1 border border-outline-variant rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                />
+                {filterDate && (
+                  <button
+                    onClick={() => setFilterDate("")}
+                    className="text-xs font-bold text-secondary hover:text-on-surface"
+                  >
+                    Xoá
+                  </button>
+                )}
+              </div>
+            </div>
+
             {/* Loại xe */}
             <div>
               <h3 className="text-xs font-bold text-secondary uppercase tracking-widest mb-4">
@@ -254,6 +298,13 @@ export default function Search() {
 }
 
 function TripCard({ trip, onSelect }) {
+  const [expanded, setExpanded] = useState(null); // "amenities" | "policy" | null
+
+  const amenities = Object.entries(trip.bus.amenities ?? {})
+    .filter(([, v]) => v)
+    .map(([k]) => AMENITY_MAP[k])
+    .filter(Boolean);
+
   return (
     <div className="bg-white rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300">
       <div className="p-5 md:p-8 flex flex-row items-center gap-4 md:gap-6">
@@ -276,6 +327,12 @@ function TripCard({ trip, onSelect }) {
             <p className="text-secondary text-sm font-medium">
               {trip.route.fromCity}
             </p>
+            <p className="text-secondary text-xs mt-0.5">
+              {new Date(trip.departureTime).toLocaleDateString("vi-VN", {
+                day: "numeric",
+                month: "numeric",
+              })}
+            </p>
           </div>
           <div className="flex-1 flex flex-col items-center">
             <span className="text-xs font-bold text-secondary mb-1">
@@ -293,6 +350,12 @@ function TripCard({ trip, onSelect }) {
             </p>
             <p className="text-secondary text-sm font-medium">
               {trip.route.toCity}
+            </p>
+            <p className="text-secondary text-xs mt-0.5">
+              {new Date(trip.arrivalTime).toLocaleDateString("vi-VN", {
+                day: "numeric",
+                month: "numeric",
+              })}
             </p>
           </div>
         </div>
@@ -312,13 +375,60 @@ function TripCard({ trip, onSelect }) {
       </div>
 
       <div className="px-6 md:px-8 py-3 bg-surface-container-low/50 flex gap-6">
-        <button className="text-xs font-bold text-primary hover:opacity-70">
+        <button
+          onClick={() => setExpanded(expanded === "policy" ? null : "policy")}
+          className="text-xs font-bold text-primary hover:opacity-70"
+        >
           Chính sách hủy vé
         </button>
-        <button className="text-xs font-bold text-primary hover:opacity-70">
-          Tiện ích
-        </button>
+        {amenities.length > 0 && (
+          <button
+            onClick={() =>
+              setExpanded(expanded === "amenities" ? null : "amenities")
+            }
+            className="text-xs font-bold text-primary hover:opacity-70"
+          >
+            Tiện ích
+          </button>
+        )}
       </div>
+
+      {expanded === "policy" && (
+        <div className="px-6 md:px-8 py-4 border-t border-surface-container-low">
+          <p className="text-xs font-bold text-secondary uppercase tracking-widest mb-3">
+            Chính sách hủy vé
+          </p>
+          <div className="space-y-2">
+            {CANCEL_POLICY.map((p) => (
+              <div key={p.when} className="flex justify-between text-sm">
+                <span className="text-secondary">{p.when}</span>
+                <span className="font-bold text-on-surface">{p.refund}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {expanded === "amenities" && (
+        <div className="px-6 md:px-8 py-4 border-t border-surface-container-low">
+          <p className="text-xs font-bold text-secondary uppercase tracking-widest mb-3">
+            Tiện ích trên xe
+          </p>
+          <div className="flex flex-wrap gap-3">
+            {amenities.map((a) => (
+              <div
+                key={a.label}
+                className="flex items-center gap-1.5 text-sm text-on-surface"
+              >
+                <span className="material-symbols-outlined text-base text-primary">
+                  {a.icon}
+                </span>
+                {a.label}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

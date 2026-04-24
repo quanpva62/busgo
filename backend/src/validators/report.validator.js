@@ -12,7 +12,6 @@ const reportValidation = [
       "wrong_stop",
       "late_departure",
       "rude_behavior",
-      "overcharge",
       "other",
     ])
     .withMessage("Category không hợp lệ"),
