@@ -114,10 +114,10 @@ export default function RouteCarousel() {
   if (trips.length === 0) return null;
 
   return (
-    <div className="relative px-12">
+    <div className="relative sm:px-12">
       <button
         onClick={() => setIndex((i) => (i <= 0 ? maxIndex : i - 1))}
-        className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white shadow-lg border border-outline-variant/30 flex items-center justify-center hover:bg-surface-container-low transition-colors"
+        className="hidden sm:flex absolute left-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white shadow-lg border border-outline-variant/30 items-center justify-center hover:bg-surface-container-low transition-colors"
       >
         <img src={iconArrow} alt="prev" className="w-5 h-5 rotate-180" />
       </button>
@@ -140,7 +140,7 @@ export default function RouteCarousel() {
 
       <button
         onClick={() => setIndex((i) => (i >= maxIndex ? 0 : i + 1))}
-        className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white shadow-lg border border-outline-variant/30 flex items-center justify-center hover:bg-surface-container-low transition-colors"
+        className="hidden sm:flex absolute right-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white shadow-lg border border-outline-variant/30 items-center justify-center hover:bg-surface-container-low transition-colors"
       >
         <img src={iconArrow} alt="next" className="w-5 h-5" />
       </button>

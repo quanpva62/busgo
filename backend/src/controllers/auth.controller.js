@@ -1,6 +1,8 @@
 const prisma = require("../lib/prisma");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const { OAuth2Client } = require("google-auth-library");
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const register = async (req, res) => {
   try {
@@ -29,7 +31,7 @@ const register = async (req, res) => {
       },
     });
     res.status(201).json({
-      message: "Đăng ký thành công",
+      message: "Registration successful",
       user: {
         id: user.id,
         email: user.email,
@@ -51,13 +53,19 @@ const login = async (req, res) => {
       return res.status(400).json({ error: "Invalid email or password" });
     }
 
+    if (!user.passwordHash) {
+      return res.status(400).json({
+        error: "This account was registered with Google, please sign in with Google",
+      });
+    }
+
     const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
     if (!isPasswordValid) {
       return res.status(400).json({ error: "Invalid email or password" });
     }
 
     if (!user.isActive) {
-      return res.status(403).json({ error: "Tài khoản đã bị khoá" });
+      return res.status(403).json({ error: "Account has been disabled" });
     }
 
     const accessToken = jwt.sign(
@@ -73,7 +81,7 @@ const login = async (req, res) => {
     );
 
     res.json({
-      message: "Đăng nhập thành công",
+      message: "Login successful",
       accessToken: accessToken,
       refreshToken,
       user: {
@@ -122,13 +130,19 @@ const updateMe = async (req, res) => {
       where: { phone, NOT: { id: userId } },
     });
     if (existing) {
-      return res.status(400).json({ error: "Số điện thoại đã được sử dụng" });
+      return res.status(400).json({ error: "Phone number already in use" });
     }
 
     const user = await prisma.user.update({
       where: { id: userId },
       data: { fullName, phone },
-      select: { id: true, fullName: true, email: true, phone: true, role: true },
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+        phone: true,
+        role: true,
+      },
     });
     res.json({ user });
   } catch (error) {
@@ -142,14 +156,20 @@ const changePassword = async (req, res) => {
     const { currentPassword, newPassword } = req.body;
 
     const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user.passwordHash) {
+      return res
+        .status(400)
+        .json({ error: "Google account has no password set" });
+    }
+
     const valid = await bcrypt.compare(currentPassword, user.passwordHash);
     if (!valid) {
-      return res.status(400).json({ error: "Mật khẩu hiện tại không đúng" });
+      return res.status(400).json({ error: "Current password is incorrect" });
     }
 
     const passwordHash = await bcrypt.hash(newPassword, 10);
     await prisma.user.update({ where: { id: userId }, data: { passwordHash } });
-    res.json({ message: "Đổi mật khẩu thành công" });
+    res.json({ message: "Password changed successfully" });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -163,7 +183,7 @@ const refreshToken = async (req, res) => {
       if (err) {
         return res
           .status(403)
-          .json({ error: "Refresh token không hợp lệ hoặc đã hết hạn" });
+          .json({ error: "Invalid or expired refresh token" });
       }
 
       const accessToken = jwt.sign(
@@ -179,4 +199,88 @@ const refreshToken = async (req, res) => {
   }
 };
 
-module.exports = { register, login, me, updateMe, changePassword, refreshToken };
+const googleLogin = async (req, res) => {
+  try {
+    const { idToken } = req.body;
+    if (!idToken) {
+      return res.status(400).json({ error: "ID token is required" });
+    }
+
+    const ticket = await client.verifyIdToken({
+      idToken,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    const payload = ticket.getPayload();
+
+    if (!payload.email_verified) {
+      return res
+        .status(400)
+        .json({ error: "Google account email is not verified" });
+    }
+
+    let user = await prisma.user.findUnique({
+      where: { googleId: payload.sub },
+    });
+
+    if (!user) {
+      user = await prisma.user.findUnique({ where: { email: payload.email } });
+      if (user) {
+        user = await prisma.user.update({
+          where: { id: user.id },
+          data: { googleId: payload.sub, emailVerified: true },
+        });
+      }
+    }
+
+    if (!user) {
+      user = await prisma.user.create({
+        data: {
+          email: payload.email,
+          fullName: payload.name,
+          googleId: payload.sub,
+          emailVerified: true,
+        },
+      });
+    }
+
+    if (!user.isActive) {
+      return res.status(403).json({ error: "Account has been disabled" });
+    }
+
+    const accessToken = jwt.sign(
+      { userId: user.id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "15m" },
+    );
+    const refreshToken = jwt.sign(
+      { userId: user.id, role: user.role },
+      process.env.JWT_REFRESH_SECRET,
+      { expiresIn: "7d" },
+    );
+
+    res.json({
+      message: "Google login successful",
+      accessToken,
+      refreshToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        fullName: user.fullName,
+        phone: user.phone,
+        role: user.role,
+      },
+    });
+  } catch (error) {
+    res.status(401).json({ error: error.message });
+  }
+};
+
+module.exports = {
+  register,
+  login,
+  me,
+  updateMe,
+  changePassword,
+  refreshToken,
+  googleLogin,
+};

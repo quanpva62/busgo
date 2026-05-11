@@ -37,7 +37,7 @@ export default function Register() {
         },
       );
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Register failed");
+      if (!res.ok) throw new Error(data.error || "Đăng ký thất bại");
       navigate("/login");
     } catch (err) {
       setError(err.message);
@@ -58,13 +58,13 @@ export default function Register() {
         </div>
         <span className="text-xl font-black tracking-tighter text-primary">BusGo</span>
       </div>
-      <p className="text-secondary text-sm mb-8">Join our community of modern travelers</p>
+      <p className="text-secondary text-sm mb-8">Tham gia cộng đồng người di chuyển hiện đại</p>
 
       {/* Card */}
       <div className="bg-white sm:rounded-3xl sm:shadow-lg p-0 sm:p-10 w-full max-w-lg">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-on-surface mb-1">Create an account</h1>
-          <p className="text-secondary text-sm">Fill in your details to start booking</p>
+          <h1 className="text-2xl font-bold text-on-surface mb-1">Tạo tài khoản</h1>
+          <p className="text-secondary text-sm">Điền thông tin để bắt đầu đặt vé</p>
         </div>
 
         {error && (
@@ -74,10 +74,10 @@ export default function Register() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Full Name */}
+          {/* Họ và tên */}
           <div className="space-y-1.5">
             <label className="block text-[10px] font-bold tracking-widest text-secondary uppercase">
-              Full Name
+              Họ và tên
             </label>
             <div className="relative">
               <img src={iconUser} alt="" className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 opacity-40" />
@@ -96,7 +96,7 @@ export default function Register() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="block text-[10px] font-bold tracking-widest text-secondary uppercase">
-                Email Address
+                Địa chỉ Email
               </label>
               <div className="relative">
                 <img src={iconUser} alt="" className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 opacity-40" />
@@ -112,7 +112,7 @@ export default function Register() {
             </div>
             <div className="space-y-1.5">
               <label className="block text-[10px] font-bold tracking-widest text-secondary uppercase">
-                Phone Number
+                Số điện thoại
               </label>
               <div className="relative">
                 <img src={iconUser} alt="" className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 opacity-40" />
@@ -132,7 +132,7 @@ export default function Register() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="block text-[10px] font-bold tracking-widest text-secondary uppercase">
-                Password
+                Mật khẩu
               </label>
               <div className="relative">
                 <img src={iconPassword} alt="" className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 opacity-40" />
@@ -152,7 +152,7 @@ export default function Register() {
             </div>
             <div className="space-y-1.5">
               <label className="block text-[10px] font-bold tracking-widest text-secondary uppercase">
-                Confirm Password
+                Xác nhận mật khẩu
               </label>
               <div className="relative">
                 <img src={iconPassword} alt="" className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 opacity-40" />
@@ -182,11 +182,11 @@ export default function Register() {
               className="mt-1 accent-primary w-4 h-4 shrink-0"
             />
             <span className="text-sm text-secondary leading-relaxed">
-              I agree to the{" "}
-              <a href="#" className="text-primary font-semibold hover:opacity-70">Terms of Service</a>
-              {" "}and{" "}
-              <a href="#" className="text-primary font-semibold hover:opacity-70">Privacy Policy</a>
-              {" "}of BusGo Vietnam.
+              Tôi đồng ý với{" "}
+              <a href="#" className="text-primary font-semibold hover:opacity-70">Điều khoản dịch vụ</a>
+              {" "}và{" "}
+              <a href="#" className="text-primary font-semibold hover:opacity-70">Chính sách bảo mật</a>
+              {" "}của BusGo Việt Nam.
             </span>
           </label>
 
@@ -196,9 +196,9 @@ export default function Register() {
             disabled={loading}
             className="w-full py-4 bg-linear-to-br from-primary-container to-primary text-white font-bold rounded-xl shadow-lg hover:opacity-95 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-60 hover:cursor-pointer"
           >
-            {loading ? "Creating account..." : (
+            {loading ? "Đang tạo tài khoản..." : (
               <>
-                Create Account
+                Tạo tài khoản
                 <img src={iconArrow} alt="" className="w-5 h-5 brightness-0 invert" />
               </>
             )}
@@ -208,7 +208,7 @@ export default function Register() {
         {/* Divider */}
         <div className="flex items-center gap-4 my-6">
           <div className="flex-1 h-px bg-outline-variant/30" />
-          <span className="text-[10px] font-bold tracking-widest text-secondary uppercase">Or continue with</span>
+          <span className="text-[10px] font-bold tracking-widest text-secondary uppercase">Hoặc đăng ký bằng</span>
           <div className="flex-1 h-px bg-outline-variant/30" />
         </div>
 
@@ -232,15 +232,15 @@ export default function Register() {
         </div>
 
         <p className="text-center mt-6 text-sm text-secondary">
-          Already have an account?{" "}
+          Đã có tài khoản?{" "}
           <Link to="/login" className="text-primary font-bold hover:opacity-70">
-            Sign In to Your Account
+            Đăng nhập ngay
           </Link>
         </p>
       </div>
 
       <p className="mt-8 text-[10px] font-bold tracking-widest text-secondary/40 uppercase text-center">
-        © 2025 BusGo Vietnam Operations
+        © 2026 BusGo Việt Nam
       </p>
     </main>
   );

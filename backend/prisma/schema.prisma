@@ -17,9 +17,10 @@ model User {
   id              String         @id @default(uuid())
   fullName        String?
   email           String         @unique
-  phone           String         @unique
-  passwordHash    String
+  phone           String?        @unique
+  passwordHash    String?
   emailVerified   Boolean        @default(false)
+  googleId        String?        @unique
   role            Role           @default(user)
   isActive        Boolean        @default(true)
   companyId       String?
@@ -116,28 +117,28 @@ model Route {
 }
 
 model Trip {
-  id            String        @id @default(uuid())
-  routeId       String
-  route         Route         @relation(fields: [routeId], references: [id])
-  busId         String
-  bus           Bus           @relation(fields: [busId], references: [id])
-  driverId      String
-  driver        Driver        @relation("TripDriver", fields: [driverId], references: [id])
-  assistantId   String?
-  assistant     Driver?       @relation("TripAssistant", fields: [assistantId], references: [id])
-  departureTime   DateTime
-  arrivalTime     DateTime
-  price           Int
-  pickupAddress   String
-  dropoffAddress  String
-  status          TripStatus    @default(scheduled)
-  seriesId      String?
-  interval      String?       // daily / weekly / monthly
-  createdAt     DateTime      @default(now())
-  bookings      Booking[]
-  tripSeats     TripSeat[]
-  bookingSeats  BookingSeat[]
-  reviews       Review[]
+  id             String        @id @default(uuid())
+  routeId        String
+  route          Route         @relation(fields: [routeId], references: [id])
+  busId          String
+  bus            Bus           @relation(fields: [busId], references: [id])
+  driverId       String
+  driver         Driver        @relation("TripDriver", fields: [driverId], references: [id])
+  assistantId    String?
+  assistant      Driver?       @relation("TripAssistant", fields: [assistantId], references: [id])
+  departureTime  DateTime
+  arrivalTime    DateTime
+  price          Int
+  pickupAddress  String
+  dropoffAddress String
+  status         TripStatus    @default(scheduled)
+  seriesId       String?
+  interval       String? // daily / weekly / monthly
+  createdAt      DateTime      @default(now())
+  bookings       Booking[]
+  tripSeats      TripSeat[]
+  bookingSeats   BookingSeat[]
+  reviews        Review[]
 }
 
 enum TripStatus {
@@ -362,4 +363,3 @@ enum NotificationType {
   report
   promo
 }
-

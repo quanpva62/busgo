@@ -109,13 +109,13 @@ export default function Chatbot() {
       {/* Chat panel */}
       {open && (
         <div
-          className="fixed bottom-20 right-4 sm:right-6 z-50 bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-outline-variant/20"
-          style={{ width: size.width, height: size.height }}
+          className="fixed bottom-20 right-2 left-2 sm:left-auto sm:right-6 z-50 bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-outline-variant/20 sm:w-(--cw) sm:h-(--ch) h-[70vh] max-h-[calc(100vh-6rem)]"
+          style={{ "--cw": `${size.width}px`, "--ch": `${size.height}px` }}
         >
-          {/* Resize handle — góc trên trái */}
+          {/* Resize handle — góc trên trái (ẩn trên mobile) */}
           <div
             onMouseDown={startResize}
-            className="absolute top-0 left-0 w-4 h-4 cursor-nw-resize z-10 flex items-center justify-center"
+            className="hidden sm:flex absolute top-0 left-0 w-4 h-4 cursor-nw-resize z-10 items-center justify-center"
             title="Kéo để thay đổi kích thước"
           >
             <span className="material-symbols-outlined text-white/50 text-sm select-none">drag_indicator</span>

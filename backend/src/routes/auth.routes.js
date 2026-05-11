@@ -36,4 +36,6 @@ router.patch("/me", authMiddleware, authController.updateMe);
 // PATCH /api/auth/password → authController.changePassword
 router.patch("/password", authMiddleware, authController.changePassword);
 
+// POST /api/auth/google    → authController.googleLogin
+router.post("/google", authController.googleLogin);
 module.exports = router;

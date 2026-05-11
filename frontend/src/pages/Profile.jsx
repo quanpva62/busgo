@@ -228,31 +228,31 @@ export default function Profile() {
     <main className="min-h-screen pt-24 pb-16 bg-surface-container-low">
       <div className="max-w-4xl mx-auto px-6">
         {/* Avatar + tên */}
-        <div className="flex items-center gap-5 mb-8">
-          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center font-black text-primary text-xl shrink-0">
+        <div className="flex flex-wrap items-center gap-4 sm:gap-5 mb-8">
+          <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-primary/10 flex items-center justify-center font-black text-primary text-lg sm:text-xl shrink-0">
             {initials}
           </div>
-          <div>
-            <h1 className="text-2xl font-extrabold text-on-surface">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-xl sm:text-2xl font-extrabold text-on-surface truncate">
               {user.fullName}
             </h1>
-            <p className="text-secondary text-sm">{user.email}</p>
+            <p className="text-secondary text-sm truncate">{user.email}</p>
           </div>
           <button
             onClick={() => { logout(); navigate("/"); }}
-            className="ml-auto text-sm text-secondary hover:text-red-500 font-semibold transition-colors"
+            className="text-sm text-secondary hover:text-red-500 font-semibold transition-colors shrink-0"
           >
             Đăng xuất
           </button>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 bg-surface-container rounded-2xl p-1 mb-6 w-fit">
+        <div className="flex gap-1 bg-surface-container rounded-2xl p-1 mb-6 w-full sm:w-fit overflow-x-auto">
           {TABS.map((t, i) => (
             <button
               key={t}
               onClick={() => setTab(i)}
-              className={`px-5 py-2 rounded-xl text-sm font-bold transition-all ${
+              className={`px-4 sm:px-5 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${
                 tab === i
                   ? "bg-white text-primary shadow-sm"
                   : "text-secondary hover:text-on-surface"

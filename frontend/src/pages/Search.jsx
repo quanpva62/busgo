@@ -71,6 +71,7 @@ export default function Search() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [filterDate, setFilterDate] = useState(dateParam);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const [selectedTypes, setSelectedTypes] = useState([]);
   const [maxPrice, setMaxPrice] = useState(10000000);
@@ -154,9 +155,23 @@ export default function Search() {
       </header>
 
       {/* Body */}
-      <div className="max-w-360 mx-auto px-6 grid grid-cols-1 md:grid-cols-12 gap-8 pb-20 pt-8">
+      <div className="max-w-360 mx-auto px-6 grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-8 pb-20 pt-6 md:pt-8">
+        {/* Mobile filter toggle */}
+        <button
+          onClick={() => setFiltersOpen((v) => !v)}
+          className="md:hidden flex items-center justify-between w-full px-4 py-3 bg-white rounded-xl shadow-sm font-bold text-on-surface"
+        >
+          <span className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-lg">tune</span>
+            Bộ lọc
+          </span>
+          <span className="material-symbols-outlined text-lg">
+            {filtersOpen ? "expand_less" : "expand_more"}
+          </span>
+        </button>
+
         {/* Sidebar */}
-        <aside className="md:col-span-3 space-y-6">
+        <aside className={`md:col-span-3 space-y-6 ${filtersOpen ? "block" : "hidden md:block"}`}>
           <div className="bg-white p-6 rounded-xl shadow-sm space-y-8">
             {/* Ngày đi */}
             <div>
@@ -307,9 +322,9 @@ function TripCard({ trip, onSelect }) {
 
   return (
     <div className="bg-white rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300">
-      <div className="p-5 md:p-8 flex flex-row items-center gap-4 md:gap-6">
+      <div className="p-5 md:p-8 flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
         {/* Operator */}
-        <div className="w-36 md:w-44 shrink-0 flex flex-col justify-center border-r border-outline-variant/10 pr-4 md:pr-6 gap-1">
+        <div className="md:w-44 md:shrink-0 flex md:flex-col md:justify-center md:border-r border-outline-variant/10 md:pr-6 gap-2 md:gap-1 items-center md:items-start justify-between">
           <h2 className="text-base md:text-lg font-black text-on-surface leading-tight">
             {trip.bus.company?.name}
           </h2>
@@ -319,12 +334,12 @@ function TripCard({ trip, onSelect }) {
         </div>
 
         {/* Journey */}
-        <div className="flex-1 flex items-center gap-3">
+        <div className="flex-1 flex items-center gap-2 sm:gap-3">
           <div className="text-center">
-            <p className="text-2xl font-black text-on-surface">
+            <p className="text-xl sm:text-2xl font-black text-on-surface">
               {formatTime(trip.departureTime)}
             </p>
-            <p className="text-secondary text-sm font-medium">
+            <p className="text-secondary text-xs sm:text-sm font-medium">
               {trip.route.fromCity}
             </p>
             <p className="text-secondary text-xs mt-0.5">
@@ -335,7 +350,7 @@ function TripCard({ trip, onSelect }) {
             </p>
           </div>
           <div className="flex-1 flex flex-col items-center">
-            <span className="text-xs font-bold text-secondary mb-1">
+            <span className="text-[10px] sm:text-xs font-bold text-secondary mb-1">
               {formatDuration(trip.route.estimatedDuration)}
             </span>
             <div className="w-full flex items-center gap-1">
@@ -345,10 +360,10 @@ function TripCard({ trip, onSelect }) {
             </div>
           </div>
           <div className="text-center">
-            <p className="text-2xl font-black text-on-surface">
+            <p className="text-xl sm:text-2xl font-black text-on-surface">
               {formatTime(trip.arrivalTime)}
             </p>
-            <p className="text-secondary text-sm font-medium">
+            <p className="text-secondary text-xs sm:text-sm font-medium">
               {trip.route.toCity}
             </p>
             <p className="text-secondary text-xs mt-0.5">
@@ -361,13 +376,13 @@ function TripCard({ trip, onSelect }) {
         </div>
 
         {/* Price & Action */}
-        <div className="shrink-0 flex flex-col items-end gap-3">
-          <p className="text-3xl font-black text-primary">
+        <div className="shrink-0 flex flex-row md:flex-col items-center md:items-end justify-between gap-3 pt-3 md:pt-0 border-t md:border-t-0 border-outline-variant/10">
+          <p className="text-2xl md:text-3xl font-black text-primary">
             {formatPrice(trip.price)}
           </p>
           <button
             onClick={onSelect}
-            className="w-full md:w-auto px-8 py-3 bg-linear-to-br from-primary-container to-primary text-white font-bold rounded-xl shadow-lg hover:opacity-95 active:scale-[0.98] transition-all hover:cursor-pointer"
+            className="px-6 sm:px-8 py-2.5 md:py-3 bg-linear-to-br from-primary-container to-primary text-white text-sm md:text-base font-bold rounded-xl shadow-lg hover:opacity-95 active:scale-[0.98] transition-all hover:cursor-pointer"
           >
             Chọn chuyến
           </button>
