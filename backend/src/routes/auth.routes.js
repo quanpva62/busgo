@@ -7,6 +7,8 @@ const {
   registerValidation,
   loginValidation,
   refreshTokenValidation,
+  forgotPasswordValidation,
+  resetPasswordValidation,
 } = require("../validators/auth.validator");
 const validate = require("../middlewares/validate.middleware");
 
@@ -38,4 +40,21 @@ router.patch("/password", authMiddleware, authController.changePassword);
 
 // POST /api/auth/google    → authController.googleLogin
 router.post("/google", authController.googleLogin);
+
+// POST /api/auth/forgot-password
+router.post(
+  "/forgot-password",
+  forgotPasswordValidation,
+  validate,
+  authController.forgotPassword,
+);
+
+// POST /api/auth/reset-password
+router.post(
+  "/reset-password",
+  resetPasswordValidation,
+  validate,
+  authController.resetPassword,
+);
+
 module.exports = router;

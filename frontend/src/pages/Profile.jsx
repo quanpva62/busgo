@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext.jsx";
 import { useNavigate, useLocation } from "react-router-dom";
 
 function formatPrice(price) {
@@ -50,6 +51,7 @@ const TABS = ["Thông tin", "Mật khẩu", "Lịch sử đặt vé"];
 
 export default function Profile() {
   const { user, login, authFetch, logout } = useAuth();
+  const toast = useToast();
   const navigate = useNavigate();
   const location = useLocation();
   const [tab, setTab] = useState(location.state?.tab ?? 0);
@@ -93,10 +95,14 @@ export default function Profile() {
       else refundMsg = "Không được hoàn tiền (huỷ dưới 12 giờ trước khởi hành).";
     }
 
-    const msg = isPaid
-      ? `Huỷ vé đã thanh toán?\n${refundMsg}\n\nXác nhận huỷ?`
-      : "Bạn có chắc muốn huỷ đặt vé này không?";
-    if (!window.confirm(msg)) return;
+    const ok = await toast.confirm({
+      title: isPaid ? "Huỷ vé đã thanh toán?" : "Huỷ đặt vé?",
+      message: isPaid ? refundMsg : "Bạn có chắc muốn huỷ đặt vé này không?",
+      confirmText: "Huỷ vé",
+      cancelText: "Quay lại",
+      variant: "danger",
+    });
+    if (!ok) return;
 
     setCancellingId(booking.id);
     try {
@@ -110,10 +116,12 @@ export default function Profile() {
         prev.map((b) => (b.id === booking.id ? { ...b, status: data.status } : b))
       );
       if (data.refundAmount > 0) {
-        alert(`Hoàn tiền: ${data.refundAmount.toLocaleString("vi-VN")}đ\n${data.refundNote}`);
+        toast.success(`Hoàn tiền ${data.refundAmount.toLocaleString("vi-VN")}đ\n${data.refundNote}`, 6000);
+      } else {
+        toast.success("Đã huỷ vé thành công");
       }
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message);
     } finally {
       setCancellingId(null);
     }
@@ -245,6 +253,25 @@ export default function Profile() {
             Đăng xuất
           </button>
         </div>
+
+        {/* Phone collection prompt */}
+        {!user.phone && (
+          <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-2xl flex items-start gap-3">
+            <span className="material-symbols-outlined text-yellow-600 shrink-0">info</span>
+            <div className="flex-1">
+              <p className="font-bold text-yellow-900 text-sm">Cần cập nhật số điện thoại</p>
+              <p className="text-yellow-800 text-xs mt-0.5">
+                Vui lòng thêm số điện thoại để nhà xe có thể liên hệ khi cần thiết.{" "}
+                <button
+                  onClick={() => setTab(0)}
+                  className="font-bold underline hover:opacity-70"
+                >
+                  Cập nhật ngay
+                </button>
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Tabs */}
         <div className="flex gap-1 bg-surface-container rounded-2xl p-1 mb-6 w-full sm:w-fit overflow-x-auto">

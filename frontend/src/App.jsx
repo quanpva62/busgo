@@ -15,6 +15,11 @@ import PaymentResult from "./pages/PaymentResult.jsx";
 import Ticket from "./pages/Ticket.jsx";
 import Admin from "./pages/Admin.jsx";
 import AllRoutes from "./pages/AllRoutes.jsx";
+import PrivacyPolicy from "./pages/PrivacyPolicy.jsx";
+import TermsOfService from "./pages/TermsOfService.jsx";
+import Support from "./pages/Support.jsx";
+import ForgotPassword from "./pages/ForgotPassword.jsx";
+import ResetPassword from "./pages/ResetPassword.jsx";
 
 // Chỉ cần đăng nhập
 function ProtectedRoute({ children }) {
@@ -51,14 +56,6 @@ function App() {
         <Route path="/search" element={<Search />} />
         <Route path="/trips/:id" element={<TripDetail />} />
         <Route
-          path="/bookings"
-          element={
-            <ProtectedRoute>
-              <div>Bookings</div>
-            </ProtectedRoute>
-          }
-        />
-        <Route
           path="/admin"
           element={
             <RoleRoute roles={["admin", "company_admin"]}>
@@ -78,9 +75,14 @@ function App() {
         <Route path="/booking/:id" element={<ProtectedRoute><BookingConfirm /></ProtectedRoute>} />
         <Route path="/payment/result" element={<PaymentResult />} />
         <Route path="/tickets/:bookingId" element={<ProtectedRoute><Ticket /></ProtectedRoute>} />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/terms" element={<TermsOfService />} />
+        <Route path="/support" element={<Support />} />
       </Route>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
     </Routes>
   );
 }

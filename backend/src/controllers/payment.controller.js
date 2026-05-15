@@ -211,7 +211,83 @@ const vnpayReturn = async (req, res) => {
   }
 };
 
+// Gọi VNPay sandbox refund API. Trả về { success, code, message, raw }
+const refundVnpay = async ({ payment, refundAmount, ipAddr, createBy }) => {
+  const requestId = `${Date.now()}`;
+  const createDate = new Date()
+    .toISOString()
+    .replace(/[-T:.Z]/g, "")
+    .slice(0, 14);
+
+  const raw = payment.vnpRaw || {};
+  const transactionNo = String(raw.vnp_TransactionNo || "0");
+  const transactionDate = String(raw.vnp_PayDate || createDate);
+  const orderInfo = `Hoan tien booking ${payment.bookingId}`;
+  const transactionType = refundAmount === payment.amount ? "02" : "03";
+
+  const params = {
+    vnp_RequestId: requestId,
+    vnp_Version: "2.1.0",
+    vnp_Command: "refund",
+    vnp_TmnCode: process.env.VNP_TMN_CODE,
+    vnp_TransactionType: transactionType,
+    vnp_TxnRef: payment.vnpTxnRef,
+    vnp_Amount: refundAmount * 100,
+    vnp_TransactionNo: transactionNo,
+    vnp_TransactionDate: transactionDate,
+    vnp_CreateBy: createBy,
+    vnp_CreateDate: createDate,
+    vnp_IpAddr: ipAddr.includes("::ffff:")
+      ? ipAddr.replace("::ffff:", "")
+      : ipAddr,
+    vnp_OrderInfo: orderInfo,
+  };
+
+  const hashData = [
+    params.vnp_RequestId,
+    params.vnp_Version,
+    params.vnp_Command,
+    params.vnp_TmnCode,
+    params.vnp_TransactionType,
+    params.vnp_TxnRef,
+    params.vnp_Amount,
+    params.vnp_TransactionNo,
+    params.vnp_TransactionDate,
+    params.vnp_CreateBy,
+    params.vnp_CreateDate,
+    params.vnp_IpAddr,
+    params.vnp_OrderInfo,
+  ].join("|");
+
+  params.vnp_SecureHash = crypto
+    .createHmac("sha512", process.env.VNP_HASH_SECRET)
+    .update(hashData)
+    .digest("hex");
+
+  const url =
+    process.env.VNP_REFUND_URL ||
+    "https://sandbox.vnpayment.vn/merchant_webapi/api/transaction";
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(params),
+    });
+    const data = await response.json();
+    return {
+      success: data.vnp_ResponseCode === "00",
+      code: data.vnp_ResponseCode,
+      message: data.vnp_Message,
+      raw: data,
+    };
+  } catch (err) {
+    return { success: false, code: "99", message: err.message, raw: null };
+  }
+};
+
 module.exports = {
   createPayment,
   vnpayReturn,
+  refundVnpay,
 };

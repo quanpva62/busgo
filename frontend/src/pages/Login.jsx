@@ -126,12 +126,12 @@ export default function Login() {
               <label className="block text-[10px] font-bold tracking-widest text-secondary uppercase">
                 Mật khẩu
               </label>
-              <button
-                type="button"
+              <Link
+                to="/forgot-password"
                 className="text-[10px] font-bold tracking-widest text-primary uppercase hover:opacity-70"
               >
                 Quên mật khẩu?
-              </button>
+              </Link>
             </div>
             <div className="relative">
               <img
@@ -218,24 +218,24 @@ export default function Login() {
 
       {/* Bottom links */}
       <div className="flex items-center gap-6 mt-8">
-        <a
-          href="#"
+        <Link
+          to="/privacy"
           className="text-[10px] font-bold tracking-widest text-secondary/60 uppercase hover:text-secondary transition-colors"
         >
           Chính sách bảo mật
-        </a>
-        <a
-          href="#"
+        </Link>
+        <Link
+          to="/terms"
           className="text-[10px] font-bold tracking-widest text-secondary/60 uppercase hover:text-secondary transition-colors"
         >
           Điều khoản dịch vụ
-        </a>
-        <a
-          href="#"
+        </Link>
+        <Link
+          to="/support"
           className="text-[10px] font-bold tracking-widest text-secondary/60 uppercase hover:text-secondary transition-colors"
         >
           Hỗ trợ
-        </a>
+        </Link>
       </div>
       <p className="mt-3 text-[10px] font-bold tracking-widest text-secondary/40 uppercase text-center">
         © 2026 BusGo • Đặt vé xe khách hàng đầu Việt Nam

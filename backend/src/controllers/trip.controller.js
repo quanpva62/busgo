@@ -3,6 +3,9 @@ const prisma = require("../lib/prisma");
 const searchTrip = async (req, res) => {
   try {
     const { from, to, date } = req.query;
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
 
     let timeFilter;
     if (date) {
@@ -17,20 +20,37 @@ const searchTrip = async (req, res) => {
       timeFilter = { gte: now };
     }
 
-    const trips = await prisma.trip.findMany({
-      where: {
-        route: { fromCity: from, toCity: to },
-        departureTime: timeFilter,
-        status: { not: "cancelled" },
-      },
-      include: {
-        route: true,
-        bus: { include: { company: true } },
-        driver: true,
-      },
-      orderBy: { departureTime: "asc" },
+    const routeFilter = {};
+    if (from) routeFilter.fromCity = from;
+    if (to) routeFilter.toCity = to;
+
+    const where = {
+      ...(Object.keys(routeFilter).length && { route: routeFilter }),
+      departureTime: timeFilter,
+      status: { not: "cancelled" },
+    };
+
+    const [trips, total] = await Promise.all([
+      prisma.trip.findMany({
+        where,
+        include: {
+          route: true,
+          bus: { include: { company: true } },
+          driver: true,
+        },
+        orderBy: { departureTime: "asc" },
+        skip,
+        take: limit,
+      }),
+      prisma.trip.count({ where }),
+    ]);
+
+    res.json({
+      trips,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
     });
-    res.json(trips);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

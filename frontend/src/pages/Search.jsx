@@ -72,25 +72,38 @@ export default function Search() {
   const [error, setError] = useState("");
   const [filterDate, setFilterDate] = useState(dateParam);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
+  const PAGE_SIZE = 10;
 
   const [selectedTypes, setSelectedTypes] = useState([]);
   const [maxPrice, setMaxPrice] = useState(10000000);
   const [selectedSlots, setSelectedSlots] = useState([]);
 
+  // Reset về trang 1 khi đổi from/to/date
   useEffect(() => {
-    if (!from || !to) return;
+    setPage(1);
+  }, [from, to, filterDate]);
 
+  useEffect(() => {
     async function fetchTrips() {
       setLoading(true);
       setError("");
       try {
-        const url = filterDate
-          ? `${import.meta.env.VITE_API_URL}/api/trips?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&date=${filterDate}`
-          : `${import.meta.env.VITE_API_URL}/api/trips?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
+        const params = new URLSearchParams();
+        if (from) params.set("from", from);
+        if (to) params.set("to", to);
+        if (filterDate) params.set("date", filterDate);
+        params.set("page", String(page));
+        params.set("limit", String(PAGE_SIZE));
+        const url = `${import.meta.env.VITE_API_URL}/api/trips?${params.toString()}`;
         const res = await fetch(url);
         const data = await res.json();
         if (data.error) throw new Error(data.error);
-        setTrips(data);
+        setTrips(data.trips || []);
+        setTotal(data.total || 0);
+        setTotalPages(data.totalPages || 1);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -99,7 +112,7 @@ export default function Search() {
     }
 
     fetchTrips();
-  }, [from, to, filterDate]);
+  }, [from, to, filterDate, page]);
 
   const filtered = trips.filter((trip) => {
     if (selectedTypes.length > 0 && !selectedTypes.includes(trip.bus.busType))
@@ -138,7 +151,7 @@ export default function Search() {
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div>
               <h1 className="text-4xl font-extrabold tracking-tight text-on-surface mb-2">
-                {from} → {to}
+                {from && to ? `${from} → ${to}` : "Tất cả chuyến xe"}
               </h1>
               <p className="text-secondary font-medium">
                 {filterDate ? formatDate(filterDate) : "Tất cả chuyến sắp tới"}
@@ -155,11 +168,11 @@ export default function Search() {
       </header>
 
       {/* Body */}
-      <div className="max-w-360 mx-auto px-6 grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-8 pb-20 pt-6 md:pt-8">
-        {/* Mobile filter toggle */}
+      <div className="max-w-360 mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 pb-20 pt-6 lg:pt-8">
+        {/* Mobile/tablet filter toggle */}
         <button
           onClick={() => setFiltersOpen((v) => !v)}
-          className="md:hidden flex items-center justify-between w-full px-4 py-3 bg-white rounded-xl shadow-sm font-bold text-on-surface"
+          className="lg:hidden flex items-center justify-between w-full px-4 py-3 bg-white rounded-xl shadow-sm font-bold text-on-surface"
         >
           <span className="flex items-center gap-2">
             <span className="material-symbols-outlined text-lg">tune</span>
@@ -171,7 +184,9 @@ export default function Search() {
         </button>
 
         {/* Sidebar */}
-        <aside className={`md:col-span-3 space-y-6 ${filtersOpen ? "block" : "hidden md:block"}`}>
+        <aside
+          className={`lg:col-span-3 space-y-6 ${filtersOpen ? "block" : "hidden lg:block"}`}
+        >
           <div className="bg-white p-6 rounded-xl shadow-sm space-y-8">
             {/* Ngày đi */}
             <div>
@@ -280,7 +295,7 @@ export default function Search() {
         </aside>
 
         {/* Results */}
-        <section className="md:col-span-9 space-y-6">
+        <section className="lg:col-span-9 space-y-6">
           {loading && (
             <div className="text-center py-20 text-secondary font-medium">
               Đang tìm chuyến...
@@ -299,13 +314,27 @@ export default function Search() {
             </div>
           )}
 
-          {filtered.map((trip) => (
-            <TripCard
-              key={trip.id}
-              trip={trip}
-              onSelect={() => navigate(`/trips/${trip.id}`)}
+          {!loading &&
+            filtered.map((trip) => (
+              <TripCard
+                key={trip.id}
+                trip={trip}
+                onSelect={() => navigate(`/trips/${trip.id}`)}
+              />
+            ))}
+
+          {/* Pagination */}
+          {!loading && !error && totalPages > 1 && (
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              total={total}
+              onChange={(p) => {
+                setPage(p);
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
             />
-          ))}
+          )}
         </section>
       </div>
     </main>
@@ -322,9 +351,9 @@ function TripCard({ trip, onSelect }) {
 
   return (
     <div className="bg-white rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300">
-      <div className="p-5 md:p-8 flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
+      <div className="p-5 lg:p-8 flex flex-col lg:flex-row lg:items-center gap-4 lg:gap-6">
         {/* Operator */}
-        <div className="md:w-44 md:shrink-0 flex md:flex-col md:justify-center md:border-r border-outline-variant/10 md:pr-6 gap-2 md:gap-1 items-center md:items-start justify-between">
+        <div className="lg:w-44 lg:shrink-0 flex lg:flex-col lg:justify-center lg:border-r border-outline-variant/10 lg:pr-6 gap-2 lg:gap-1 items-center lg:items-start justify-between">
           <h2 className="text-base md:text-lg font-black text-on-surface leading-tight">
             {trip.bus.company?.name}
           </h2>
@@ -376,23 +405,23 @@ function TripCard({ trip, onSelect }) {
         </div>
 
         {/* Price & Action */}
-        <div className="shrink-0 flex flex-row md:flex-col items-center md:items-end justify-between gap-3 pt-3 md:pt-0 border-t md:border-t-0 border-outline-variant/10">
-          <p className="text-2xl md:text-3xl font-black text-primary">
+        <div className="shrink-0 flex flex-row lg:flex-col items-center lg:items-end justify-between gap-3 pt-3 lg:pt-0 border-t lg:border-t-0 border-outline-variant/10">
+          <p className="text-2xl lg:text-3xl font-black text-primary">
             {formatPrice(trip.price)}
           </p>
           <button
             onClick={onSelect}
-            className="px-6 sm:px-8 py-2.5 md:py-3 bg-linear-to-br from-primary-container to-primary text-white text-sm md:text-base font-bold rounded-xl shadow-lg hover:opacity-95 active:scale-[0.98] transition-all hover:cursor-pointer"
+            className="px-6 sm:px-8 py-2.5 lg:py-3 bg-linear-to-br from-primary-container to-primary text-white text-sm lg:text-base font-bold rounded-xl shadow-lg hover:opacity-95 active:scale-[0.98] transition-all hover:cursor-pointer"
           >
             Chọn chuyến
           </button>
         </div>
       </div>
 
-      <div className="px-6 md:px-8 py-3 bg-surface-container-low/50 flex gap-6">
+      <div className="px-6 lg:px-8 py-3 bg-surface-container-low/50 flex gap-6">
         <button
           onClick={() => setExpanded(expanded === "policy" ? null : "policy")}
-          className="text-xs font-bold text-primary hover:opacity-70"
+          className="text-xs font-bold text-primary hover:opacity-70 cursor-pointer"
         >
           Chính sách hủy vé
         </button>
@@ -401,7 +430,7 @@ function TripCard({ trip, onSelect }) {
             onClick={() =>
               setExpanded(expanded === "amenities" ? null : "amenities")
             }
-            className="text-xs font-bold text-primary hover:opacity-70"
+            className="text-xs font-bold text-primary hover:opacity-70 cursor-pointer"
           >
             Tiện ích
           </button>
@@ -409,7 +438,7 @@ function TripCard({ trip, onSelect }) {
       </div>
 
       {expanded === "policy" && (
-        <div className="px-6 md:px-8 py-4 border-t border-surface-container-low">
+        <div className="px-6 lg:px-8 py-4 border-t border-surface-container-low">
           <p className="text-xs font-bold text-secondary uppercase tracking-widest mb-3">
             Chính sách hủy vé
           </p>
@@ -425,7 +454,7 @@ function TripCard({ trip, onSelect }) {
       )}
 
       {expanded === "amenities" && (
-        <div className="px-6 md:px-8 py-4 border-t border-surface-container-low">
+        <div className="px-6 lg:px-8 py-4 border-t border-surface-container-low">
           <p className="text-xs font-bold text-secondary uppercase tracking-widest mb-3">
             Tiện ích trên xe
           </p>
@@ -444,6 +473,65 @@ function TripCard({ trip, onSelect }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function Pagination({ page, totalPages, total, onChange }) {
+  const pages = [];
+  const window = 2;
+  for (let i = 1; i <= totalPages; i++) {
+    if (
+      i === 1 ||
+      i === totalPages ||
+      (i >= page - window && i <= page + window)
+    ) {
+      pages.push(i);
+    } else if (pages[pages.length - 1] !== "...") {
+      pages.push("...");
+    }
+  }
+
+  return (
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4">
+      <p className="text-secondary text-sm">
+        Hiển thị trang <strong>{page}</strong> / {totalPages} ({total} chuyến)
+      </p>
+      <div className="flex items-center gap-1">
+        <button
+          onClick={() => onChange(page - 1)}
+          disabled={page === 1}
+          className="px-3 py-1.5 rounded-lg border border-outline-variant/30 text-sm font-bold text-on-surface hover:bg-surface-container-low disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        >
+          ‹
+        </button>
+        {pages.map((p, idx) =>
+          p === "..." ? (
+            <span key={`dots-${idx}`} className="px-2 text-secondary">
+              …
+            </span>
+          ) : (
+            <button
+              key={p}
+              onClick={() => onChange(p)}
+              className={`min-w-9 px-2 py-1.5 rounded-lg text-sm font-bold transition-colors ${
+                p === page
+                  ? "bg-primary text-white"
+                  : "border border-outline-variant/30 text-on-surface hover:bg-surface-container-low"
+              }`}
+            >
+              {p}
+            </button>
+          ),
+        )}
+        <button
+          onClick={() => onChange(page + 1)}
+          disabled={page === totalPages}
+          className="px-3 py-1.5 rounded-lg border border-outline-variant/30 text-sm font-bold text-on-surface hover:bg-surface-container-low disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        >
+          ›
+        </button>
+      </div>
     </div>
   );
 }

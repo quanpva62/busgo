@@ -21,7 +21,7 @@ router.get("/my", authMiddleware, bookingController.getMyBookings);
 router.get("/:id", authMiddleware, bookingController.getBooking);
 
 router.delete(
-  "/:bookingId/cancel",
+  "/:id/cancel",
   authMiddleware,
   bookingController.cancelBooking,
 );

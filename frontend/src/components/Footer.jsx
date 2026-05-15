@@ -2,10 +2,14 @@ import { Link } from "react-router-dom";
 
 const links = {
   "Công ty": ["Về chúng tôi", "Tuyển dụng", "Tin tức"],
-  "Hỗ trợ": ["Điều khoản sử dụng", "Chính sách bảo mật", "Liên hệ"],
+  "Hỗ trợ": [
+    { label: "Điều khoản dịch vụ", to: "/terms" },
+    { label: "Chính sách bảo mật", to: "/privacy" },
+    { label: "Liên hệ", to: "/support" },
+  ],
   "Dịch vụ": [
     { label: "Đặt vé xe", to: "/search" },
-    { label: "Tra cứu vé", to: "/bookings" },
+    { label: "Tra cứu vé", to: "/profile" },
     { label: "Khuyến mãi", to: "#" },
   ],
 };
@@ -70,27 +74,21 @@ export default function Footer() {
       <div className="border-t border-white/10">
         <div className="max-w-360 mx-auto px-6 py-5 flex flex-col md:flex-row items-center justify-between gap-3">
           <p className="text-white/30 text-sm">
-            © 2024 BusGo. All rights reserved.
+            © 2026 BusGo. All rights reserved.
           </p>
           <div className="flex items-center gap-6">
-            <a
-              href="#"
+            <Link
+              to="/terms"
               className="text-white/30 text-sm hover:text-white/60 transition-colors"
             >
               Điều khoản
-            </a>
-            <a
-              href="#"
+            </Link>
+            <Link
+              to="/privacy"
               className="text-white/30 text-sm hover:text-white/60 transition-colors"
             >
               Bảo mật
-            </a>
-            <a
-              href="#"
-              className="text-white/30 text-sm hover:text-white/60 transition-colors"
-            >
-              Cookie
-            </a>
+            </Link>
           </div>
         </div>
       </div>

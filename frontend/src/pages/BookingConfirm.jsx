@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext.jsx";
 
 function formatTime(iso) {
   return new Date(iso).toLocaleTimeString("vi-VN", {
@@ -27,6 +28,7 @@ const STATUS_MAP = {
 export default function BookingConfirm() {
   const { id } = useParams();
   const { authFetch } = useAuth();
+  const toast = useToast();
   const navigate = useNavigate();
   const [booking, setBooking] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -82,7 +84,7 @@ export default function BookingConfirm() {
       if (!res.ok) throw new Error(data.error);
       window.location.href = data.paymentUrl;
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message);
       setPaying(false);
     }
   }

@@ -81,4 +81,48 @@ const sendTicketEmail = async ({ to, passengerName, ticketCode, fromCity, toCity
   });
 };
 
-module.exports = { sendTicketEmail };
+const sendPasswordResetEmail = async ({ to, fullName, resetUrl }) => {
+  await transporter.sendMail({
+    from: process.env.MAIL_FROM || `"BusGo" <${process.env.MAIL_USER}>`,
+    to,
+    subject: "🔐 Đặt lại mật khẩu BusGo",
+    html: `
+<!DOCTYPE html>
+<html lang="vi">
+<head><meta charset="UTF-8" /></head>
+<body style="margin:0;padding:0;background:#f4f6fb;font-family:'Segoe UI',Arial,sans-serif;">
+  <div style="max-width:520px;margin:32px auto;background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+    <div style="background:linear-gradient(135deg,#3b82f6,#1d4ed8);padding:28px 32px;">
+      <p style="margin:0;color:#fff;font-size:24px;font-weight:900;letter-spacing:-0.5px;">BusGo</p>
+      <p style="margin:4px 0 0;color:rgba(255,255,255,0.75);font-size:12px;font-weight:600;letter-spacing:2px;text-transform:uppercase;">Đặt lại mật khẩu</p>
+    </div>
+    <div style="padding:28px 32px;">
+      <p style="margin:0;font-size:16px;color:#1e293b;">Xin chào <strong>${fullName || "bạn"}</strong>,</p>
+      <p style="margin:12px 0 0;font-size:14px;color:#64748b;line-height:1.6;">
+        Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản BusGo của bạn.
+        Nhấn nút dưới đây để tạo mật khẩu mới (link có hiệu lực trong 15 phút):
+      </p>
+      <div style="text-align:center;margin:28px 0;">
+        <a href="${resetUrl}" style="display:inline-block;background:linear-gradient(135deg,#3b82f6,#1d4ed8);color:#fff;text-decoration:none;padding:14px 32px;border-radius:12px;font-weight:700;font-size:14px;">
+          Đặt lại mật khẩu
+        </a>
+      </div>
+      <p style="margin:0;font-size:12px;color:#94a3b8;line-height:1.6;">
+        Hoặc copy link sau vào trình duyệt:<br/>
+        <span style="word-break:break-all;color:#3b82f6;">${resetUrl}</span>
+      </p>
+      <p style="margin:24px 0 0;font-size:12px;color:#94a3b8;line-height:1.6;">
+        Nếu bạn không yêu cầu đặt lại mật khẩu, hãy bỏ qua email này. Mật khẩu của bạn vẫn an toàn.
+      </p>
+    </div>
+    <div style="padding:16px 32px 24px;border-top:1px solid #f1f5f9;">
+      <p style="margin:0;font-size:11px;color:#cbd5e1;text-align:center;">© 2026 BusGo · Email tự động, không trả lời</p>
+    </div>
+  </div>
+</body>
+</html>
+    `,
+  });
+};
+
+module.exports = { sendTicketEmail, sendPasswordResetEmail };

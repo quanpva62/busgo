@@ -14,24 +14,27 @@ datasource db {
 }
 
 model User {
-  id              String         @id @default(uuid())
-  fullName        String?
-  email           String         @unique
-  phone           String?        @unique
-  passwordHash    String?
-  emailVerified   Boolean        @default(false)
-  googleId        String?        @unique
-  role            Role           @default(user)
-  isActive        Boolean        @default(true)
-  companyId       String?
-  company         Company?       @relation(fields: [companyId], references: [id])
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-  bookings        Booking[]
-  reviews         Review[]
-  notifications   Notification[]
-  reports         Report[]
-  resolvedReports Report[]       @relation("ReportResolver")
+  id                   String         @id @default(uuid())
+  fullName             String?
+  email                String         @unique
+  phone                String?        @unique
+  passwordHash         String?
+  emailVerified        Boolean        @default(false)
+  googleId             String?        @unique
+  resetPasswordToken   String?        @unique
+  resetPasswordExpires DateTime?
+  passwordChangedAt    DateTime?
+  role                 Role           @default(user)
+  isActive             Boolean        @default(true)
+  companyId            String?
+  company              Company?       @relation(fields: [companyId], references: [id])
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+  bookings             Booking[]
+  reviews              Review[]
+  notifications        Notification[]
+  reports              Report[]
+  resolvedReports      Report[]       @relation("ReportResolver")
 }
 
 enum Role {

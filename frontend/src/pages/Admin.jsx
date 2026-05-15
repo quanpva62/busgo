@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext.jsx";
 import {
   LineChart,
   BarChart,
@@ -540,6 +541,7 @@ function AddTripForm({ authFetch, onCreated, onCancel }) {
 }
 
 function CompanyTrips({ authFetch }) {
+  const toast = useToast();
   const [trips, setTrips] = useState([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(null);
@@ -568,22 +570,33 @@ function CompanyTrips({ authFetch }) {
   }
 
   async function deleteTrip(id) {
-    if (!confirm("Xoá chuyến này?")) return;
+    const ok = await toast.confirm({
+      title: "Xoá chuyến này?",
+      confirmText: "Xoá",
+      variant: "danger",
+    });
+    if (!ok) return;
     const res = await authFetch(`${API}/api/admin/company/trips/${id}`, {
       method: "DELETE",
     });
     const data = await res.json();
-    if (!res.ok) return alert(data.error ?? "Không thể xoá");
+    if (!res.ok) return toast.error(data.error ?? "Không thể xoá");
     setTrips((prev) => prev.filter((t) => t.id !== id));
   }
 
   async function deleteSeries(seriesId) {
-    if (!confirm("Xoá toàn bộ chuyến trong chuỗi này? (Chỉ xoá được nếu chưa có booking)")) return;
+    const ok = await toast.confirm({
+      title: "Xoá toàn bộ chuyến trong chuỗi?",
+      message: "Chỉ xoá được nếu chưa có booking.",
+      confirmText: "Xoá chuỗi",
+      variant: "danger",
+    });
+    if (!ok) return;
     const res = await authFetch(`${API}/api/admin/company/trips/series/${seriesId}`, {
       method: "DELETE",
     });
     const data = await res.json();
-    if (!res.ok) return alert(data.error ?? "Không thể xoá chuỗi");
+    if (!res.ok) return toast.error(data.error ?? "Không thể xoá chuỗi");
     setTrips((prev) => prev.filter((t) => t.seriesId !== seriesId));
   }
 
@@ -843,6 +856,7 @@ function DriverForm({ authFetch, initial, onSaved, onCancel }) {
 }
 
 function DriversView({ authFetch }) {
+  const toast = useToast();
   const [drivers, setDrivers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all"); // all / driver / assistant
@@ -857,7 +871,12 @@ function DriversView({ authFetch }) {
   }, [authFetch]);
 
   async function deactivate(id) {
-    if (!confirm("Ngưng hoạt động nhân viên này?")) return;
+    const ok = await toast.confirm({
+      title: "Ngưng hoạt động nhân viên?",
+      confirmText: "Ngưng hoạt động",
+      variant: "danger",
+    });
+    if (!ok) return;
     const res = await authFetch(`${API}/api/admin/company/drivers/${id}`, {
       method: "DELETE",
     });
@@ -1132,6 +1151,7 @@ function BusForm({ authFetch, initial, onSaved, onCancel }) {
 }
 
 function BusesView({ authFetch }) {
+  const toast = useToast();
   const [buses, setBuses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
@@ -1145,7 +1165,12 @@ function BusesView({ authFetch }) {
   }, [authFetch]);
 
   async function deactivate(id) {
-    if (!confirm("Ngưng hoạt động xe này?")) return;
+    const ok = await toast.confirm({
+      title: "Ngưng hoạt động xe?",
+      confirmText: "Ngưng hoạt động",
+      variant: "danger",
+    });
+    if (!ok) return;
     const res = await authFetch(`${API}/api/admin/company/buses/${id}`, {
       method: "DELETE",
     });

@@ -1,4 +1,5 @@
 const prisma = require("../lib/prisma");
+const { refundVnpay } = require("./payment.controller");
 
 const createBooking = async (req, res) => {
   try {
@@ -171,7 +172,7 @@ const cancelBooking = async (req, res) => {
     const { id } = req.params;
     const booking = await prisma.booking.findUnique({
       where: { id },
-      include: { trip: true },
+      include: { trip: true, payment: true },
     });
     if (!booking) return res.status(404).json({ error: "Booking không tồn tại" });
     if (booking.userId !== req.user.userId)
@@ -199,6 +200,32 @@ const cancelBooking = async (req, res) => {
     } else {
       refundAmount = 0;
       refundNote = "Không hoàn tiền — huỷ dưới 12 giờ trước khởi hành";
+    }
+
+    // Gọi VNPay refund nếu cần hoàn tiền
+    if (booking.status === "paid" && refundAmount > 0) {
+      if (!booking.payment || booking.payment.status !== "successful") {
+        return res.status(400).json({ error: "Không tìm thấy giao dịch thanh toán hợp lệ" });
+      }
+      const refundRes = await refundVnpay({
+        payment: booking.payment,
+        refundAmount,
+        ipAddr: req.ip || "127.0.0.1",
+        createBy: req.user.userId,
+      });
+      if (!refundRes.success) {
+        return res.status(502).json({
+          error: `Hoàn tiền VNPay thất bại: ${refundRes.message || refundRes.code}`,
+        });
+      }
+      // Cập nhật payment status
+      await prisma.payment.update({
+        where: { id: booking.payment.id },
+        data: {
+          status: "refunded",
+          vnpRaw: { ...booking.payment.vnpRaw, refund: refundRes.raw },
+        },
+      });
     }
 
     const newStatus = booking.status === "paid" && refundAmount > 0 ? "refunded" : "cancelled";

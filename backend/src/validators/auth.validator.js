@@ -26,8 +26,21 @@ const refreshTokenValidation = [
     .withMessage("Vui lòng cung cấp refresh token"),
 ];
 
+const forgotPasswordValidation = [
+  body("email").isEmail().withMessage("Vui lòng nhập email hợp lệ"),
+];
+
+const resetPasswordValidation = [
+  body("token").notEmpty().withMessage("Thiếu token"),
+  body("newPassword")
+    .isLength({ min: 8 })
+    .withMessage("Mật khẩu phải có ít nhất 8 ký tự"),
+];
+
 module.exports = {
   registerValidation,
   loginValidation,
   refreshTokenValidation,
+  forgotPasswordValidation,
+  resetPasswordValidation,
 };

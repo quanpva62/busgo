@@ -12,6 +12,7 @@ import RouteCarousel from "../components/RouteCarousel.jsx";
 import iconPayments from "../assets/icons/payments.svg";
 import iconSupport from "../assets/icons/support.svg";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext.jsx";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -21,6 +22,7 @@ function localDateStr(date = new Date()) {
 
 export default function Home() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [openFrom, setOpenFrom] = useState(false);
   const [popularRoutes, setPopularRoutes] = useState([]);
 
@@ -38,6 +40,24 @@ export default function Home() {
 
   return (
     <main>
+      {/* Phone collection prompt — chỉ hiện cho user đã login mà chưa có sđt */}
+      {user && !user.phone && (
+        <div className="fixed top-20 left-0 right-0 z-40 bg-yellow-50 border-b border-yellow-200">
+          <div className="max-w-360 mx-auto px-6 py-3 flex items-center gap-3">
+            <span className="material-symbols-outlined text-yellow-600 shrink-0">info</span>
+            <p className="flex-1 text-yellow-900 text-sm">
+              <span className="font-bold">Cần cập nhật số điện thoại</span> để nhà xe có thể liên hệ khi cần thiết.
+            </p>
+            <button
+              onClick={() => navigate("/profile")}
+              className="text-sm text-yellow-900 font-bold hover:opacity-70 underline shrink-0"
+            >
+              Cập nhật ngay
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ===== HERO SECTION ===== */}
       <section className="relative min-h-screen lg:min-h-150 flex items-center justify-center mt-20 py-12 lg:py-0">
         <div className="absolute inset-0 z-0">
