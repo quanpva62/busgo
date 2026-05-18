@@ -576,22 +576,47 @@ const deleteCompanyBus = async (req, res) => {
 
 const INTERVAL_MS = { daily: 86400000, weekly: 604800000, monthly: null };
 
-async function createSingleTrip(tx, { routeId, busId, driverId, assistantId, dep, route, price, pickupAddress, dropoffAddress, seriesId, interval }) {
+async function createSingleTrip(
+  tx,
+  {
+    routeId,
+    busId,
+    driverId,
+    assistantId,
+    dep,
+    route,
+    price,
+    pickupAddress,
+    dropoffAddress,
+    seriesId,
+    interval,
+  },
+) {
   const arr = new Date(dep.getTime() + route.estimatedDuration * 60000);
   const t = await tx.trip.create({
     data: {
-      routeId, busId, driverId,
+      routeId,
+      busId,
+      driverId,
       assistantId: assistantId || null,
-      departureTime: dep, arrivalTime: arr,
-      price: parseInt(price), pickupAddress, dropoffAddress,
+      departureTime: dep,
+      arrivalTime: arr,
+      price: parseInt(price),
+      pickupAddress,
+      dropoffAddress,
       seriesId: seriesId || null,
       interval: interval || null,
     },
   });
   const seats = await tx.seat.findMany({ where: { busId } });
-  if (seats.length === 0) throw new Error("Xe chưa có ghế. Vui lòng tạo lại xe.");
+  if (seats.length === 0)
+    throw new Error("Xe chưa có ghế. Vui lòng tạo lại xe.");
   await tx.tripSeat.createMany({
-    data: seats.map((s) => ({ tripId: t.id, seatId: s.id, status: "available" })),
+    data: seats.map((s) => ({
+      tripId: t.id,
+      seatId: s.id,
+      status: "available",
+    })),
   });
   return t;
 }
@@ -601,9 +626,16 @@ const createCompanyTrip = async (req, res) => {
     const companyId = await getCompanyId(req, res);
     if (!companyId) return;
     const {
-      routeId, busId, driverId, assistantId,
-      departureTime, price, pickupAddress, dropoffAddress,
-      interval, occurrences,
+      routeId,
+      busId,
+      driverId,
+      assistantId,
+      departureTime,
+      price,
+      pickupAddress,
+      dropoffAddress,
+      interval,
+      occurrences,
     } = req.body;
 
     const [bus, driver, route] = await Promise.all([
@@ -617,7 +649,9 @@ const createCompanyTrip = async (req, res) => {
       return res.status(400).json({ error: "Tài xế không hợp lệ" });
     if (!route) return res.status(400).json({ error: "Tuyến không tồn tại" });
     if (assistantId) {
-      const assistant = await prisma.driver.findUnique({ where: { id: assistantId } });
+      const assistant = await prisma.driver.findUnique({
+        where: { id: assistantId },
+      });
       if (!assistant || assistant.companyId !== companyId)
         return res.status(400).json({ error: "Phụ xe không hợp lệ" });
     }
@@ -632,11 +666,27 @@ const createCompanyTrip = async (req, res) => {
       let dep = new Date(base);
       if (i > 0) {
         if (interval === "daily") dep = new Date(base.getTime() + i * 86400000);
-        else if (interval === "weekly") dep = new Date(base.getTime() + i * 7 * 86400000);
-        else if (interval === "monthly") { dep = new Date(base); dep.setMonth(dep.getMonth() + i); }
+        else if (interval === "weekly")
+          dep = new Date(base.getTime() + i * 7 * 86400000);
+        else if (interval === "monthly") {
+          dep = new Date(base);
+          dep.setMonth(dep.getMonth() + i);
+        }
       }
       const t = await prisma.$transaction(async (tx) =>
-        createSingleTrip(tx, { routeId, busId, driverId, assistantId, dep, route, price, pickupAddress, dropoffAddress, seriesId, interval: isRecurring ? interval : null })
+        createSingleTrip(tx, {
+          routeId,
+          busId,
+          driverId,
+          assistantId,
+          dep,
+          route,
+          price,
+          pickupAddress,
+          dropoffAddress,
+          seriesId,
+          interval: isRecurring ? interval : null,
+        }),
       );
       trips.push(t);
     }
@@ -661,12 +711,18 @@ const deleteCompanyTripSeries = async (req, res) => {
       where: { seriesId },
       include: { bus: true, _count: { select: { bookings: true } } },
     });
-    if (trips.length === 0) return res.status(404).json({ error: "Không tìm thấy chuỗi chuyến" });
+    if (trips.length === 0)
+      return res.status(404).json({ error: "Không tìm thấy chuỗi chuyến" });
     if (trips.some((t) => t.bus.companyId !== companyId))
       return res.status(403).json({ error: "Không có quyền" });
     const hasBooking = trips.some((t) => t._count.bookings > 0);
     if (hasBooking)
-      return res.status(400).json({ error: "Một số chuyến đã có booking. Hãy đổi trạng thái sang 'Đã huỷ' thay vì xoá." });
+      return res
+        .status(400)
+        .json({
+          error:
+            "Một số chuyến đã có booking. Hãy đổi trạng thái sang 'Đã huỷ' thay vì xoá.",
+        });
     const tripIds = trips.map((t) => t.id);
     await prisma.$transaction([
       prisma.tripSeat.deleteMany({ where: { tripId: { in: tripIds } } }),
@@ -883,6 +939,13 @@ const topRoutesChart = async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
+const ALLOWED_IMAGE_MIMES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+];
+
 const uploadRouteImage = async (req, res) => {
   try {
     const { id } = req.params;
@@ -890,19 +953,29 @@ const uploadRouteImage = async (req, res) => {
     if (!route) return res.status(404).json({ error: "Route không tồn tại" });
     if (!req.file) return res.status(400).json({ error: "Không có file ảnh" });
 
-    const ext = req.file.mimetype.split("/")[1];
-    const fileName = `${id}.${ext}`;
+    const { fileTypeFromBuffer } = await import("file-type");
+    const detected = await fileTypeFromBuffer(req.file.buffer);
+    if (!detected || !ALLOWED_IMAGE_MIMES.includes(detected.mime)) {
+      return res.status(400).json({ error: "File không phải ảnh hợp lệ" });
+    }
+
+    const fileName = `${id}.${detected.ext}`;
 
     const { error } = await supabase.storage
       .from("route-image")
       .upload(fileName, req.file.buffer, {
-        contentType: req.file.mimetype,
+        contentType: detected.mime,
         upsert: true,
       });
     if (error) return res.status(500).json({ error: error.message });
 
-    const { data } = supabase.storage.from("route-image").getPublicUrl(fileName);
-    await prisma.route.update({ where: { id }, data: { imageUrl: data.publicUrl } });
+    const { data } = supabase.storage
+      .from("route-image")
+      .getPublicUrl(fileName);
+    await prisma.route.update({
+      where: { id },
+      data: { imageUrl: data.publicUrl },
+    });
 
     res.json({ imageUrl: data.publicUrl });
   } catch (error) {

@@ -89,8 +89,6 @@ model Driver {
   driverRole       DriverRole @default(driver)
   licenseNo        String?    @unique
   licenseType      String?
-  rating           Float      @default(0)
-  totalTrips       Int        @default(0)
   joinDate         DateTime   @default(now())
   isActive         Boolean    @default(true)
   companyId        String
@@ -141,7 +139,6 @@ model Trip {
   bookings       Booking[]
   tripSeats      TripSeat[]
   bookingSeats   BookingSeat[]
-  reviews        Review[]
 }
 
 enum TripStatus {
@@ -338,14 +335,16 @@ model Review {
   id        String   @id @default(uuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id])
-  tripId    String
-  trip      Trip     @relation(fields: [tripId], references: [id])
+  seriesId  String
   bookingId String   @unique
   booking   Booking  @relation(fields: [bookingId], references: [id])
   rating    Int
   comment   String?
   isVisible Boolean  @default(true)
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([seriesId])
 }
 
 model Notification {

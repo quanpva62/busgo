@@ -63,7 +63,13 @@ const getTripDetail = async (req, res) => {
       where: { id: id },
       include: {
         bus: { include: { company: true } },
-        driver: true,
+        driver: {
+          include: {
+            _count: {
+              select: { tripsAsDriver: { where: { status: "completed" } } },
+            },
+          },
+        },
         assistant: true,
         route: true,
       },

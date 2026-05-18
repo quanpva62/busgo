@@ -25,11 +25,15 @@ export default function Home() {
   const { user } = useAuth();
   const [openFrom, setOpenFrom] = useState(false);
   const [popularRoutes, setPopularRoutes] = useState([]);
+  const [routes, setRoutes] = useState([]);
 
   useEffect(() => {
     fetch(`${API}/api/trips/popular`)
       .then((r) => r.json())
       .then((d) => setPopularRoutes(Array.isArray(d) ? d : []));
+    fetch(`${API}/api/trips/routes`)
+      .then((r) => r.json())
+      .then((d) => setRoutes(Array.isArray(d) ? d : []));
   }, []);
   const [selectedFrom, setSelectedFrom] = useState("Hà Nội");
   const [openTo, setOpenTo] = useState(false);
@@ -37,6 +41,26 @@ export default function Home() {
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
   const [date, setDate] = useState(localDateStr(tomorrow));
+
+  // Cities phụ thuộc vào routes thực tế trong DB
+  const fromCities = [...new Set(routes.map((r) => r.fromCity))].sort();
+  const toCities = [
+    ...new Set(
+      routes.filter((r) => r.fromCity === selectedFrom).map((r) => r.toCity),
+    ),
+  ].sort();
+
+  function handleSelectFrom(city) {
+    setSelectedFrom(city);
+    setOpenFrom(false);
+    // Reset điểm đến nếu không còn hợp lệ
+    const validTo = routes
+      .filter((r) => r.fromCity === city)
+      .map((r) => r.toCity);
+    if (validTo.length > 0 && !validTo.includes(selectedTo)) {
+      setSelectedTo(validTo.sort()[0]);
+    }
+  }
 
   return (
     <main>
@@ -104,21 +128,16 @@ export default function Home() {
                     <img src={iconDropdown} alt="" className="w-5 h-5" />
                   </button>
                   {openFrom && (
-                    <ul className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-outline-variant/30 z-50 overflow-hidden ">
-                      {["Hà Nội", "TP.HCM", "Đà Nẵng", "Hải Phòng", "Huế", "Cần Thơ"].map(
-                        (city) => (
-                          <li
-                            key={city}
-                            onClick={() => {
-                              setSelectedFrom(city);
-                              setOpenFrom(false);
-                            }}
-                            className="px-4 py-3 hover:bg-surface-container-low font-medium text-on-surface cursor-pointer transition-colors z-40"
-                          >
-                            {city}
-                          </li>
-                        ),
-                      )}
+                    <ul className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-outline-variant/30 z-50 overflow-hidden max-h-72 overflow-y-auto">
+                      {fromCities.map((city) => (
+                        <li
+                          key={city}
+                          onClick={() => handleSelectFrom(city)}
+                          className="px-4 py-3 hover:bg-surface-container-low font-medium text-on-surface cursor-pointer transition-colors z-40"
+                        >
+                          {city}
+                        </li>
+                      ))}
                     </ul>
                   )}
                 </div>
@@ -144,8 +163,8 @@ export default function Home() {
                     <img src={iconDropdown} alt="" className="w-5 h-5" />
                   </button>
                   {openTo && (
-                    <ul className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-outline-variant/30 z-50 overflow-hidden">
-                      {["Hải Phòng", "Quảng Ninh", "Vinh", "Thanh Hóa", "Nam Định", "TP.HCM", "Đà Nẵng", "Đà Lạt", "Vũng Tàu", "Huế", "Cần Thơ"].map(
+                    <ul className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-outline-variant/30 z-50 overflow-hidden max-h-72 overflow-y-auto">
+                      {toCities.map(
                         (city) => (
                           <li
                             key={city}

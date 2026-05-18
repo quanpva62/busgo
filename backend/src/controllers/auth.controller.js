@@ -10,12 +10,16 @@ const PASSWORD_COOLDOWN_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
 
 function isWithinCooldown(passwordChangedAt) {
   if (!passwordChangedAt) return false;
-  return Date.now() - new Date(passwordChangedAt).getTime() < PASSWORD_COOLDOWN_MS;
+  return (
+    Date.now() - new Date(passwordChangedAt).getTime() < PASSWORD_COOLDOWN_MS
+  );
 }
 
 function cooldownRemainingMsg(passwordChangedAt) {
   const elapsed = Date.now() - new Date(passwordChangedAt).getTime();
-  const remainingHours = Math.ceil((PASSWORD_COOLDOWN_MS - elapsed) / (60 * 60 * 1000));
+  const remainingHours = Math.ceil(
+    (PASSWORD_COOLDOWN_MS - elapsed) / (60 * 60 * 1000),
+  );
   return `Mật khẩu mới được đổi gần đây. Vui lòng thử lại sau ${remainingHours} giờ.`;
 }
 
@@ -70,7 +74,8 @@ const login = async (req, res) => {
 
     if (!user.passwordHash) {
       return res.status(400).json({
-        error: "This account was registered with Google, please sign in with Google",
+        error:
+          "This account was registered with Google, please sign in with Google",
       });
     }
 
@@ -178,7 +183,9 @@ const changePassword = async (req, res) => {
     }
 
     if (isWithinCooldown(user.passwordChangedAt)) {
-      return res.status(429).json({ error: cooldownRemainingMsg(user.passwordChangedAt) });
+      return res
+        .status(429)
+        .json({ error: cooldownRemainingMsg(user.passwordChangedAt) });
     }
 
     const valid = await bcrypt.compare(currentPassword, user.passwordHash);
@@ -305,7 +312,9 @@ const forgotPassword = async (req, res) => {
     // Luôn trả 200 thành công kể cả khi email không tồn tại,
     // để tránh attacker dò xem email nào có trong DB.
     if (!user) {
-      return res.json({ message: "Nếu email tồn tại, link đặt lại đã được gửi." });
+      return res.json({
+        message: "Nếu email tồn tại, link đặt lại đã được gửi.",
+      });
     }
 
     if (!user.passwordHash) {
@@ -315,19 +324,29 @@ const forgotPassword = async (req, res) => {
     }
 
     if (isWithinCooldown(user.passwordChangedAt)) {
-      return res.status(429).json({ error: cooldownRemainingMsg(user.passwordChangedAt) });
+      return res
+        .status(429)
+        .json({ error: cooldownRemainingMsg(user.passwordChangedAt) });
     }
 
     const token = crypto.randomBytes(32).toString("hex");
     const expires = new Date(Date.now() + 15 * 60 * 1000); // 15 phút
 
+    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
     await prisma.user.update({
       where: { id: user.id },
-      data: { resetPasswordToken: token, resetPasswordExpires: expires },
+      data: {
+        resetPasswordToken: hashedToken,
+        resetPasswordExpires: expires,
+      },
     });
 
     const resetUrl = `${process.env.FRONTEND_URL || "http://localhost:5173"}/reset-password?token=${token}`;
-    await sendPasswordResetEmail({ to: user.email, fullName: user.fullName, resetUrl });
+    await sendPasswordResetEmail({
+      to: user.email,
+      fullName: user.fullName,
+      resetUrl,
+    });
 
     res.json({ message: "Nếu email tồn tại, link đặt lại đã được gửi." });
   } catch (error) {
@@ -339,13 +358,24 @@ const resetPassword = async (req, res) => {
   try {
     const { token, newPassword } = req.body;
 
-    const user = await prisma.user.findUnique({ where: { resetPasswordToken: token } });
-    if (!user || !user.resetPasswordExpires || user.resetPasswordExpires < new Date()) {
-      return res.status(400).json({ error: "Token không hợp lệ hoặc đã hết hạn" });
+    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+    const user = await prisma.user.findUnique({
+      where: { resetPasswordToken: hashedToken },
+    });
+    if (
+      !user ||
+      !user.resetPasswordExpires ||
+      user.resetPasswordExpires < new Date()
+    ) {
+      return res
+        .status(400)
+        .json({ error: "Token không hợp lệ hoặc đã hết hạn" });
     }
 
     if (isWithinCooldown(user.passwordChangedAt)) {
-      return res.status(429).json({ error: cooldownRemainingMsg(user.passwordChangedAt) });
+      return res
+        .status(429)
+        .json({ error: cooldownRemainingMsg(user.passwordChangedAt) });
     }
 
     const passwordHash = await bcrypt.hash(newPassword, 10);

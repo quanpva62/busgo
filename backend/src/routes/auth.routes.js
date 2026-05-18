@@ -11,15 +11,30 @@ const {
   resetPasswordValidation,
 } = require("../validators/auth.validator");
 const validate = require("../middlewares/validate.middleware");
-
+const {
+  authLimit,
+  passwordResetLimit,
+} = require("../middlewares/rateLimit.middleware");
 // import authController từ controllers/auth.controller.js
 
 // POST /api/auth/register  → authController.register
 
-router.post("/register", registerValidation, validate, authController.register);
+router.post(
+  "/register",
+  authLimit,
+  registerValidation,
+  validate,
+  authController.register,
+);
 
 // POST /api/auth/login     → authController.login
-router.post("/login", loginValidation, validate, authController.login);
+router.post(
+  "/login",
+  authLimit,
+  loginValidation,
+  validate,
+  authController.login,
+);
 
 // POST /api/auth/refresh-token → authController.refreshToken
 router.post(
@@ -39,11 +54,12 @@ router.patch("/me", authMiddleware, authController.updateMe);
 router.patch("/password", authMiddleware, authController.changePassword);
 
 // POST /api/auth/google    → authController.googleLogin
-router.post("/google", authController.googleLogin);
+router.post("/google", authLimit, authController.googleLogin);
 
 // POST /api/auth/forgot-password
 router.post(
   "/forgot-password",
+  passwordResetLimit,
   forgotPasswordValidation,
   validate,
   authController.forgotPassword,
@@ -52,6 +68,7 @@ router.post(
 // POST /api/auth/reset-password
 router.post(
   "/reset-password",
+  passwordResetLimit,
   resetPasswordValidation,
   validate,
   authController.resetPassword,

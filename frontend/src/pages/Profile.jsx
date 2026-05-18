@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext.jsx";
 import { useNavigate, useLocation } from "react-router-dom";
+import Star from "../components/Star.jsx";
 
 function formatPrice(price) {
   return price.toLocaleString("vi-VN") + "đ";
@@ -16,11 +17,11 @@ function formatDate(iso) {
 }
 
 const STATUS_LABELS = {
-  pending:   { label: "Chờ thanh toán", cls: "bg-yellow-100 text-yellow-700" },
-  paid:      { label: "Đã thanh toán",  cls: "bg-green-100 text-green-700" },
-  confirmed: { label: "Đã xác nhận",    cls: "bg-green-100 text-green-700" },
-  cancelled: { label: "Đã huỷ",         cls: "bg-red-100 text-red-500" },
-  completed: { label: "Hoàn thành",     cls: "bg-blue-100 text-blue-700" },
+  pending: { label: "Chờ thanh toán", cls: "bg-yellow-100 text-yellow-700" },
+  paid: { label: "Đã thanh toán", cls: "bg-green-100 text-green-700" },
+  confirmed: { label: "Đã xác nhận", cls: "bg-green-100 text-green-700" },
+  cancelled: { label: "Đã huỷ", cls: "bg-red-100 text-red-500" },
+  completed: { label: "Hoàn thành", cls: "bg-blue-100 text-blue-700" },
 };
 
 const CATEGORY_LABELS = {
@@ -77,22 +78,33 @@ export default function Profile() {
 
   // Report form state
   const [reportingId, setReportingId] = useState(null);
-  const [reportForm, setReportForm] = useState({ category: "", severity: "medium", details: "" });
+  const [reportForm, setReportForm] = useState({
+    category: "",
+    severity: "medium",
+    details: "",
+  });
   const [reportSubmitting, setReportSubmitting] = useState(false);
   const [reportError, setReportError] = useState("");
 
   // Cancel booking
   const [cancellingId, setCancellingId] = useState(null);
 
+  // Review booking
+  const [reviewingId, setReviewingId] = useState(null);
+  const [reviewForm, setReviewForm] = useState({ rating: 5, comment: "" });
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
+
   async function handleCancelBooking(booking) {
     const isPaid = booking.status === "paid";
-    const hoursLeft = (new Date(booking.trip.departureTime) - new Date()) / 3600000;
+    const hoursLeft =
+      (new Date(booking.trip.departureTime) - new Date()) / 3600000;
 
     let refundMsg = "";
     if (isPaid) {
       if (hoursLeft > 24) refundMsg = "Bạn sẽ được hoàn 100% giá vé.";
       else if (hoursLeft > 12) refundMsg = "Bạn sẽ được hoàn 50% giá vé.";
-      else refundMsg = "Không được hoàn tiền (huỷ dưới 12 giờ trước khởi hành).";
+      else
+        refundMsg = "Không được hoàn tiền (huỷ dưới 12 giờ trước khởi hành).";
     }
 
     const ok = await toast.confirm({
@@ -113,10 +125,15 @@ export default function Profile() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setBookings((prev) =>
-        prev.map((b) => (b.id === booking.id ? { ...b, status: data.status } : b))
+        prev.map((b) =>
+          b.id === booking.id ? { ...b, status: data.status } : b,
+        ),
       );
       if (data.refundAmount > 0) {
-        toast.success(`Hoàn tiền ${data.refundAmount.toLocaleString("vi-VN")}đ\n${data.refundNote}`, 6000);
+        toast.success(
+          `Hoàn tiền ${data.refundAmount.toLocaleString("vi-VN")}đ\n${data.refundNote}`,
+          6000,
+        );
       } else {
         toast.success("Đã huỷ vé thành công");
       }
@@ -126,7 +143,6 @@ export default function Profile() {
       setCancellingId(null);
     }
   }
-
 
   useEffect(() => {
     if (!user) navigate("/login");
@@ -158,7 +174,11 @@ export default function Profile() {
       );
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      login(data.user, localStorage.getItem("token"), localStorage.getItem("refreshToken"));
+      login(
+        data.user,
+        localStorage.getItem("token"),
+        localStorage.getItem("refreshToken"),
+      );
       setSaveMsg("Cập nhật thành công!");
     } catch (err) {
       setSaveErr(err.message);
@@ -203,16 +223,21 @@ export default function Profile() {
     setReportSubmitting(true);
     setReportError("");
     try {
-      const res = await authFetch(`${import.meta.env.VITE_API_URL}/api/reports`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bookingId, driverId, ...reportForm }),
-      });
+      const res = await authFetch(
+        `${import.meta.env.VITE_API_URL}/api/reports`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ bookingId, driverId, ...reportForm }),
+        },
+      );
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       // đánh dấu booking đã có report
       setBookings((prev) =>
-        prev.map((b) => (b.id === bookingId ? { ...b, reports: [data.report] } : b))
+        prev.map((b) =>
+          b.id === bookingId ? { ...b, reports: [data.report] } : b,
+        ),
       );
       setReportingId(null);
       setReportForm({ category: "", severity: "medium", details: "" });
@@ -220,6 +245,46 @@ export default function Profile() {
       setReportError(err.message);
     } finally {
       setReportSubmitting(false);
+    }
+  }
+
+  async function handleSubmitReview(booking) {
+    setReviewSubmitting(true);
+    try {
+      const isEdit = !!booking.review;
+      const url = isEdit
+        ? `${import.meta.env.VITE_API_URL}/api/reviews/${booking.review.id}`
+        : `${import.meta.env.VITE_API_URL}/api/reviews`;
+      const method = isEdit ? "PATCH" : "POST";
+      const body = isEdit
+        ? { rating: reviewForm.rating, comment: reviewForm.comment }
+        : {
+            bookingId: booking.id,
+            rating: reviewForm.rating,
+            comment: reviewForm.comment,
+          };
+      const res = await authFetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      // Cập nhật review vào booking
+      setBookings((prev) =>
+        prev.map((b) =>
+          b.id === booking.id ? { ...b, review: data.review } : b,
+        ),
+      );
+      setReviewingId(null);
+      setReviewForm({ rating: 5, comment: "" });
+      toast.success(
+        isEdit ? "Cập nhật đánh giá thành công!" : "Đánh giá thành công!",
+      );
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setReviewSubmitting(false);
     }
   }
 
@@ -247,7 +312,10 @@ export default function Profile() {
             <p className="text-secondary text-sm truncate">{user.email}</p>
           </div>
           <button
-            onClick={() => { logout(); navigate("/"); }}
+            onClick={() => {
+              logout();
+              navigate("/");
+            }}
             className="text-sm text-secondary hover:text-red-500 font-semibold transition-colors shrink-0"
           >
             Đăng xuất
@@ -257,11 +325,16 @@ export default function Profile() {
         {/* Phone collection prompt */}
         {!user.phone && (
           <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-2xl flex items-start gap-3">
-            <span className="material-symbols-outlined text-yellow-600 shrink-0">info</span>
+            <span className="material-symbols-outlined text-yellow-600 shrink-0">
+              info
+            </span>
             <div className="flex-1">
-              <p className="font-bold text-yellow-900 text-sm">Cần cập nhật số điện thoại</p>
+              <p className="font-bold text-yellow-900 text-sm">
+                Cần cập nhật số điện thoại
+              </p>
               <p className="text-yellow-800 text-xs mt-0.5">
-                Vui lòng thêm số điện thoại để nhà xe có thể liên hệ khi cần thiết.{" "}
+                Vui lòng thêm số điện thoại để nhà xe có thể liên hệ khi cần
+                thiết.{" "}
                 <button
                   onClick={() => setTab(0)}
                   className="font-bold underline hover:opacity-70"
@@ -292,10 +365,17 @@ export default function Profile() {
 
         {/* Tab 0 — Thông tin */}
         {tab === 0 && (
-          <form onSubmit={handleSaveProfile} className="bg-white rounded-2xl p-6 shadow-sm space-y-5 max-w-lg">
+          <form
+            onSubmit={handleSaveProfile}
+            className="bg-white rounded-2xl p-6 shadow-sm space-y-5 max-w-lg"
+          >
             <h2 className="text-lg font-bold">Thông tin cá nhân</h2>
-            {saveMsg && <p className="text-green-600 text-sm font-medium">{saveMsg}</p>}
-            {saveErr && <p className="text-red-500 text-sm font-medium">{saveErr}</p>}
+            {saveMsg && (
+              <p className="text-green-600 text-sm font-medium">{saveMsg}</p>
+            )}
+            {saveErr && (
+              <p className="text-red-500 text-sm font-medium">{saveErr}</p>
+            )}
             <div className="space-y-1.5">
               <label className="block text-[10px] font-bold tracking-widest text-secondary uppercase">
                 Họ và tên
@@ -343,14 +423,33 @@ export default function Profile() {
 
         {/* Tab 1 — Mật khẩu */}
         {tab === 1 && (
-          <form onSubmit={handleChangePassword} className="bg-white rounded-2xl p-6 shadow-sm space-y-5 max-w-lg">
+          <form
+            onSubmit={handleChangePassword}
+            className="bg-white rounded-2xl p-6 shadow-sm space-y-5 max-w-lg"
+          >
             <h2 className="text-lg font-bold">Đổi mật khẩu</h2>
-            {pwMsg && <p className="text-green-600 text-sm font-medium">{pwMsg}</p>}
-            {pwErr && <p className="text-red-500 text-sm font-medium">{pwErr}</p>}
+            {pwMsg && (
+              <p className="text-green-600 text-sm font-medium">{pwMsg}</p>
+            )}
+            {pwErr && (
+              <p className="text-red-500 text-sm font-medium">{pwErr}</p>
+            )}
             {[
-              { label: "Mật khẩu hiện tại", value: currentPassword, set: setCurrentPassword },
-              { label: "Mật khẩu mới", value: newPassword, set: setNewPassword },
-              { label: "Xác nhận mật khẩu mới", value: confirmPassword, set: setConfirmPassword },
+              {
+                label: "Mật khẩu hiện tại",
+                value: currentPassword,
+                set: setCurrentPassword,
+              },
+              {
+                label: "Mật khẩu mới",
+                value: newPassword,
+                set: setNewPassword,
+              },
+              {
+                label: "Xác nhận mật khẩu mới",
+                value: confirmPassword,
+                set: setConfirmPassword,
+              },
             ].map(({ label, value, set }) => (
               <div key={label} className="space-y-1.5">
                 <label className="block text-[10px] font-bold tracking-widest text-secondary uppercase">
@@ -386,17 +485,29 @@ export default function Profile() {
               <p className="text-secondary text-sm">Chưa có đơn đặt vé nào.</p>
             )}
             {bookings.map((b) => {
-              const status = STATUS_LABELS[b.status] || { label: b.status, cls: "bg-gray-100 text-gray-600" };
-              const seats = b.bookingSeats?.map((bs) => bs.seat.seat.seatLabel).join(", ");
-              const eligible = b.status === "paid" && b.trip.status === "completed";
+              const status = STATUS_LABELS[b.status] || {
+                label: b.status,
+                cls: "bg-gray-100 text-gray-600",
+              };
+              const seats = b.bookingSeats
+                ?.map((bs) => bs.seat.seat.seatLabel)
+                .join(", ");
+              const eligible =
+                b.status === "paid" &&
+                b.trip.status === "completed" &&
+                new Date(b.trip.departureTime) < new Date();
               const hasReport = b.reports?.length > 0;
               return (
-                <div key={b.id} className="bg-white rounded-2xl shadow-sm overflow-hidden">
+                <div
+                  key={b.id}
+                  className="bg-white rounded-2xl shadow-sm overflow-hidden"
+                >
                   {/* Clickable booking info */}
                   <div
                     onClick={() => {
                       if (b.status === "paid") navigate(`/tickets/${b.id}`);
-                      else if (b.status === "pending") navigate(`/booking/${b.id}`);
+                      else if (b.status === "pending")
+                        navigate(`/booking/${b.id}`);
                     }}
                     className={`p-5 flex flex-col sm:flex-row sm:items-center gap-4 transition-all ${b.status === "paid" || b.status === "pending" ? "cursor-pointer hover:bg-surface-container-low/50 active:scale-[0.99]" : ""}`}
                   >
@@ -409,7 +520,9 @@ export default function Profile() {
                       </p>
                     </div>
                     <div className="flex items-center gap-4 shrink-0">
-                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${status.cls}`}>
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs font-bold ${status.cls}`}
+                      >
                         {status.label}
                       </span>
                       <p className="font-black text-primary">
@@ -419,44 +532,65 @@ export default function Profile() {
                   </div>
 
                   {/* Huỷ vé */}
-                  {(b.status === "pending" || b.status === "paid") && new Date(b.trip.departureTime) > new Date() && (
-                    <div className="px-5 pb-4 border-t border-surface-container-low pt-3 flex items-center justify-between">
-                      <button
-                        onClick={() => handleCancelBooking(b)}
-                        disabled={cancellingId === b.id}
-                        className="text-sm text-red-500 font-bold flex items-center gap-1 hover:opacity-70 disabled:opacity-50 transition-opacity"
-                      >
-                        <span className="material-symbols-outlined text-sm">cancel</span>
-                        {cancellingId === b.id ? "Đang huỷ..." : "Huỷ đặt vé"}
-                      </button>
-                      {b.status === "paid" && (
-                        <span className="text-xs text-secondary">
-                          {(() => {
-                            const h = (new Date(b.trip.departureTime) - new Date()) / 3600000;
-                            if (h > 24) return "Hoàn 100%";
-                            if (h > 12) return "Hoàn 50%";
-                            return "Không hoàn tiền";
-                          })()}
-                        </span>
-                      )}
-                    </div>
-                  )}
+                  {(b.status === "pending" || b.status === "paid") &&
+                    new Date(b.trip.departureTime) > new Date() && (
+                      <div className="px-5 pb-4 border-t border-surface-container-low pt-3 flex items-center justify-between">
+                        <button
+                          onClick={() => handleCancelBooking(b)}
+                          disabled={cancellingId === b.id}
+                          className="text-sm text-red-500 font-bold flex items-center gap-1 hover:opacity-70 disabled:opacity-50 transition-opacity"
+                        >
+                          <span className="material-symbols-outlined text-sm">
+                            cancel
+                          </span>
+                          {cancellingId === b.id ? "Đang huỷ..." : "Huỷ đặt vé"}
+                        </button>
+                        {b.status === "paid" && (
+                          <span className="text-xs text-secondary">
+                            {(() => {
+                              const h =
+                                (new Date(b.trip.departureTime) - new Date()) /
+                                3600000;
+                              if (h > 24) return "Hoàn 100%";
+                              if (h > 12) return "Hoàn 50%";
+                              return "Không hoàn tiền";
+                            })()}
+                          </span>
+                        )}
+                      </div>
+                    )}
 
                   {/* Report section */}
                   {eligible && (
                     <div className="px-5 pb-4 border-t border-surface-container-low">
                       {hasReport ? (
                         <div className="pt-3 space-y-1.5">
-                          <p className="text-[10px] font-bold tracking-widest text-secondary uppercase">Báo cáo của bạn</p>
+                          <p className="text-[10px] font-bold tracking-widest text-secondary uppercase">
+                            Báo cáo của bạn
+                          </p>
                           {(() => {
                             const r = b.reports[0];
                             const sev = SEVERITY_LABELS[r.severity];
                             const st = REPORT_STATUS_LABELS[r.status];
                             return (
                               <div className="flex flex-wrap items-center gap-2">
-                                <span className="text-sm font-medium text-on-surface">{CATEGORY_LABELS[r.category] ?? r.category}</span>
-                                {sev && <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${sev.cls}`}>{sev.label}</span>}
-                                {st && <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${st.cls}`}>{st.label}</span>}
+                                <span className="text-sm font-medium text-on-surface">
+                                  {CATEGORY_LABELS[r.category] ?? r.category}
+                                </span>
+                                {sev && (
+                                  <span
+                                    className={`px-2 py-0.5 rounded-full text-xs font-bold ${sev.cls}`}
+                                  >
+                                    {sev.label}
+                                  </span>
+                                )}
+                                {st && (
+                                  <span
+                                    className={`px-2 py-0.5 rounded-full text-xs font-bold ${st.cls}`}
+                                  >
+                                    {st.label}
+                                  </span>
+                                )}
                               </div>
                             );
                           })()}
@@ -466,16 +600,26 @@ export default function Profile() {
                           <p className="text-sm font-bold">Báo cáo sự cố</p>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div className="space-y-1">
-                              <label className="text-[10px] font-bold tracking-widest text-secondary uppercase">Loại sự cố</label>
+                              <label className="text-[10px] font-bold tracking-widest text-secondary uppercase">
+                                Loại sự cố
+                              </label>
                               <select
                                 value={reportForm.category}
-                                onChange={(e) => setReportForm((f) => ({ ...f, category: e.target.value }))}
+                                onChange={(e) =>
+                                  setReportForm((f) => ({
+                                    ...f,
+                                    category: e.target.value,
+                                  }))
+                                }
                                 className="w-full px-3 py-2 text-sm bg-surface-container-low rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30"
                               >
                                 <option value="">-- Chọn loại --</option>
                                 {[
                                   ["dangerous_driving", "Lái xe nguy hiểm"],
-                                  ["phone_while_driving", "Dùng điện thoại khi lái"],
+                                  [
+                                    "phone_while_driving",
+                                    "Dùng điện thoại khi lái",
+                                  ],
                                   ["wrong_vehicle", "Sai phương tiện"],
                                   ["dirty_vehicle", "Xe bẩn"],
                                   ["wrong_stop", "Sai điểm dừng"],
@@ -483,15 +627,24 @@ export default function Profile() {
                                   ["rude_behavior", "Thái độ thô lỗ"],
                                   ["other", "Khác"],
                                 ].map(([val, label]) => (
-                                  <option key={val} value={val}>{label}</option>
+                                  <option key={val} value={val}>
+                                    {label}
+                                  </option>
                                 ))}
                               </select>
                             </div>
                             <div className="space-y-1">
-                              <label className="text-[10px] font-bold tracking-widest text-secondary uppercase">Mức độ</label>
+                              <label className="text-[10px] font-bold tracking-widest text-secondary uppercase">
+                                Mức độ
+                              </label>
                               <select
                                 value={reportForm.severity}
-                                onChange={(e) => setReportForm((f) => ({ ...f, severity: e.target.value }))}
+                                onChange={(e) =>
+                                  setReportForm((f) => ({
+                                    ...f,
+                                    severity: e.target.value,
+                                  }))
+                                }
                                 className="w-full px-3 py-2 text-sm bg-surface-container-low rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30"
                               >
                                 <option value="low">Nhẹ</option>
@@ -502,22 +655,40 @@ export default function Profile() {
                           </div>
                           <textarea
                             value={reportForm.details}
-                            onChange={(e) => setReportForm((f) => ({ ...f, details: e.target.value }))}
+                            onChange={(e) =>
+                              setReportForm((f) => ({
+                                ...f,
+                                details: e.target.value,
+                              }))
+                            }
                             placeholder="Mô tả chi tiết sự cố..."
                             rows={3}
                             className="w-full px-3 py-2 text-sm bg-surface-container-low rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-primary/30"
                           />
-                          {reportError && <p className="text-red-500 text-xs">{reportError}</p>}
+                          {reportError && (
+                            <p className="text-red-500 text-xs">
+                              {reportError}
+                            </p>
+                          )}
                           <div className="flex gap-2">
                             <button
-                              onClick={() => handleSubmitReport(b.id, b.trip.driverId)}
-                              disabled={!reportForm.category || !reportForm.details.trim() || reportSubmitting}
+                              onClick={() =>
+                                handleSubmitReport(b.id, b.trip.driverId)
+                              }
+                              disabled={
+                                !reportForm.category ||
+                                !reportForm.details.trim() ||
+                                reportSubmitting
+                              }
                               className="px-4 py-1.5 bg-red-500 text-white text-sm font-bold rounded-xl disabled:opacity-50 hover:opacity-90 transition-opacity"
                             >
                               {reportSubmitting ? "Đang gửi..." : "Gửi báo cáo"}
                             </button>
                             <button
-                              onClick={() => { setReportingId(null); setReportError(""); }}
+                              onClick={() => {
+                                setReportingId(null);
+                                setReportError("");
+                              }}
                               className="px-4 py-1.5 text-sm text-secondary hover:text-on-surface transition-colors"
                             >
                               Huỷ
@@ -526,11 +697,114 @@ export default function Profile() {
                         </div>
                       ) : (
                         <button
-                          onClick={() => { setReportingId(b.id); setReportForm({ category: "", severity: "medium", details: "" }); setReportError(""); }}
+                          onClick={() => {
+                            setReportingId(b.id);
+                            setReportForm({
+                              category: "",
+                              severity: "medium",
+                              details: "",
+                            });
+                            setReportError("");
+                          }}
                           className="mt-3 text-sm text-red-500 font-bold flex items-center gap-1 cursor-pointer group"
                         >
-                          <span className="material-symbols-outlined text-sm">flag</span>
-                          <span className="group-hover:underline">Báo cáo sự cố</span>
+                          <span className="material-symbols-outlined text-sm">
+                            flag
+                          </span>
+                          <span className="group-hover:underline">
+                            Báo cáo sự cố
+                          </span>
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  {/* Review section */}
+                  {eligible && (
+                    <div className="px-5 pb-4 border-t border-surface-container-low">
+                      {b.review && reviewingId !== b.id ? (
+                        // Đã review: hiển thị + nút sửa
+                        <div className="pt-3">
+                          <div className="flex items-center justify-between mb-1">
+                            <p className="text-[10px] font-bold tracking-widest text-secondary uppercase">
+                              Đánh giá của bạn
+                            </p>
+                            <button
+                              onClick={() => {
+                                setReviewingId(b.id);
+                                setReviewForm({
+                                  rating: b.review.rating,
+                                  comment: b.review.comment || "",
+                                });
+                              }}
+                              className="text-xs text-primary font-bold hover:opacity-70 cursor-pointer"
+                            >
+                              Sửa
+                            </button>
+                          </div>
+                          <Star value={b.review.rating} />
+                          {b.review.comment && (
+                            <p className="text-sm text-on-surface mt-1">
+                              {b.review.comment}
+                            </p>
+                          )}
+                        </div>
+                      ) : reviewingId === b.id ? (
+                        // Form đang mở
+                        <div className="pt-3 space-y-3">
+                          <p className="text-sm font-bold">
+                            Đánh giá chuyến đi
+                          </p>
+                          <Star
+                            value={reviewForm.rating}
+                            onChange={(r) =>
+                              setReviewForm((f) => ({ ...f, rating: r }))
+                            }
+                            editable
+                          />
+                          <textarea
+                            value={reviewForm.comment}
+                            onChange={(e) =>
+                              setReviewForm((f) => ({
+                                ...f,
+                                comment: e.target.value,
+                              }))
+                            }
+                            placeholder="Chia sẻ cảm nhận về chuyến đi (không bắt buộc)"
+                            rows={3}
+                            maxLength={200}
+                            className="w-full px-3 py-2 text-sm bg-surface-container-low rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-primary/30"
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleSubmitReview(b)}
+                              disabled={reviewSubmitting}
+                              className="px-4 py-1.5 bg-primary text-white text-sm font-bold rounded-xl disabled:opacity-50 cursor-pointer hover:opacity-90 transition-opacity"
+                            >
+                              {reviewSubmitting
+                                ? "Đang gửi..."
+                                : "Gửi đánh giá"}
+                            </button>
+                            <button
+                              onClick={() => setReviewingId(null)}
+                              className="px-4 py-1.5 text-sm text-secondary hover:text-on-surface cursor-pointer"
+                            >
+                              Huỷ
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        // Chưa review: nút mở form
+                        <button
+                          onClick={() => {
+                            setReviewingId(b.id);
+                            setReviewForm({ rating: 5, comment: "" });
+                          }}
+                          className="mt-3 text-sm text-primary font-bold flex items-center gap-1 cursor-pointer hover:opacity-70"
+                        >
+                          <span className="material-symbols-outlined text-sm">
+                            star
+                          </span>
+                          Đánh giá chuyến đi
                         </button>
                       )}
                     </div>

@@ -148,7 +148,7 @@ function PasswordField({ label, value, onChange, show, onToggle }) {
         <button
           type="button"
           onClick={onToggle}
-          className="absolute right-4 top-1/2 -translate-y-1/2"
+          className="absolute right-4 top-1/2 -translate-y-1/2 cursor-pointer"
         >
           <img
             src={iconShow}

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import heroImg from "../assets/img/hero-img.png";
 import steeringWheelIcon from "../assets/icons/steering-wheel.svg";
 import { useAuth } from "../context/AuthContext";
+import Star from "../components/Star.jsx";
 
 function formatTime(isoString) {
   return new Date(isoString).toLocaleTimeString("vi-VN", {
@@ -65,24 +66,28 @@ export default function TripDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedIds, setSelectedIds] = useState([]);
+  const [reviewsData, setReviewsData] = useState({ avgRating: 0, count: 0, reviews: [] });
 
   useEffect(() => {
     async function fetchData() {
       setLoading(true);
       setError("");
       try {
-        const [tripRes, seatsRes] = await Promise.all([
+        const [tripRes, seatsRes, reviewsRes] = await Promise.all([
           fetch(`${import.meta.env.VITE_API_URL}/api/trips/${id}`),
           fetch(`${import.meta.env.VITE_API_URL}/api/trips/${id}/seats`),
+          fetch(`${import.meta.env.VITE_API_URL}/api/reviews/trip/${id}`),
         ]);
-        const [tripData, seatsData] = await Promise.all([
+        const [tripData, seatsData, reviewsJson] = await Promise.all([
           tripRes.json(),
           seatsRes.json(),
+          reviewsRes.json(),
         ]);
         if (tripData.error) throw new Error(tripData.error);
         if (seatsData.error) throw new Error(seatsData.error);
         setTrip(tripData);
         setTripSeats(seatsData);
+        if (!reviewsJson.error) setReviewsData(reviewsJson);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -218,8 +223,7 @@ export default function TripDetail() {
                     {trip.driver.fullName}
                   </p>
                   <p className="text-secondary text-sm">
-                    ⭐ {trip.driver.rating.toFixed(1)} ·{" "}
-                    {trip.driver.totalTrips} chuyến
+                    {trip.driver._count?.tripsAsDriver ?? 0} chuyến đã hoàn thành
                   </p>
                 </div>
               </div>
@@ -354,6 +358,9 @@ export default function TripDetail() {
             )}
           </section>
         </div>
+
+        {/* Reviews section */}
+        <ReviewsSection data={reviewsData} />
       </div>
 
       {/* Bottom bar */}
@@ -508,5 +515,54 @@ function SeatGrid({
         })}
       </div>
     </div>
+  );
+}
+
+function ReviewsSection({ data }) {
+  const { avgRating, count, reviews } = data;
+
+  return (
+    <section className="mt-6 bg-white rounded-2xl p-5 md:p-6 shadow-sm">
+      <div className="flex items-center justify-between gap-3 mb-4">
+        <h2 className="text-lg font-bold text-on-surface">Đánh giá tuyến này</h2>
+        {count > 0 && (
+          <div className="flex items-center gap-2">
+            <Star value={Math.round(avgRating)} size="text-lg" />
+            <span className="font-bold text-on-surface">{avgRating.toFixed(1)}</span>
+            <span className="text-secondary text-sm">({count} đánh giá)</span>
+          </div>
+        )}
+      </div>
+
+      {count === 0 ? (
+        <p className="text-secondary text-sm text-center py-6">
+          Chưa có đánh giá nào cho tuyến này.
+        </p>
+      ) : (
+        <div className="space-y-4">
+          {reviews.map((r) => (
+            <div
+              key={r.id}
+              className="border-b border-outline-variant/20 last:border-b-0 pb-4 last:pb-0"
+            >
+              <div className="flex items-center justify-between mb-1">
+                <p className="font-bold text-on-surface text-sm">
+                  {r.user?.fullName || "Người dùng ẩn danh"}
+                </p>
+                <span className="text-xs text-secondary">
+                  {new Date(r.createdAt).toLocaleDateString("vi-VN")}
+                </span>
+              </div>
+              <Star value={r.rating} size="text-sm" />
+              {r.comment && (
+                <p className="text-sm text-on-surface mt-2 leading-relaxed">
+                  {r.comment}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }

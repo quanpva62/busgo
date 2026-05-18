@@ -200,8 +200,7 @@ async function main() {
             driverRole: "driver",
             licenseNo: `TX${ci}${di}${rand(100000, 999999)}`,
             licenseType: di < 2 ? "E" : "D",
-            rating: rand(40, 50) / 10,
-            totalTrips: rand(80, 500), companyId: company.id,
+            companyId: company.id,
             busId: buses[di % buses.length].id,
           },
         });
@@ -218,7 +217,6 @@ async function main() {
             fullName: DRIVER_NAMES[ci * 6 + 4 + ai], phone,
             driverRole: "assistant", companyId: company.id,
             busId: sleeperBuses[ai % sleeperBuses.length].id,
-            rating: rand(35, 50) / 10, totalTrips: rand(30, 200),
           },
         });
       assistants.push(assistant);
@@ -253,6 +251,14 @@ async function main() {
 
   const PRICE_BY_TYPE = { sleeper: [350, 900], standard: [150, 400], minibus: [80, 250] };
 
+  // Group trips theo routine (ci, routeId, hour) → cùng seriesId
+  const seriesMap = new Map();
+  function getSeriesId(ci, routeId, hour) {
+    const key = `${ci}:${routeId}:${hour}`;
+    if (!seriesMap.has(key)) seriesMap.set(key, uuid());
+    return seriesMap.get(key);
+  }
+
   for (let monthOffset = -5; monthOffset <= 0; monthOffset++) {
     for (let ci = 0; ci < companyData.length; ci++) {
       const { company, drivers, assistants, busForRoute } = companyData[ci];
@@ -266,7 +272,8 @@ async function main() {
         for (let t = 0; t < 2; t++) {
           const baseDate = addMonths(now, monthOffset);
           baseDate.setDate(rand(1, 25));
-          baseDate.setHours(pick([6, 8, 12, 15, 18, 22]), 0, 0, 0);
+          const hour = pick([6, 8, 12, 15, 18, 22]);
+          baseDate.setHours(hour, 0, 0, 0);
           const dep = baseDate;
           const arr = new Date(dep.getTime() + route.estimatedDuration * 60000);
           const price = rand(pMin, pMax) * 1000;
@@ -281,6 +288,7 @@ async function main() {
               pickupAddress: `Bến xe ${route.fromCity}`,
               dropoffAddress: `Bến xe ${route.toCity}`,
               status: "completed",
+              seriesId: getSeriesId(ci, route.id, hour),
             },
           });
 
@@ -401,7 +409,7 @@ async function main() {
 
   let futureTripCount = 0;
 
-  async function createScheduledTrip(route, dep, price, { drivers, assistants, busForRoute }) {
+  async function createScheduledTrip(route, dep, price, seriesId, { drivers, assistants, busForRoute }) {
     if (!route) return;
     const bus = busForRoute(route);
     const driver = pick(drivers);
@@ -415,6 +423,7 @@ async function main() {
         pickupAddress: `Bến xe ${route.fromCity}`,
         dropoffAddress: `Bến xe ${route.toCity}`,
         status: "scheduled",
+        seriesId,
       },
     });
     const seats = await prisma.seat.findMany({ where: { busId: bus.id } });
@@ -432,14 +441,16 @@ async function main() {
         for (const hour of hours) {
           const dep = addDays(now, d);
           dep.setHours(hour, 0, 0, 0);
-          await createScheduledTrip(route, dep, price, cd);
+          const seriesId = getSeriesId(ci, route.id, hour);
+          await createScheduledTrip(route, dep, price, seriesId, cd);
         }
       }
       for (const { route, hours, price, everyNDays } of occasional) {
         if (d % everyNDays === 0) {
           const dep = addDays(now, d);
           dep.setHours(hours[0], 0, 0, 0);
-          await createScheduledTrip(route, dep, price, cd);
+          const seriesId = getSeriesId(ci, route.id, hours[0]);
+          await createScheduledTrip(route, dep, price, seriesId, cd);
         }
       }
     }

@@ -123,7 +123,6 @@ const vnpayReturn = async (req, res) => {
         );
       });
     const signData = qs.stringify(sortedParams, { encode: false });
-    console.log("signData for return:", signData);
     const hmac = crypto.createHmac("sha512", process.env.VNP_HASH_SECRET);
     const calculatedHash = hmac.update(signData).digest("hex");
 
@@ -164,41 +163,57 @@ const vnpayReturn = async (req, res) => {
               bookingId: payment.bookingId,
               ticketCode:
                 "BG-" + Math.random().toString(36).substr(2, 9).toUpperCase(),
-              qrCode: JSON.stringify({ bookingId: payment.bookingId, vnpTxnRef }),
+              qrCode: JSON.stringify({
+                bookingId: payment.bookingId,
+                vnpTxnRef,
+              }),
               isUsed: false,
             },
           }),
         ]);
 
         // Gửi email xác nhận vé (fire-and-forget, không block redirect)
-        prisma.booking.findUnique({
-          where: { id: bookingId },
-          include: {
-            trip: { include: { route: true } },
-            bookingSeats: { include: { seat: { include: { seat: true } } } },
-          },
-        }).then((booking) => {
-          if (!booking?.passengerEmail) return;
-          const seats = booking.bookingSeats.map((bs) => bs.seat.seat.seatLabel).join(", ");
-          return sendTicketEmail({
-            to: booking.passengerEmail,
-            passengerName: booking.passengerName,
-            ticketCode: ticket.ticketCode,
-            fromCity: booking.trip.route.fromCity,
-            toCity: booking.trip.route.toCity,
-            departureTime: booking.trip.departureTime,
-            seats,
-            totalPrice: booking.totalPrice,
-          });
-        }).catch((err) => console.error("Send email failed:", err));
+        prisma.booking
+          .findUnique({
+            where: { id: bookingId },
+            include: {
+              trip: { include: { route: true } },
+              bookingSeats: { include: { seat: { include: { seat: true } } } },
+            },
+          })
+          .then((booking) => {
+            if (!booking?.passengerEmail) return;
+            const seats = booking.bookingSeats
+              .map((bs) => bs.seat.seat.seatLabel)
+              .join(", ");
+            return sendTicketEmail({
+              to: booking.passengerEmail,
+              passengerName: booking.passengerName,
+              ticketCode: ticket.ticketCode,
+              fromCity: booking.trip.route.fromCity,
+              toCity: booking.trip.route.toCity,
+              departureTime: booking.trip.departureTime,
+              seats,
+              totalPrice: booking.totalPrice,
+            });
+          })
+          .catch((err) => console.error("Send email failed:", err));
 
-        return res.redirect(`${frontendUrl}/payment/result?status=success&bookingId=${bookingId}`);
+        return res.redirect(
+          `${frontendUrl}/payment/result?status=success&bookingId=${bookingId}`,
+        );
       } else {
         await prisma.payment.update({
           where: { vnpTxnRef },
-          data: { status: "failed", vnpResponseCode: responseCode, vnpRaw: vnpParams },
+          data: {
+            status: "failed",
+            vnpResponseCode: responseCode,
+            vnpRaw: vnpParams,
+          },
         });
-        return res.redirect(`${frontendUrl}/payment/result?status=failed&bookingId=${bookingId}`);
+        return res.redirect(
+          `${frontendUrl}/payment/result?status=failed&bookingId=${bookingId}`,
+        );
       }
     } else {
       const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";

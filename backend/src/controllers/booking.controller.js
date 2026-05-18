@@ -17,10 +17,12 @@ const createBooking = async (req, res) => {
       include: { bus: true },
     });
     if (!trip) {
-      return res.status(404).json({ error: "Trip không tồn tại" });
+      return res.status(404).json({ error: "Chuyến đi không tồn tại" });
     }
     if (trip.status !== "scheduled") {
-      return res.status(400).json({ error: "Trip không khả dụng để đặt vé" });
+      return res
+        .status(400)
+        .json({ error: "Chuyến đi không khả dụng để đặt vé" });
     }
     // Huỷ booking pending cũ của user trên cùng chuyến (nếu có) → giải phóng ghế
     const oldPending = await prisma.booking.findFirst({
@@ -158,7 +160,9 @@ const getBooking = async (req, res) => {
       return res.status(404).json({ error: "Không tìm thấy booking" });
     }
     if (booking.userId !== req.user.userId) {
-      return res.status(403).json({ error: "Bạn không có quyền xem booking này" });
+      return res
+        .status(403)
+        .json({ error: "Bạn không có quyền xem booking này" });
     }
     res.status(200).json({ booking });
   } catch (error) {
@@ -174,9 +178,12 @@ const cancelBooking = async (req, res) => {
       where: { id },
       include: { trip: true, payment: true },
     });
-    if (!booking) return res.status(404).json({ error: "Booking không tồn tại" });
+    if (!booking)
+      return res.status(404).json({ error: "Booking không tồn tại" });
     if (booking.userId !== req.user.userId)
-      return res.status(403).json({ error: "Bạn không có quyền hủy booking này" });
+      return res
+        .status(403)
+        .json({ error: "Bạn không có quyền hủy booking này" });
     if (booking.status === "cancelled" || booking.status === "refunded")
       return res.status(400).json({ error: "Booking đã được hủy trước đó" });
     if (booking.status !== "pending" && booking.status !== "paid")
@@ -205,7 +212,9 @@ const cancelBooking = async (req, res) => {
     // Gọi VNPay refund nếu cần hoàn tiền
     if (booking.status === "paid" && refundAmount > 0) {
       if (!booking.payment || booking.payment.status !== "successful") {
-        return res.status(400).json({ error: "Không tìm thấy giao dịch thanh toán hợp lệ" });
+        return res
+          .status(400)
+          .json({ error: "Không tìm thấy giao dịch thanh toán hợp lệ" });
       }
       const refundRes = await refundVnpay({
         payment: booking.payment,
@@ -228,7 +237,8 @@ const cancelBooking = async (req, res) => {
       });
     }
 
-    const newStatus = booking.status === "paid" && refundAmount > 0 ? "refunded" : "cancelled";
+    const newStatus =
+      booking.status === "paid" && refundAmount > 0 ? "refunded" : "cancelled";
 
     await prisma.$transaction(async (tx) => {
       await tx.booking.update({
@@ -241,7 +251,14 @@ const cancelBooking = async (req, res) => {
       });
     });
 
-    res.status(200).json({ message: "Hủy booking thành công", refundAmount, refundNote, status: newStatus });
+    res
+      .status(200)
+      .json({
+        message: "Hủy booking thành công",
+        refundAmount,
+        refundNote,
+        status: newStatus,
+      });
   } catch (error) {
     console.error("Error cancelling booking:", error);
     res.status(500).json({ error: "Lỗi máy chủ nội bộ" });
@@ -278,7 +295,18 @@ const getMyBookings = async (req, res) => {
         bookingSeats: {
           include: { seat: { include: { seat: true } } }, // TripSeat → Seat
         },
-        reports: { select: { id: true, category: true, severity: true, status: true, createdAt: true } },
+        reports: {
+          select: {
+            id: true,
+            category: true,
+            severity: true,
+            status: true,
+            createdAt: true,
+          },
+        },
+        review: {
+          select: { id: true, rating: true, comment: true, createdAt: true },
+        },
       },
     });
     res.json(bookings);

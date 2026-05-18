@@ -75,13 +75,13 @@ function ConfirmModal({ title, message, confirmText, cancelText, variant, onClos
         <div className="flex gap-3 justify-end">
           <button
             onClick={() => onClose(false)}
-            className="px-5 py-2.5 rounded-xl text-sm font-bold text-secondary hover:bg-surface-container-low transition-colors"
+            className="px-5 py-2.5 rounded-xl text-sm font-bold text-secondary hover:bg-surface-container-low transition-colors cursor-pointer"
           >
             {cancelText}
           </button>
           <button
             onClick={() => onClose(true)}
-            className={`px-5 py-2.5 rounded-xl text-sm font-bold text-white shadow-lg transition-all active:scale-[0.98] ${btnCls}`}
+            className={`px-5 py-2.5 rounded-xl text-sm font-bold text-white shadow-lg transition-all active:scale-[0.98] cursor-pointer ${btnCls}`}
           >
             {confirmText}
           </button>
@@ -119,7 +119,7 @@ function ToastContainer({ toasts, onClose }) {
             <p className="flex-1 text-sm font-medium whitespace-pre-line">{t.message}</p>
             <button
               onClick={() => onClose(t.id)}
-              className="shrink-0 hover:opacity-70 transition-opacity"
+              className="shrink-0 hover:opacity-70 transition-opacity cursor-pointer"
             >
               <span className="material-symbols-outlined text-base">close</span>
             </button>
