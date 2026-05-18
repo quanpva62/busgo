@@ -1,0 +1,109 @@
+import { useEffect, useRef, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import iconBus from "../assets/icons/bus.svg";
+
+export default function VerifyEmail() {
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get("token") || "";
+
+  const [status, setStatus] = useState("loading"); // loading | success | error
+  const [message, setMessage] = useState("");
+  const calledRef = useRef(false);
+
+  useEffect(() => {
+    if (!token) {
+      setStatus("error");
+      setMessage("Link xác thực không hợp lệ");
+      return;
+    }
+    // Tránh StrictMode double-call trong dev — chỉ chạy 1 lần
+    if (calledRef.current) return;
+    calledRef.current = true;
+
+    async function verify() {
+      try {
+        const res = await fetch(
+          `${import.meta.env.VITE_API_URL}/api/auth/verify-email`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token }),
+          },
+        );
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Xác thực thất bại");
+        setStatus("success");
+        setMessage(data.message);
+      } catch (err) {
+        setStatus("error");
+        setMessage(err.message);
+      }
+    }
+    verify();
+  }, [token]);
+
+  return (
+    <main className="min-h-screen bg-white sm:bg-surface-container-low flex flex-col items-center justify-center px-6 py-12">
+      <div className="bg-white sm:rounded-3xl sm:shadow-lg p-0 sm:p-10 w-full max-w-md text-center">
+        <div className="flex items-center justify-center gap-3 mb-8">
+          <div className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center shrink-0">
+            <img src={iconBus} alt="" className="w-7 h-7 brightness-0 invert" />
+          </div>
+          <span className="text-2xl font-black tracking-tighter text-primary">
+            BusGo
+          </span>
+        </div>
+
+        {status === "loading" && (
+          <>
+            <span className="material-symbols-outlined text-6xl text-primary animate-spin">progress_activity</span>
+            <h1 className="text-2xl font-bold text-on-surface mt-4 mb-2">
+              Đang xác thực...
+            </h1>
+            <p className="text-secondary text-sm">Vui lòng đợi trong giây lát.</p>
+          </>
+        )}
+
+        {status === "success" && (
+          <>
+            <span className="material-symbols-outlined text-6xl text-green-500">check_circle</span>
+            <h1 className="text-2xl font-bold text-on-surface mt-4 mb-2">
+              Xác thực thành công!
+            </h1>
+            <p className="text-secondary text-sm mb-6">{message}</p>
+            <Link
+              to="/login"
+              className="inline-block px-6 py-3 bg-linear-to-br from-primary-container to-primary text-white font-bold rounded-xl shadow-lg hover:opacity-95 transition-all"
+            >
+              Đăng nhập ngay
+            </Link>
+          </>
+        )}
+
+        {status === "error" && (
+          <>
+            <span className="material-symbols-outlined text-6xl text-red-500">error</span>
+            <h1 className="text-2xl font-bold text-on-surface mt-4 mb-2">
+              Xác thực thất bại
+            </h1>
+            <p className="text-secondary text-sm mb-6">{message}</p>
+            <div className="flex gap-3 justify-center">
+              <Link
+                to="/login"
+                className="px-5 py-3 bg-white border border-outline-variant/30 text-on-surface font-bold rounded-xl hover:bg-surface-container-low transition-all"
+              >
+                Về đăng nhập
+              </Link>
+              <Link
+                to="/register"
+                className="px-5 py-3 bg-linear-to-br from-primary-container to-primary text-white font-bold rounded-xl shadow-lg hover:opacity-95 transition-all"
+              >
+                Đăng ký lại
+              </Link>
+            </div>
+          </>
+        )}
+      </div>
+    </main>
+  );
+}

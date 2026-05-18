@@ -1,77 +1,42 @@
 const express = require("express");
-
 const router = express.Router();
+
 const authController = require("../controllers/auth.controller");
 const authMiddleware = require("../middlewares/auth.middleware");
-const {
-  registerValidation,
-  loginValidation,
-  refreshTokenValidation,
-  forgotPasswordValidation,
-  resetPasswordValidation,
-} = require("../validators/auth.validator");
 const validate = require("../middlewares/validate.middleware");
 const {
   authLimit,
   passwordResetLimit,
 } = require("../middlewares/rateLimit.middleware");
-// import authController từ controllers/auth.controller.js
-
-// POST /api/auth/register  → authController.register
-
-router.post(
-  "/register",
-  authLimit,
+const {
   registerValidation,
-  validate,
-  authController.register,
-);
-
-// POST /api/auth/login     → authController.login
-router.post(
-  "/login",
-  authLimit,
   loginValidation,
-  validate,
-  authController.login,
-);
-
-// POST /api/auth/refresh-token → authController.refreshToken
-router.post(
-  "/refresh-token",
   refreshTokenValidation,
-  validate,
-  authController.refreshToken,
-);
+  forgotPasswordValidation,
+  resetPasswordValidation,
+  verifyEmailValidation,
+  resendVerificationValidation,
+} = require("../validators/auth.validator");
 
-// GET  /api/auth/me        → authController.me
-router.get("/me", authMiddleware, authController.me);
-
-// PATCH /api/auth/me       → authController.updateMe
-router.patch("/me", authMiddleware, authController.updateMe);
-
-// PATCH /api/auth/password → authController.changePassword
-router.patch("/password", authMiddleware, authController.changePassword);
-
-// POST /api/auth/google    → authController.googleLogin
+// ───── Public: Sign-up & Sign-in ─────
+router.post("/register", authLimit, registerValidation, validate, authController.register);
+router.post("/login", authLimit, loginValidation, validate, authController.login);
 router.post("/google", authLimit, authController.googleLogin);
 
-// POST /api/auth/forgot-password
-router.post(
-  "/forgot-password",
-  passwordResetLimit,
-  forgotPasswordValidation,
-  validate,
-  authController.forgotPassword,
-);
+// ───── Email verification ─────
+router.post("/verify-email", verifyEmailValidation, validate, authController.verifyEmail);
+router.post("/resend-verification", passwordResetLimit, resendVerificationValidation, validate, authController.resendVerification);
 
-// POST /api/auth/reset-password
-router.post(
-  "/reset-password",
-  passwordResetLimit,
-  resetPasswordValidation,
-  validate,
-  authController.resetPassword,
-);
+// ───── Password reset (forgot flow) ─────
+router.post("/forgot-password", passwordResetLimit, forgotPasswordValidation, validate, authController.forgotPassword);
+router.post("/reset-password", passwordResetLimit, resetPasswordValidation, validate, authController.resetPassword);
+
+// ───── Session ─────
+router.post("/refresh-token", refreshTokenValidation, validate, authController.refreshToken);
+
+// ───── Authenticated: profile ─────
+router.get("/me", authMiddleware, authController.me);
+router.patch("/me", authMiddleware, authController.updateMe);
+router.patch("/password", authMiddleware, authController.changePassword);
 
 module.exports = router;

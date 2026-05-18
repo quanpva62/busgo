@@ -23,6 +23,8 @@ model User {
   googleId             String?        @unique
   resetPasswordToken   String?        @unique
   resetPasswordExpires DateTime?
+  emailVerifyToken     String?        @unique
+  emailVerifyExpires   DateTime?
   passwordChangedAt    DateTime?
   role                 Role           @default(user)
   isActive             Boolean        @default(true)

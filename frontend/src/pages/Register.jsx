@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { GoogleLogin } from "@react-oauth/google";
 import { useAuth } from "../context/AuthContext.jsx";
+import { useToast } from "../context/ToastContext.jsx";
 import iconBus from "../assets/icons/bus.svg";
 import iconUser from "../assets/icons/user.svg";
 import iconPassword from "../assets/icons/password.svg";
@@ -11,6 +12,7 @@ import iconArrow from "../assets/icons/right-arrow.svg";
 export default function Register() {
   const navigate = useNavigate();
   const { login } = useAuth();
+  const toast = useToast();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -41,6 +43,10 @@ export default function Register() {
       );
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Đăng ký thất bại");
+      toast.success(
+        data.message || "Đăng ký thành công! Vui lòng kiểm tra email để xác thực.",
+        6000,
+      );
       navigate("/login");
     } catch (err) {
       setError(err.message);

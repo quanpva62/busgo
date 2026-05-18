@@ -37,10 +37,20 @@ const resetPasswordValidation = [
     .withMessage("Mật khẩu phải có ít nhất 8 ký tự"),
 ];
 
+const verifyEmailValidation = [
+  body("token").notEmpty().withMessage("Thiếu token"),
+];
+
+const resendVerificationValidation = [
+  body("email").isEmail().withMessage("Vui lòng nhập email hợp lệ"),
+];
+
 module.exports = {
   registerValidation,
   loginValidation,
   refreshTokenValidation,
   forgotPasswordValidation,
   resetPasswordValidation,
+  verifyEmailValidation,
+  resendVerificationValidation,
 };

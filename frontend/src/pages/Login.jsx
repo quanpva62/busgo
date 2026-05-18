@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
+import { useToast } from "../context/ToastContext.jsx";
 import { Link, useNavigate } from "react-router-dom";
 import iconBus from "../assets/icons/bus.svg";
 import iconUser from "../assets/icons/user.svg";
@@ -11,16 +12,20 @@ import { GoogleLogin } from "@react-oauth/google";
 export default function Login() {
   // login và navigate sẽ dùng khi wire API
   const { login } = useAuth();
+  const toast = useToast();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [needVerification, setNeedVerification] = useState(false);
+  const [resending, setResending] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setNeedVerification(false);
     setLoading(true);
     try {
       const res = await fetch(
@@ -32,13 +37,37 @@ export default function Login() {
         },
       );
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Đăng nhập thất bại");
+      if (!res.ok) {
+        if (data.needVerification) setNeedVerification(true);
+        throw new Error(data.error || "Đăng nhập thất bại");
+      }
       login(data.user, data.accessToken, data.refreshToken); // Lưu token vào context
       navigate("/"); // Điều hướng về trang chủ sau khi login thành công
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    setResending(true);
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/auth/resend-verification`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email }),
+        },
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Không gửi được");
+      toast.success(data.message);
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setResending(false);
     }
   };
   const handleGoogleSubmit = async (credentialResponse) => {
@@ -94,6 +123,16 @@ export default function Login() {
         {error && (
           <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-xl text-sm font-medium">
             {error}
+            {needVerification && (
+              <button
+                type="button"
+                onClick={handleResend}
+                disabled={resending}
+                className="block mt-2 text-primary font-bold underline hover:opacity-70 disabled:opacity-50 cursor-pointer"
+              >
+                {resending ? "Đang gửi..." : "Gửi lại email xác thực"}
+              </button>
+            )}
           </div>
         )}
 

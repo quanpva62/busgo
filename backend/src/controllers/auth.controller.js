@@ -3,7 +3,10 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const { OAuth2Client } = require("google-auth-library");
-const { sendPasswordResetEmail } = require("../lib/mailer");
+const {
+  sendPasswordResetEmail,
+  sendVerificationEmail,
+} = require("../lib/mailer");
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const PASSWORD_COOLDOWN_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
@@ -27,30 +30,51 @@ const register = async (req, res) => {
   try {
     const { email, password, fullName, phone } = req.body;
 
-    // Check if user already exists
+    // 1. Check duplicate
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
       return res.status(400).json({ error: "Email already in use" });
     }
-
     const existingPhone = await prisma.user.findUnique({ where: { phone } });
     if (existingPhone) {
       return res.status(400).json({ error: "Phone number already in use" });
     }
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create user
+    // 2. Tạo user + verify token cùng lúc
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const verifyToken = crypto.randomBytes(32).toString("hex");
+    const hashedVerifyToken = crypto
+      .createHash("sha256")
+      .update(verifyToken)
+      .digest("hex");
+    const verifyExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h
+
     const user = await prisma.user.create({
       data: {
         email,
         passwordHash: hashedPassword,
         fullName,
         phone,
+        emailVerifyToken: hashedVerifyToken,
+        emailVerifyExpires: verifyExpires,
       },
     });
+
+    // 3. Gửi email verify (không block register nếu Gmail lỗi — user có thể resend)
+    const verifyUrl = `${process.env.FRONTEND_URL || "http://localhost:5173"}/verify-email?token=${verifyToken}`;
+    try {
+      await sendVerificationEmail({
+        to: user.email,
+        fullName: user.fullName,
+        verifyUrl,
+      });
+    } catch (mailErr) {
+      console.error("Send verification email failed:", mailErr);
+    }
+
     res.status(201).json({
-      message: "Registration successful",
+      message:
+        "Đăng ký thành công! Vui lòng kiểm tra email để xác thực tài khoản.",
       user: {
         id: user.id,
         email: user.email,
@@ -84,6 +108,13 @@ const login = async (req, res) => {
       return res.status(400).json({ error: "Invalid email or password" });
     }
 
+    if (!user.emailVerified) {
+      return res.status(403).json({
+        error:
+          "Email chưa được xác thực. Vui lòng kiểm tra hộp thư và xác thực email.",
+        needVerification: true,
+      });
+    }
     if (!user.isActive) {
       return res.status(403).json({ error: "Account has been disabled" });
     }
@@ -112,6 +143,74 @@ const login = async (req, res) => {
         role: user.role,
       },
     });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const verifyEmail = async (req, res) => {
+  try {
+    const { token } = req.body;
+    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+
+    const user = await prisma.user.findUnique({
+      where: { emailVerifyToken: hashedToken },
+    });
+
+    if (
+      !user ||
+      !user.emailVerifyExpires ||
+      user.emailVerifyExpires < new Date()
+    ) {
+      return res
+        .status(400)
+        .json({ error: "Token không hợp lệ hoặc đã hết hạn" });
+    }
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        emailVerified: true,
+        emailVerifyToken: null,
+        emailVerifyExpires: null,
+      },
+    });
+    res.json({
+      message: "Xác thực Email thành công! Bạn có thể đăng nhập ngay bây giờ.",
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const resendVerification = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const user = await prisma.user.findUnique({ where: { email } });
+
+    // Không tiết lộ email có tồn tại + đã verified hay chưa
+    const genericMsg = "Nếu email tồn tại và chưa xác thực, link mới đã được gửi.";
+    if (!user || user.emailVerified) {
+      return res.json({ message: genericMsg });
+    }
+
+    const verifyToken = crypto.randomBytes(32).toString("hex");
+    const hashedToken = crypto.createHash("sha256").update(verifyToken).digest("hex");
+    const verifyExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { emailVerifyToken: hashedToken, emailVerifyExpires: verifyExpires },
+    });
+
+    const verifyUrl = `${process.env.FRONTEND_URL || "http://localhost:5173"}/verify-email?token=${verifyToken}`;
+    await sendVerificationEmail({
+      to: user.email,
+      fullName: user.fullName,
+      verifyUrl,
+    });
+
+    res.json({ message: genericMsg });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -402,6 +501,8 @@ module.exports = {
   updateMe,
   changePassword,
   refreshToken,
+  verifyEmail,
+  resendVerification,
   googleLogin,
   forgotPassword,
   resetPassword,
