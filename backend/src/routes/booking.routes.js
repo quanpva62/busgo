@@ -4,6 +4,10 @@ const bookingController = require("../controllers/booking.controller");
 const authMiddleware = require("../middlewares/auth.middleware");
 const { bookingValidation } = require("../validators/booking.validator");
 const validate = require("../middlewares/validate.middleware");
+const { apiLimit } = require("../middlewares/rateLimit.middleware");
+
+// Áp dụng rate limit cho mọi endpoint booking — chống abuse
+router.use(apiLimit);
 
 // POST /api/bookings → bookingController.createBooking
 router.post(

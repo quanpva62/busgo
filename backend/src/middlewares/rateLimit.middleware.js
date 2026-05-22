@@ -26,4 +26,13 @@ const passwordResetLimit = rateLimit({
   legacyHeaders: false,
 });
 
-module.exports = { authLimit, passwordResetLimit };
+// Limit chung cho mọi API — chống abuse (booking spam, payment URL spam, …)
+const apiLimit = rateLimit({
+  windowMs: 60 * 1000, // 1 phút
+  max: 60, // 60 req/phút/IP
+  message: { error: "Quá nhiều yêu cầu, vui lòng thử lại sau ít phút." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+module.exports = { authLimit, passwordResetLimit, apiLimit };

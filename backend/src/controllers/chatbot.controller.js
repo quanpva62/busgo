@@ -72,7 +72,7 @@ const executeTool = async (toolName, input) => {
   }
 };
 
-const chat = async (req, res) => {
+const chat = async (req, res, next) => {
   const { message, history = [] } = req.body;
   // history: [{ role: "user"|"assistant", content: string }, ...]
   const messages = [...history, { role: "user", content: message }];
@@ -126,8 +126,7 @@ const chat = async (req, res) => {
       }
     }
   } catch (error) {
-    console.error("Error in chatbot:", error);
-    return res.status(500).json({ error: "Lỗi chatbot" });
+    next(error);
   }
 };
 module.exports = {

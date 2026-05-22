@@ -1,6 +1,6 @@
 const prisma = require("../lib/prisma");
 
-const searchTrip = async (req, res) => {
+const searchTrip = async (req, res, next) => {
   try {
     const { from, to, date } = req.query;
     const page = Number(req.query.page) || 1;
@@ -52,11 +52,11 @@ const searchTrip = async (req, res) => {
       totalPages: Math.ceil(total / limit),
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    next(error);
   }
 };
 
-const getTripDetail = async (req, res) => {
+const getTripDetail = async (req, res, next) => {
   try {
     const { id } = req.params;
     const trip = await prisma.trip.findUnique({
@@ -76,11 +76,11 @@ const getTripDetail = async (req, res) => {
     });
     res.json(trip);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    next(error);
   }
 };
 
-const getTripSeats = async (req, res) => {
+const getTripSeats = async (req, res, next) => {
   try {
     const { id } = req.params;
     const tripSeats = await prisma.tripSeat.findMany({
@@ -92,11 +92,11 @@ const getTripSeats = async (req, res) => {
     });
     res.json(tripSeats);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    next(error);
   }
 };
 
-const getAllRoutes = async (req, res) => {
+const getAllRoutes = async (req, res, next) => {
   try {
     const routes = await prisma.route.findMany({
       where: { isActive: true },
@@ -104,11 +104,11 @@ const getAllRoutes = async (req, res) => {
     });
     res.json(routes);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    next(error);
   }
 };
 
-const getUpcomingTrips = async (req, res) => {
+const getUpcomingTrips = async (req, res, next) => {
   try {
     const now = new Date();
     const in24h = new Date(now.getTime() + 24 * 60 * 60 * 1000);
@@ -139,11 +139,11 @@ const getUpcomingTrips = async (req, res) => {
     }));
     res.json(data);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    next(error);
   }
 };
 
-const getPopularRoutes = async (req, res) => {
+const getPopularRoutes = async (req, res, next) => {
   try {
     const result = await prisma.$queryRaw`
       SELECT r.id, r."fromCity", r."toCity", r."distanceKm", r."estimatedDuration", r."imageUrl",
@@ -169,7 +169,7 @@ const getPopularRoutes = async (req, res) => {
     }));
     res.json(data);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    next(error);
   }
 };
 

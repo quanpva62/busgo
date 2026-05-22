@@ -16,6 +16,7 @@ const {
   resetPasswordValidation,
   verifyEmailValidation,
   resendVerificationValidation,
+  changePasswordValidation,
 } = require("../validators/auth.validator");
 
 // ───── Public: Sign-up & Sign-in ─────
@@ -37,6 +38,6 @@ router.post("/refresh-token", refreshTokenValidation, validate, authController.r
 // ───── Authenticated: profile ─────
 router.get("/me", authMiddleware, authController.me);
 router.patch("/me", authMiddleware, authController.updateMe);
-router.patch("/password", authMiddleware, authController.changePassword);
+router.patch("/password", authMiddleware, changePasswordValidation, validate, authController.changePassword);
 
 module.exports = router;

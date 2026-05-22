@@ -141,6 +141,11 @@ model Trip {
   bookings       Booking[]
   tripSeats      TripSeat[]
   bookingSeats   BookingSeat[]
+
+  @@index([routeId])
+  @@index([departureTime])
+  @@index([status])
+  @@index([seriesId])
 }
 
 enum TripStatus {
@@ -179,6 +184,9 @@ model TripSeat {
   bookingId    String?
   booking      Booking?      @relation(fields: [bookingId], references: [id])
   bookingSeats BookingSeat[]
+
+  @@index([tripId])
+  @@index([bookingId])
 }
 
 enum SeatStatus {
@@ -214,6 +222,12 @@ model Booking {
   review         Review?
   companyId      String
   company        Company       @relation(fields: [companyId], references: [id])
+
+  @@index([userId])
+  @@index([tripId])
+  @@index([status])
+  @@index([companyId])
+  @@index([expiresAt])
 }
 
 enum BookingStatus {

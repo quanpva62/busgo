@@ -1,6 +1,6 @@
 const prisma = require("../lib/prisma");
 
-const createReport = async (req, res) => {
+const createReport = async (req, res, next) => {
   try {
     const { bookingId, driverId, category, details, severity } = req.body;
 
@@ -12,13 +12,19 @@ const createReport = async (req, res) => {
       return res.status(404).json({ error: "Booking không tồn tại" });
     }
     if (booking.userId !== req.user.userId) {
-      return res.status(403).json({ error: "Bạn không có quyền báo cáo booking này" });
+      return res
+        .status(403)
+        .json({ error: "Bạn không có quyền báo cáo booking này" });
     }
     if (booking.status !== "paid") {
-      return res.status(400).json({ error: "Chỉ có thể báo cáo cho booking đã thanh toán" });
+      return res
+        .status(400)
+        .json({ error: "Chỉ có thể báo cáo cho booking đã thanh toán" });
     }
     if (booking.trip.status !== "completed") {
-      return res.status(400).json({ error: "Chỉ có thể báo cáo cho chuyến đã hoàn thành" });
+      return res
+        .status(400)
+        .json({ error: "Chỉ có thể báo cáo cho chuyến đã hoàn thành" });
     }
 
     const driver = await prisma.driver.findUnique({ where: { id: driverId } });
@@ -27,17 +33,23 @@ const createReport = async (req, res) => {
     }
 
     const report = await prisma.report.create({
-      data: { bookingId, userId: req.user.userId, driverId, category, details, severity },
+      data: {
+        bookingId,
+        userId: req.user.userId,
+        driverId,
+        category,
+        details,
+        severity,
+      },
     });
 
     res.status(201).json({ message: "Báo cáo đã được gửi", report });
   } catch (error) {
-    console.error("Error creating report:", error);
-    res.status(500).json({ error: "Lỗi máy chủ" });
+    next(error);
   }
 };
 
-const getMyReports = async (req, res) => {
+const getMyReports = async (req, res, next) => {
   try {
     const reports = await prisma.report.findMany({
       where: { userId: req.user.userId },
@@ -49,12 +61,11 @@ const getMyReports = async (req, res) => {
     });
     res.json({ reports });
   } catch (error) {
-    console.error("Error fetching my reports:", error);
-    res.status(500).json({ error: "Lỗi máy chủ" });
+    next(error);
   }
 };
 
-const getReports = async (req, res) => {
+const getReports = async (req, res, next) => {
   try {
     const reports = await prisma.report.findMany({
       include: {
@@ -67,12 +78,11 @@ const getReports = async (req, res) => {
 
     res.json({ reports });
   } catch (error) {
-    console.error("Error fetching reports:", error);
-    res.status(500).json({ error: "Lỗi máy chủ" });
+    next(error);
   }
 };
 
-const updateReport = async (req, res) => {
+const updateReport = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { status, adminNote } = req.body;
@@ -83,9 +93,13 @@ const updateReport = async (req, res) => {
     if (!report) return res.status(404).json({ error: "Report không tồn tại" });
 
     if (req.user.role === "company_admin") {
-      const user = await prisma.user.findUnique({ where: { id: req.user.userId } });
+      const user = await prisma.user.findUnique({
+        where: { id: req.user.userId },
+      });
       if (report.driver.companyId !== user.companyId) {
-        return res.status(403).json({ error: "Bạn không có quyền xử lý report này" });
+        return res
+          .status(403)
+          .json({ error: "Bạn không có quyền xử lý report này" });
       }
     }
 
@@ -95,13 +109,14 @@ const updateReport = async (req, res) => {
         status,
         adminNote,
         resolvedBy: req.user.userId,
-        resolvedAt: ["resolved", "dismissed"].includes(status) ? new Date() : undefined,
+        resolvedAt: ["resolved", "dismissed"].includes(status)
+          ? new Date()
+          : undefined,
       },
     });
     res.json({ message: "Đã cập nhật report", report: updated });
   } catch (error) {
-    console.error("Error updating report:", error);
-    res.status(500).json({ error: "Lỗi máy chủ" });
+    next(error);
   }
 };
 

@@ -45,6 +45,13 @@ const resendVerificationValidation = [
   body("email").isEmail().withMessage("Vui lòng nhập email hợp lệ"),
 ];
 
+const changePasswordValidation = [
+  body("currentPassword").notEmpty().withMessage("Vui lòng nhập mật khẩu hiện tại"),
+  body("newPassword")
+    .isLength({ min: 8 })
+    .withMessage("Mật khẩu mới phải có ít nhất 8 ký tự"),
+];
+
 module.exports = {
   registerValidation,
   loginValidation,
@@ -53,4 +60,5 @@ module.exports = {
   resetPasswordValidation,
   verifyEmailValidation,
   resendVerificationValidation,
+  changePasswordValidation,
 };

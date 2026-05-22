@@ -9,7 +9,13 @@ const {
 } = require("../lib/mailer");
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
-const PASSWORD_COOLDOWN_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
+const PASSWORD_COOLDOWN_DAYS = Number(process.env.PASSWORD_COOLDOWN_DAYS) || 3;
+const RESET_TOKEN_TTL_MIN = Number(process.env.RESET_TOKEN_TTL_MIN) || 15;
+const VERIFY_TOKEN_TTL_HOURS = Number(process.env.VERIFY_TOKEN_TTL_HOURS) || 24;
+const JWT_ACCESS_EXPIRES = process.env.JWT_ACCESS_EXPIRES || "15m";
+const JWT_REFRESH_EXPIRES = process.env.JWT_REFRESH_EXPIRES || "7d";
+
+const PASSWORD_COOLDOWN_MS = PASSWORD_COOLDOWN_DAYS * 24 * 60 * 60 * 1000;
 
 function isWithinCooldown(passwordChangedAt) {
   if (!passwordChangedAt) return false;
@@ -26,18 +32,18 @@ function cooldownRemainingMsg(passwordChangedAt) {
   return `Mật khẩu mới được đổi gần đây. Vui lòng thử lại sau ${remainingHours} giờ.`;
 }
 
-const register = async (req, res) => {
+const register = async (req, res, next) => {
   try {
     const { email, password, fullName, phone } = req.body;
 
     // 1. Check duplicate
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
-      return res.status(400).json({ error: "Email already in use" });
+      return res.status(400).json({ error: "Email đã được sử dụng" });
     }
     const existingPhone = await prisma.user.findUnique({ where: { phone } });
     if (existingPhone) {
-      return res.status(400).json({ error: "Phone number already in use" });
+      return res.status(400).json({ error: "Số điện thoại đã được sử dụng" });
     }
 
     // 2. Tạo user + verify token cùng lúc
@@ -47,7 +53,9 @@ const register = async (req, res) => {
       .createHash("sha256")
       .update(verifyToken)
       .digest("hex");
-    const verifyExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h
+    const verifyExpires = new Date(
+      Date.now() + VERIFY_TOKEN_TTL_HOURS * 60 * 60 * 1000,
+    ); // 24h
 
     const user = await prisma.user.create({
       data: {
@@ -69,6 +77,7 @@ const register = async (req, res) => {
         verifyUrl,
       });
     } catch (mailErr) {
+      // Cố ý nuốt lỗi — register vẫn thành công, user dùng resend nếu cần
       console.error("Send verification email failed:", mailErr);
     }
 
@@ -83,29 +92,29 @@ const register = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    next(error);
   }
 };
 
-const login = async (req, res) => {
+const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
-      return res.status(400).json({ error: "Invalid email or password" });
+      return res.status(400).json({ error: "Email hoặc mật khẩu không đúng" });
     }
 
     if (!user.passwordHash) {
       return res.status(400).json({
         error:
-          "This account was registered with Google, please sign in with Google",
+          "Tài khoản này đăng ký bằng Google, vui lòng đăng nhập bằng Google",
       });
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
     if (!isPasswordValid) {
-      return res.status(400).json({ error: "Invalid email or password" });
+      return res.status(400).json({ error: "Email hoặc mật khẩu không đúng" });
     }
 
     if (!user.emailVerified) {
@@ -116,23 +125,23 @@ const login = async (req, res) => {
       });
     }
     if (!user.isActive) {
-      return res.status(403).json({ error: "Account has been disabled" });
+      return res.status(403).json({ error: "Tài khoản đã bị khoá" });
     }
 
     const accessToken = jwt.sign(
       { userId: user.id, role: user.role },
       process.env.JWT_SECRET,
-      { expiresIn: "15m" },
+      { expiresIn: JWT_ACCESS_EXPIRES },
     );
 
     const refreshToken = jwt.sign(
       { userId: user.id, role: user.role },
       process.env.JWT_REFRESH_SECRET,
-      { expiresIn: "7d" },
+      { expiresIn: JWT_REFRESH_EXPIRES },
     );
 
     res.json({
-      message: "Login successful",
+      message: "Đăng nhập thành công",
       accessToken: accessToken,
       refreshToken,
       user: {
@@ -144,11 +153,11 @@ const login = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    next(error);
   }
 };
 
-const verifyEmail = async (req, res) => {
+const verifyEmail = async (req, res, next) => {
   try {
     const { token } = req.body;
     const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
@@ -179,28 +188,37 @@ const verifyEmail = async (req, res) => {
       message: "Xác thực Email thành công! Bạn có thể đăng nhập ngay bây giờ.",
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    next(error);
   }
 };
 
-const resendVerification = async (req, res) => {
+const resendVerification = async (req, res, next) => {
   try {
     const { email } = req.body;
     const user = await prisma.user.findUnique({ where: { email } });
 
     // Không tiết lộ email có tồn tại + đã verified hay chưa
-    const genericMsg = "Nếu email tồn tại và chưa xác thực, link mới đã được gửi.";
+    const genericMsg =
+      "Nếu email tồn tại và chưa xác thực, link mới đã được gửi.";
     if (!user || user.emailVerified) {
       return res.json({ message: genericMsg });
     }
 
     const verifyToken = crypto.randomBytes(32).toString("hex");
-    const hashedToken = crypto.createHash("sha256").update(verifyToken).digest("hex");
-    const verifyExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const hashedToken = crypto
+      .createHash("sha256")
+      .update(verifyToken)
+      .digest("hex");
+    const verifyExpires = new Date(
+      Date.now() + VERIFY_TOKEN_TTL_HOURS * 60 * 60 * 1000,
+    );
 
     await prisma.user.update({
       where: { id: user.id },
-      data: { emailVerifyToken: hashedToken, emailVerifyExpires: verifyExpires },
+      data: {
+        emailVerifyToken: hashedToken,
+        emailVerifyExpires: verifyExpires,
+      },
     });
 
     const verifyUrl = `${process.env.FRONTEND_URL || "http://localhost:5173"}/verify-email?token=${verifyToken}`;
@@ -212,11 +230,11 @@ const resendVerification = async (req, res) => {
 
     res.json({ message: genericMsg });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    next(error);
   }
 };
 
-const me = async (req, res) => {
+const me = async (req, res, next) => {
   try {
     const userId = req.user.userId;
 
@@ -232,15 +250,15 @@ const me = async (req, res) => {
       },
     });
     if (!user) {
-      return res.status(404).json({ error: "User not found" });
+      return res.status(404).json({ error: "Không tìm thấy người dùng" });
     }
     res.json({ user });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    next(error);
   }
 };
 
-const updateMe = async (req, res) => {
+const updateMe = async (req, res, next) => {
   try {
     const userId = req.user.userId;
     const { fullName, phone } = req.body;
@@ -249,7 +267,7 @@ const updateMe = async (req, res) => {
       where: { phone, NOT: { id: userId } },
     });
     if (existing) {
-      return res.status(400).json({ error: "Phone number already in use" });
+      return res.status(400).json({ error: "Số điện thoại đã được sử dụng" });
     }
 
     const user = await prisma.user.update({
@@ -265,11 +283,11 @@ const updateMe = async (req, res) => {
     });
     res.json({ user });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    next(error);
   }
 };
 
-const changePassword = async (req, res) => {
+const changePassword = async (req, res, next) => {
   try {
     const userId = req.user.userId;
     const { currentPassword, newPassword } = req.body;
@@ -278,7 +296,7 @@ const changePassword = async (req, res) => {
     if (!user.passwordHash) {
       return res
         .status(400)
-        .json({ error: "Google account has no password set" });
+        .json({ error: "Tài khoản Google chưa cài mật khẩu" });
     }
 
     if (isWithinCooldown(user.passwordChangedAt)) {
@@ -289,7 +307,7 @@ const changePassword = async (req, res) => {
 
     const valid = await bcrypt.compare(currentPassword, user.passwordHash);
     if (!valid) {
-      return res.status(400).json({ error: "Current password is incorrect" });
+      return res.status(400).json({ error: "Mật khẩu hiện tại không đúng" });
     }
 
     const passwordHash = await bcrypt.hash(newPassword, 10);
@@ -297,13 +315,13 @@ const changePassword = async (req, res) => {
       where: { id: userId },
       data: { passwordHash, passwordChangedAt: new Date() },
     });
-    res.json({ message: "Password changed successfully" });
+    res.json({ message: "Đổi mật khẩu thành công" });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    next(error);
   }
 };
 
-const refreshToken = async (req, res) => {
+const refreshToken = async (req, res, next) => {
   try {
     const { refreshToken } = req.body;
 
@@ -311,27 +329,27 @@ const refreshToken = async (req, res) => {
       if (err) {
         return res
           .status(403)
-          .json({ error: "Invalid or expired refresh token" });
+          .json({ error: "Refresh token không hợp lệ hoặc đã hết hạn" });
       }
 
       const accessToken = jwt.sign(
         { userId: decoded.userId, role: decoded.role },
         process.env.JWT_SECRET,
-        { expiresIn: "15m" },
+        { expiresIn: JWT_ACCESS_EXPIRES },
       );
 
       res.json({ accessToken });
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    next(error);
   }
 };
 
-const googleLogin = async (req, res) => {
+const googleLogin = async (req, res, next) => {
   try {
     const { idToken } = req.body;
     if (!idToken) {
-      return res.status(400).json({ error: "ID token is required" });
+      return res.status(400).json({ error: "Vui lòng cung cấp ID token" });
     }
 
     const ticket = await client.verifyIdToken({
@@ -341,9 +359,7 @@ const googleLogin = async (req, res) => {
     const payload = ticket.getPayload();
 
     if (!payload.email_verified) {
-      return res
-        .status(400)
-        .json({ error: "Google account email is not verified" });
+      return res.status(400).json({ error: "Email Google chưa được xác thực" });
     }
 
     let user = await prisma.user.findUnique({
@@ -372,22 +388,22 @@ const googleLogin = async (req, res) => {
     }
 
     if (!user.isActive) {
-      return res.status(403).json({ error: "Account has been disabled" });
+      return res.status(403).json({ error: "Tài khoản đã bị khoá" });
     }
 
     const accessToken = jwt.sign(
       { userId: user.id, role: user.role },
       process.env.JWT_SECRET,
-      { expiresIn: "15m" },
+      { expiresIn: JWT_ACCESS_EXPIRES },
     );
     const refreshToken = jwt.sign(
       { userId: user.id, role: user.role },
       process.env.JWT_REFRESH_SECRET,
-      { expiresIn: "7d" },
+      { expiresIn: JWT_REFRESH_EXPIRES },
     );
 
     res.json({
-      message: "Google login successful",
+      message: "Đăng nhập Google thành công",
       accessToken,
       refreshToken,
       user: {
@@ -399,11 +415,11 @@ const googleLogin = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(401).json({ error: error.message });
+    next(error);
   }
 };
 
-const forgotPassword = async (req, res) => {
+const forgotPassword = async (req, res, next) => {
   try {
     const { email } = req.body;
     const user = await prisma.user.findUnique({ where: { email } });
@@ -429,7 +445,7 @@ const forgotPassword = async (req, res) => {
     }
 
     const token = crypto.randomBytes(32).toString("hex");
-    const expires = new Date(Date.now() + 15 * 60 * 1000); // 15 phút
+    const expires = new Date(Date.now() + RESET_TOKEN_TTL_MIN * 60 * 1000); // 15 phút
 
     const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
     await prisma.user.update({
@@ -449,11 +465,11 @@ const forgotPassword = async (req, res) => {
 
     res.json({ message: "Nếu email tồn tại, link đặt lại đã được gửi." });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    next(error);
   }
 };
 
-const resetPassword = async (req, res) => {
+const resetPassword = async (req, res, next) => {
   try {
     const { token, newPassword } = req.body;
 
@@ -490,7 +506,7 @@ const resetPassword = async (req, res) => {
 
     res.json({ message: "Đặt lại mật khẩu thành công. Vui lòng đăng nhập." });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    next(error);
   }
 };
 

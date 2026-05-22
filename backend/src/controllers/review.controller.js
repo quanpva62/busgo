@@ -1,6 +1,6 @@
 const prisma = require("../lib/prisma");
 
-const createReview = async (req, res) => {
+const createReview = async (req, res, next) => {
   try {
     const { bookingId, rating, comment } = req.body;
 
@@ -12,26 +12,26 @@ const createReview = async (req, res) => {
       },
     });
     if (!booking) {
-      return res.status(404).json({ error: "Booking not found!" });
+      return res.status(404).json({ error: "Không tìm thấy booking" });
     }
     if (booking.userId !== req.user.userId) {
-      return res.status(403).json({ error: "You can't review this booking!" });
+      return res
+        .status(403)
+        .json({ error: "Bạn không có quyền đánh giá booking này" });
     }
     if (booking.status !== "paid") {
       return res
         .status(400)
-        .json({ error: "You can only review paid bookings!" });
+        .json({ error: "Chỉ có thể đánh giá vé đã thanh toán" });
     }
     if (booking.trip.status !== "completed") {
       return res
         .status(400)
-        .json({ error: "You can only review completed trips!" });
+        .json({ error: "Chỉ có thể đánh giá chuyến đã hoàn thành" });
     }
 
     if (booking.review) {
-      return res
-        .status(400)
-        .json({ error: "You have already reviewed this booking!" });
+      return res.status(400).json({ error: "Bạn đã đánh giá booking này rồi" });
     }
     let seriesId = booking.trip.seriesId;
     if (!seriesId) {
@@ -51,14 +51,13 @@ const createReview = async (req, res) => {
         comment,
       },
     });
-    res.status(201).json({ message: "Review created successfully", review });
+    res.status(201).json({ message: "Đánh giá thành công", review });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Internal server error" });
+    next(error);
   }
 };
 
-const updateReview = async (req, res) => {
+const updateReview = async (req, res, next) => {
   try {
     const { reviewId } = req.params;
     const { rating, comment } = req.body;
@@ -66,7 +65,7 @@ const updateReview = async (req, res) => {
       where: { id: reviewId },
     });
     if (!review) {
-      return res.status(404).json({ error: "Review not found!" });
+      return res.status(404).json({ error: "Không tìm thấy đánh giá" });
     }
     if (review.userId === req.user.userId) {
       const updatedReview = await prisma.review.update({
@@ -74,19 +73,20 @@ const updateReview = async (req, res) => {
         data: { rating, comment },
       });
       res.json({
-        message: "Review updated successfully",
+        message: "Cập nhật đánh giá thành công",
         review: updatedReview,
       });
     } else {
-      return res.status(403).json({ error: "You can't update this review!" });
+      return res
+        .status(403)
+        .json({ error: "Bạn không có quyền sửa đánh giá này" });
     }
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Internal server error" });
+    next(error);
   }
 };
 
-const getTripReviews = async (req, res) => {
+const getTripReviews = async (req, res, next) => {
   try {
     const { tripId } = req.params;
     const trip = await prisma.trip.findUnique({
@@ -113,8 +113,7 @@ const getTripReviews = async (req, res) => {
     ]);
     res.json({ avgRating: agg._avg.rating ?? 0, count, reviews });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Internal server error" });
+    next(error);
   }
 };
 

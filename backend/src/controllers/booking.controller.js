@@ -1,7 +1,7 @@
 const prisma = require("../lib/prisma");
 const { refundVnpay } = require("./payment.controller");
 
-const createBooking = async (req, res) => {
+const createBooking = async (req, res, next) => {
   try {
     const {
       tripId,
@@ -142,11 +142,11 @@ const createBooking = async (req, res) => {
     });
   } catch (error) {
     console.error("Error creating booking:", error);
-    res.status(500).json({ error: "Lỗi máy chủ nội bộ" });
+    next(error);
   }
 };
 
-const getBooking = async (req, res) => {
+const getBooking = async (req, res, next) => {
   try {
     const { id } = req.params;
     const booking = await prisma.booking.findUnique({
@@ -166,12 +166,11 @@ const getBooking = async (req, res) => {
     }
     res.status(200).json({ booking });
   } catch (error) {
-    console.error("Error fetching bookings:", error);
-    res.status(500).json({ error: "Lỗi máy chủ nội bộ" });
+    next(error);
   }
 };
 
-const cancelBooking = async (req, res) => {
+const cancelBooking = async (req, res, next) => {
   try {
     const { id } = req.params;
     const booking = await prisma.booking.findUnique({
@@ -251,20 +250,17 @@ const cancelBooking = async (req, res) => {
       });
     });
 
-    res
-      .status(200)
-      .json({
-        message: "Hủy booking thành công",
-        refundAmount,
-        refundNote,
-        status: newStatus,
-      });
+    res.status(200).json({
+      message: "Hủy booking thành công",
+      refundAmount,
+      refundNote,
+      status: newStatus,
+    });
   } catch (error) {
-    console.error("Error cancelling booking:", error);
-    res.status(500).json({ error: "Lỗi máy chủ nội bộ" });
+    next(error);
   }
 };
-const getMyBookings = async (req, res) => {
+const getMyBookings = async (req, res, next) => {
   try {
     const userId = req.user.userId;
 
@@ -311,7 +307,7 @@ const getMyBookings = async (req, res) => {
     });
     res.json(bookings);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    next(error);
   }
 };
 

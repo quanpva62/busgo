@@ -51,7 +51,7 @@ const buildVnpUrl = (booking, vnpTxnRef, ipAddr) => {
   );
 };
 
-const createPayment = async (req, res) => {
+const createPayment = async (req, res, next) => {
   try {
     const { bookingId } = req.body;
 
@@ -102,12 +102,11 @@ const createPayment = async (req, res) => {
     const paymentUrl = buildVnpUrl(booking, vnpTxnRef, req.ip || "127.0.0.1");
     res.json({ paymentUrl });
   } catch (error) {
-    console.error("Error creating payment:", error);
-    return res.status(500).json({ error: "Lỗi máy chủ" });
+    next(error);
   }
 };
 
-const vnpayReturn = async (req, res) => {
+const vnpayReturn = async (req, res, next) => {
   try {
     const vnpParams = { ...req.query };
     const secureHash = vnpParams["vnp_SecureHash"];
@@ -220,6 +219,7 @@ const vnpayReturn = async (req, res) => {
       return res.redirect(`${frontendUrl}/payment/result?status=invalid`);
     }
   } catch (error) {
+    // vnpayReturn là redirect endpoint — lỗi cũng phải redirect về trang result
     console.error("Error handling VNPAY return:", error);
     const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
     return res.redirect(`${frontendUrl}/payment/result?status=failed`);

@@ -2,7 +2,7 @@ const prisma = require("../lib/prisma");
 const bcrypt = require("bcryptjs");
 const supabase = require("../lib/supabase");
 
-const getUsers = async (req, res) => {
+const getUsers = async (req, res, next) => {
   try {
     const users = await prisma.user.findMany({
       select: {
@@ -17,43 +17,41 @@ const getUsers = async (req, res) => {
     });
     res.json(users);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Internal Server Error" });
+    next(error);
   }
 };
 
-const toggleUserStatus = async (req, res) => {
+const toggleUserStatus = async (req, res, next) => {
   try {
     const { userId } = req.params;
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
-      return res.status(404).json({ error: "User not found" });
+      return res.status(404).json({ error: "Không tìm thấy người dùng" });
     }
     if (user.role === "admin") {
       return res
         .status(403)
-        .json({ error: "Cannot change status of admin user" });
+        .json({ error: "Không thể đổi trạng thái tài khoản admin" });
     }
     const updatedUser = await prisma.user.update({
       where: { id: userId },
       data: { isActive: !user.isActive },
     });
     res.json({
-      message: `User ${updatedUser.isActive ? "activated" : "deactivated"} successfully`,
+      message: `Đã ${updatedUser.isActive ? "kích hoạt" : "vô hiệu hoá"} tài khoản`,
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Internal Server Error" });
+    next(error);
   }
 };
 
-const getCompanyTrips = async (req, res) => {
+const getCompanyTrips = async (req, res, next) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: req.user.userId },
     });
     if (!user) {
-      return res.status(404).json({ error: "User not found" });
+      return res.status(404).json({ error: "Không tìm thấy người dùng" });
     }
 
     const { companyId } = user;
@@ -69,18 +67,17 @@ const getCompanyTrips = async (req, res) => {
 
     res.json(trips);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Internal Server Error" });
+    next(error);
   }
 };
 
-const getCompanyBookings = async (req, res) => {
+const getCompanyBookings = async (req, res, next) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: req.user.userId },
     });
     if (!user) {
-      return res.status(404).json({ error: "User not found" });
+      return res.status(404).json({ error: "Không tìm thấy người dùng" });
     }
     const { companyId } = user;
     const bookings = await prisma.booking.findMany({
@@ -99,18 +96,17 @@ const getCompanyBookings = async (req, res) => {
     });
     res.json(bookings);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Internal Server Error" });
+    next(error);
   }
 };
 
-const getCompanyStats = async (req, res) => {
+const getCompanyStats = async (req, res, next) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: req.user.userId },
     });
     if (!user) {
-      return res.status(404).json({ error: "User not found" });
+      return res.status(404).json({ error: "Không tìm thấy người dùng" });
     }
     const { companyId } = user;
 
@@ -130,12 +126,11 @@ const getCompanyStats = async (req, res) => {
       totalRevenue: totalRevenue._sum.totalPrice,
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Internal Server Error" });
+    next(error);
   }
 };
 
-const getAdminStats = async (req, res) => {
+const getAdminStats = async (req, res, next) => {
   try {
     const [totalUsers, totalBookings, revenue, pendingReports] =
       await Promise.all([
@@ -154,12 +149,11 @@ const getAdminStats = async (req, res) => {
       pendingReports,
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Internal Server Error" });
+    next(error);
   }
 };
 
-const getCompanyReports = async (req, res) => {
+const getCompanyReports = async (req, res, next) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: req.user.userId },
@@ -175,12 +169,11 @@ const getCompanyReports = async (req, res) => {
     });
     res.json({ reports });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Internal Server Error" });
+    next(error);
   }
 };
 
-const updateTripStatus = async (req, res) => {
+const updateTripStatus = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
@@ -206,12 +199,11 @@ const updateTripStatus = async (req, res) => {
     });
     res.json({ message: "Đã cập nhật trạng thái", trip: updated });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Internal Server Error" });
+    next(error);
   }
 };
 
-const createUser = async (req, res) => {
+const createUser = async (req, res, next) => {
   try {
     const { email, password, fullName, phone, role, companyId } = req.body;
     if (!["admin", "company_admin", "staff"].includes(role)) {
@@ -259,12 +251,11 @@ const createUser = async (req, res) => {
     });
     res.status(201).json({ message: "Tạo tài khoản thành công", user });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Internal Server Error" });
+    next(error);
   }
 };
 
-const getCompanies = async (req, res) => {
+const getCompanies = async (req, res, next) => {
   try {
     const companies = await prisma.company.findMany({
       orderBy: { createdAt: "desc" },
@@ -274,12 +265,11 @@ const getCompanies = async (req, res) => {
     });
     res.json(companies);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Internal Server Error" });
+    next(error);
   }
 };
 
-const createCompany = async (req, res) => {
+const createCompany = async (req, res, next) => {
   try {
     const { name, hotline, email, address, description } = req.body;
     const existing = await prisma.company.findUnique({ where: { email } });
@@ -291,17 +281,16 @@ const createCompany = async (req, res) => {
     });
     res.status(201).json({ message: "Tạo doanh nghiệp thành công", company });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Internal Server Error" });
+    next(error);
   }
 };
 
 // ─── Helpers ────────────────────────────────────────────────────────
 
-async function getCompanyId(req, res) {
+async function getCompanyId(req, res, next) {
   const user = await prisma.user.findUnique({ where: { id: req.user.userId } });
   if (!user?.companyId) {
-    res.status(400).json({ error: "Tài khoản không thuộc doanh nghiệp nào" });
+    return next(new Error("Tài khoản không thuộc doanh nghiệp nào"));
     return null;
   }
   return user.companyId;
@@ -383,9 +372,9 @@ async function generateSeatsForBus(busId, busType) {
 
 // ─── Driver / Assistant CRUD ────────────────────────────────────────
 
-const getCompanyDrivers = async (req, res) => {
+const getCompanyDrivers = async (req, res, next) => {
   try {
-    const companyId = await getCompanyId(req, res);
+    const companyId = await getCompanyId(req, res, next);
     if (!companyId) return;
     const where = { companyId };
     if (req.query.role === "driver" || req.query.role === "assistant") {
@@ -400,14 +389,13 @@ const getCompanyDrivers = async (req, res) => {
     });
     res.json(drivers);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Internal Server Error" });
+    next(error);
   }
 };
 
-const createCompanyDriver = async (req, res) => {
+const createCompanyDriver = async (req, res, next) => {
   try {
-    const companyId = await getCompanyId(req, res);
+    const companyId = await getCompanyId(req, res, next);
     if (!companyId) return;
     const { fullName, phone, driverRole, licenseNo, licenseType, busId } =
       req.body;
@@ -437,13 +425,13 @@ const createCompanyDriver = async (req, res) => {
     console.error(error);
     if (error.code === "P2002")
       return res.status(400).json({ error: "SĐT hoặc số bằng đã tồn tại" });
-    res.status(500).json({ error: "Internal Server Error" });
+    next(error);
   }
 };
 
-const updateCompanyDriver = async (req, res) => {
+const updateCompanyDriver = async (req, res, next) => {
   try {
-    const companyId = await getCompanyId(req, res);
+    const companyId = await getCompanyId(req, res, next);
     if (!companyId) return;
     const { id } = req.params;
     const driver = await prisma.driver.findUnique({ where: { id } });
@@ -467,13 +455,13 @@ const updateCompanyDriver = async (req, res) => {
     res.json({ driver: updated });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: "Internal Server Error" });
+    next(error);
   }
 };
 
-const deleteCompanyDriver = async (req, res) => {
+const deleteCompanyDriver = async (req, res, next) => {
   try {
-    const companyId = await getCompanyId(req, res);
+    const companyId = await getCompanyId(req, res, next);
     if (!companyId) return;
     const { id } = req.params;
     const driver = await prisma.driver.findUnique({ where: { id } });
@@ -484,15 +472,15 @@ const deleteCompanyDriver = async (req, res) => {
     res.json({ message: "Đã ngưng hoạt động tài xế" });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: "Internal Server Error" });
+    next(error);
   }
 };
 
 // ─── Bus CRUD ───────────────────────────────────────────────────────
 
-const getCompanyBuses = async (req, res) => {
+const getCompanyBuses = async (req, res, next) => {
   try {
-    const companyId = await getCompanyId(req, res);
+    const companyId = await getCompanyId(req, res, next);
     if (!companyId) return;
     const buses = await prisma.bus.findMany({
       where: { companyId },
@@ -502,13 +490,13 @@ const getCompanyBuses = async (req, res) => {
     res.json(buses);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: "Internal Server Error" });
+    next(error);
   }
 };
 
-const createCompanyBus = async (req, res) => {
+const createCompanyBus = async (req, res, next) => {
   try {
-    const companyId = await getCompanyId(req, res);
+    const companyId = await getCompanyId(req, res, next);
     if (!companyId) return;
     const { licensePlate, busType, typeName, layout, amenities } = req.body;
     if (!["standard", "sleeper", "minibus"].includes(busType)) {
@@ -532,13 +520,13 @@ const createCompanyBus = async (req, res) => {
     console.error(error);
     if (error.code === "P2002")
       return res.status(400).json({ error: "Biển số đã tồn tại" });
-    res.status(500).json({ error: "Internal Server Error" });
+    next(error);
   }
 };
 
-const updateCompanyBus = async (req, res) => {
+const updateCompanyBus = async (req, res, next) => {
   try {
-    const companyId = await getCompanyId(req, res);
+    const companyId = await getCompanyId(req, res, next);
     if (!companyId) return;
     const { id } = req.params;
     const bus = await prisma.bus.findUnique({ where: { id } });
@@ -552,13 +540,13 @@ const updateCompanyBus = async (req, res) => {
     res.json({ bus: updated });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: "Internal Server Error" });
+    next(error);
   }
 };
 
-const deleteCompanyBus = async (req, res) => {
+const deleteCompanyBus = async (req, res, next) => {
   try {
-    const companyId = await getCompanyId(req, res);
+    const companyId = await getCompanyId(req, res, next);
     if (!companyId) return;
     const { id } = req.params;
     const bus = await prisma.bus.findUnique({ where: { id } });
@@ -568,7 +556,7 @@ const deleteCompanyBus = async (req, res) => {
     res.json({ message: "Đã ngưng hoạt động xe" });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: "Internal Server Error" });
+    next(error);
   }
 };
 
@@ -621,9 +609,9 @@ async function createSingleTrip(
   return t;
 }
 
-const createCompanyTrip = async (req, res) => {
+const createCompanyTrip = async (req, res, next) => {
   try {
-    const companyId = await getCompanyId(req, res);
+    const companyId = await getCompanyId(req, res, next);
     if (!companyId) return;
     const {
       routeId,
@@ -697,14 +685,13 @@ const createCompanyTrip = async (req, res) => {
     });
     res.status(201).json({ trip: firstTrip, total: trips.length, seriesId });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: error.message ?? "Internal Server Error" });
+    next(error);
   }
 };
 
-const deleteCompanyTripSeries = async (req, res) => {
+const deleteCompanyTripSeries = async (req, res, next) => {
   try {
-    const companyId = await getCompanyId(req, res);
+    const companyId = await getCompanyId(req, res, next);
     if (!companyId) return;
     const { seriesId } = req.params;
     const trips = await prisma.trip.findMany({
@@ -717,12 +704,10 @@ const deleteCompanyTripSeries = async (req, res) => {
       return res.status(403).json({ error: "Không có quyền" });
     const hasBooking = trips.some((t) => t._count.bookings > 0);
     if (hasBooking)
-      return res
-        .status(400)
-        .json({
-          error:
-            "Một số chuyến đã có booking. Hãy đổi trạng thái sang 'Đã huỷ' thay vì xoá.",
-        });
+      return res.status(400).json({
+        error:
+          "Một số chuyến đã có booking. Hãy đổi trạng thái sang 'Đã huỷ' thay vì xoá.",
+      });
     const tripIds = trips.map((t) => t.id);
     await prisma.$transaction([
       prisma.tripSeat.deleteMany({ where: { tripId: { in: tripIds } } }),
@@ -730,14 +715,13 @@ const deleteCompanyTripSeries = async (req, res) => {
     ]);
     res.json({ message: `Đã xoá ${tripIds.length} chuyến trong chuỗi` });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Internal Server Error" });
+    next(error);
   }
 };
 
-const deleteCompanyTrip = async (req, res) => {
+const deleteCompanyTrip = async (req, res, next) => {
   try {
-    const companyId = await getCompanyId(req, res);
+    const companyId = await getCompanyId(req, res, next);
     if (!companyId) return;
     const { id } = req.params;
     const trip = await prisma.trip.findUnique({
@@ -759,13 +743,13 @@ const deleteCompanyTrip = async (req, res) => {
     res.json({ message: "Đã xoá chuyến" });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: "Internal Server Error" });
+    next(error);
   }
 };
 
 // ─── Routes (global) ────────────────────────────────────────────────
 
-const getRoutes = async (req, res) => {
+const getRoutes = async (req, res, next) => {
   try {
     const routes = await prisma.route.findMany({
       orderBy: { fromCity: "asc" },
@@ -773,11 +757,11 @@ const getRoutes = async (req, res) => {
     res.json(routes);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: "Internal Server Error" });
+    next(error);
   }
 };
 
-const createRoute = async (req, res) => {
+const createRoute = async (req, res, next) => {
   try {
     const { fromCity, toCity, distanceKm, estimatedDuration } = req.body;
     if (!fromCity || !toCity || !distanceKm || !estimatedDuration)
@@ -792,12 +776,11 @@ const createRoute = async (req, res) => {
     });
     res.status(201).json(route);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Internal Server Error" });
+    next(error);
   }
 };
 
-const updateCompany = async (req, res) => {
+const updateCompany = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { name, hotline, email, address, description, isActive } = req.body;
@@ -807,14 +790,13 @@ const updateCompany = async (req, res) => {
     });
     res.json({ message: "Cập nhật thành công", company });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Internal Server Error" });
+    next(error);
   }
 };
 
 // ─── Chart ────────────────────────────────────────────────
 
-const totalRevenueChart = async (req, res) => {
+const totalRevenueChart = async (req, res, next) => {
   try {
     const groupBy = req.query.groupBy === "year" ? "year" : "month";
     const year = req.query.year
@@ -851,11 +833,10 @@ const totalRevenueChart = async (req, res) => {
     const total = data.reduce((sum, r) => sum + r.revenue, 0);
     res.json({ data, total });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Internal Server Error" });
+    next(error);
   }
 };
-const totalBookingsChart = async (req, res) => {
+const totalBookingsChart = async (req, res, next) => {
   try {
     const groupBy = req.query.groupBy === "year" ? "year" : "month";
     const year = req.query.year
@@ -892,11 +873,10 @@ const totalBookingsChart = async (req, res) => {
     const total = data.reduce((sum, r) => sum + r.bookings, 0);
     res.json({ data, total });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Internal Server Error" });
+    next(error);
   }
 };
-const companyRevenueChart = async (req, res) => {
+const companyRevenueChart = async (req, res, next) => {
   try {
     const result = await prisma.$queryRaw`
       SELECT c.name, SUM(b."totalPrice") as revenue
@@ -913,11 +893,10 @@ const companyRevenueChart = async (req, res) => {
     }));
     res.json({ data });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Internal Server Error" });
+    next(error);
   }
 };
-const topRoutesChart = async (req, res) => {
+const topRoutesChart = async (req, res, next) => {
   try {
     const result = await prisma.$queryRaw`
     SELECT r."fromCity", r."toCity", COUNT(*) as bookings
@@ -935,8 +914,7 @@ const topRoutesChart = async (req, res) => {
     }));
     res.json({ data });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Internal Server Error" });
+    next(error);
   }
 };
 const ALLOWED_IMAGE_MIMES = [
@@ -946,7 +924,7 @@ const ALLOWED_IMAGE_MIMES = [
   "image/gif",
 ];
 
-const uploadRouteImage = async (req, res) => {
+const uploadRouteImage = async (req, res, next) => {
   try {
     const { id } = req.params;
     const route = await prisma.route.findUnique({ where: { id } });
@@ -979,8 +957,7 @@ const uploadRouteImage = async (req, res) => {
 
     res.json({ imageUrl: data.publicUrl });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Internal Server Error" });
+    next(error);
   }
 };
 
