@@ -4,6 +4,10 @@ const adminController = require("../controllers/admin.controller");
 const authMiddleware = require("../middlewares/auth.middleware");
 const { isAdmin, isCompanyAdmin } = require("../middlewares/role.middleware");
 const upload = require("../middlewares/upload.middleware");
+const validate = require("../middlewares/validate.middleware");
+const {
+  updateTripStatusValidation,
+} = require("../validators/trip.validator");
 
 router.get("/users", authMiddleware, isAdmin, adminController.getUsers);
 router.patch(
@@ -41,6 +45,8 @@ router.patch(
   "/company/trips/:id/status",
   authMiddleware,
   isCompanyAdmin,
+  updateTripStatusValidation,
+  validate,
   adminController.updateTripStatus,
 );
 router.get(

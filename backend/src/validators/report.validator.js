@@ -12,6 +12,7 @@ const reportValidation = [
       "wrong_stop",
       "late_departure",
       "rude_behavior",
+      "overcharge",
       "other",
     ])
     .withMessage("Category không hợp lệ"),
@@ -21,4 +22,11 @@ const reportValidation = [
     .withMessage("Severity phải là low, medium hoặc high"),
 ];
 
-module.exports = { reportValidation };
+const updateReportValidation = [
+  body("status")
+    .isIn(["pending", "reviewing", "resolved", "dismissed"])
+    .withMessage("Trạng thái không hợp lệ"),
+  body("adminNote").optional().isString(),
+];
+
+module.exports = { reportValidation, updateReportValidation };

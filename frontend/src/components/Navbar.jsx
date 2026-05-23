@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { Link, NavLink } from "react-router-dom";
+import NotificationBell from "./NotificationBell.jsx";
 
 export default function Navbar() {
   const { user } = useAuth();
@@ -15,8 +16,8 @@ export default function Navbar() {
           BusGo
         </Link>
 
-        {/* Links — desktop */}
-        <div className="hidden md:flex items-center space-x-8">
+        {/* Links — desktop, căn giữa tuyệt đối */}
+        <div className="hidden md:flex items-center space-x-8 absolute left-1/2 -translate-x-1/2">
           <NavLink
             to="/"
             className={({ isActive }) =>
@@ -39,6 +40,7 @@ export default function Navbar() {
                   Quản lý
                 </Link>
               )}
+              <NotificationBell />
               <Link
                 to="/profile"
                 className="flex items-center gap-2 px-4 py-2 hover:bg-slate-50 rounded-xl transition-colors"

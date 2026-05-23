@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext.jsx";
+import Pagination from "../components/Pagination.jsx";
 import {
   LineChart,
   BarChart,
@@ -546,13 +547,25 @@ function CompanyTrips({ authFetch }) {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(null);
   const [adding, setAdding] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
 
   useEffect(() => {
-    authFetch(`${API}/api/admin/company/trips`)
-      .then((r) => r.json())
-      .then((data) => setTrips(Array.isArray(data) ? data : []))
-      .finally(() => setLoading(false));
-  }, [authFetch]);
+    async function load() {
+      setLoading(true);
+      try {
+        const res = await authFetch(`${API}/api/admin/company/trips?page=${page}`);
+        const data = await res.json();
+        setTrips(Array.isArray(data.trips) ? data.trips : []);
+        setTotal(data.total || 0);
+        setTotalPages(data.totalPages || 1);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, [authFetch, page]);
 
   async function changeStatus(id, status) {
     setUpdating(id);
@@ -614,14 +627,16 @@ function CompanyTrips({ authFetch }) {
       ) : (
         <AddTripForm
           authFetch={authFetch}
-          onCreated={(trip, total) => {
-            if (total > 1) {
-              authFetch(`${API}/api/admin/company/trips`)
-                .then((r) => r.json())
-                .then((data) => setTrips(Array.isArray(data) ? data : []));
-            } else {
-              setTrips((prev) => [trip, ...prev]);
-            }
+          onCreated={() => {
+            // Refetch trang 1 sau khi tạo (chuyến mới + cập nhật total)
+            authFetch(`${API}/api/admin/company/trips?page=1`)
+              .then((r) => r.json())
+              .then((data) => {
+                setTrips(Array.isArray(data.trips) ? data.trips : []);
+                setTotal(data.total || 0);
+                setTotalPages(data.totalPages || 1);
+              });
+            setPage(1);
             setAdding(false);
           }}
           onCancel={() => setAdding(false)}
@@ -684,6 +699,16 @@ function CompanyTrips({ authFetch }) {
           </div>
         </div>
       ))}
+
+      {totalPages > 1 && (
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          label="chuyến"
+          onChange={setPage}
+        />
+      )}
     </div>
   );
 }
@@ -691,12 +716,24 @@ function CompanyTrips({ authFetch }) {
 function CompanyBookings({ authFetch }) {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
   useEffect(() => {
-    authFetch(`${API}/api/admin/company/bookings`)
-      .then((r) => r.json())
-      .then((data) => setBookings(Array.isArray(data) ? data : []))
-      .finally(() => setLoading(false));
-  }, [authFetch]);
+    async function load() {
+      setLoading(true);
+      try {
+        const res = await authFetch(`${API}/api/admin/company/bookings?page=${page}`);
+        const data = await res.json();
+        setBookings(Array.isArray(data.bookings) ? data.bookings : []);
+        setTotal(data.total || 0);
+        setTotalPages(data.totalPages || 1);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, [authFetch, page]);
   if (loading) return <p className="text-secondary text-sm">Đang tải...</p>;
   return (
     <div className="space-y-3">
@@ -722,6 +759,16 @@ function CompanyBookings({ authFetch }) {
       ))}
       {bookings.length === 0 && (
         <p className="text-secondary text-sm">Chưa có booking nào.</p>
+      )}
+
+      {totalPages > 1 && (
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          label="booking"
+          onChange={setPage}
+        />
       )}
     </div>
   );
@@ -1544,13 +1591,25 @@ function UsersView({ authFetch }) {
   const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState(null);
   const [adding, setAdding] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
 
   useEffect(() => {
-    authFetch(`${API}/api/admin/users`)
-      .then((r) => r.json())
-      .then((data) => setUsers(Array.isArray(data) ? data : []))
-      .finally(() => setLoading(false));
-  }, [authFetch]);
+    async function load() {
+      setLoading(true);
+      try {
+        const res = await authFetch(`${API}/api/admin/users?page=${page}`);
+        const data = await res.json();
+        setUsers(Array.isArray(data.users) ? data.users : []);
+        setTotal(data.total || 0);
+        setTotalPages(data.totalPages || 1);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, [authFetch, page]);
 
   async function toggleStatus(id) {
     setToggling(id);
@@ -1616,6 +1675,16 @@ function UsersView({ authFetch }) {
           </button>
         </div>
       ))}
+
+      {totalPages > 1 && (
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          label="người dùng"
+          onChange={setPage}
+        />
+      )}
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
+import Pagination from "../components/Pagination.jsx";
 
 function formatTime(isoString) {
   return new Date(isoString).toLocaleTimeString("vi-VN", {
@@ -329,6 +330,7 @@ export default function Search() {
               page={page}
               totalPages={totalPages}
               total={total}
+              label="chuyến"
               onChange={(p) => {
                 setPage(p);
                 window.scrollTo({ top: 0, behavior: "smooth" });
@@ -477,61 +479,3 @@ function TripCard({ trip, onSelect }) {
   );
 }
 
-function Pagination({ page, totalPages, total, onChange }) {
-  const pages = [];
-  const window = 2;
-  for (let i = 1; i <= totalPages; i++) {
-    if (
-      i === 1 ||
-      i === totalPages ||
-      (i >= page - window && i <= page + window)
-    ) {
-      pages.push(i);
-    } else if (pages[pages.length - 1] !== "...") {
-      pages.push("...");
-    }
-  }
-
-  return (
-    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4">
-      <p className="text-secondary text-sm">
-        Hiển thị trang <strong>{page}</strong> / {totalPages} ({total} chuyến)
-      </p>
-      <div className="flex items-center gap-1">
-        <button
-          onClick={() => onChange(page - 1)}
-          disabled={page === 1}
-          className="px-3 py-1.5 rounded-lg border border-outline-variant/30 text-sm font-bold text-on-surface hover:bg-surface-container-low disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-        >
-          ‹
-        </button>
-        {pages.map((p, idx) =>
-          p === "..." ? (
-            <span key={`dots-${idx}`} className="px-2 text-secondary">
-              …
-            </span>
-          ) : (
-            <button
-              key={p}
-              onClick={() => onChange(p)}
-              className={`min-w-9 px-2 py-1.5 rounded-lg text-sm font-bold transition-colors ${
-                p === page
-                  ? "bg-primary text-white"
-                  : "border border-outline-variant/30 text-on-surface hover:bg-surface-container-low"
-              }`}
-            >
-              {p}
-            </button>
-          ),
-        )}
-        <button
-          onClick={() => onChange(page + 1)}
-          disabled={page === totalPages}
-          className="px-3 py-1.5 rounded-lg border border-outline-variant/30 text-sm font-bold text-on-surface hover:bg-surface-container-low disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-        >
-          ›
-        </button>
-      </div>
-    </div>
-  );
-}

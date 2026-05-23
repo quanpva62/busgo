@@ -13,6 +13,12 @@ const bookingValidation = [
     .optional()
     .isEmail()
     .withMessage("Vui lòng nhập email hợp lệ"),
+  body("promoCode")
+    .optional()
+    .isString()
+    .trim()
+    .isLength({ max: 50 })
+    .withMessage("Mã khuyến mãi không hợp lệ"),
 ];
 
 module.exports = {

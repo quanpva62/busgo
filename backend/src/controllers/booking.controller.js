@@ -1,5 +1,6 @@
 const prisma = require("../lib/prisma");
 const { refundVnpay } = require("./payment.controller");
+const { notify } = require("../lib/notify");
 
 const createBooking = async (req, res, next) => {
   try {
@@ -208,14 +209,15 @@ const cancelBooking = async (req, res, next) => {
       refundNote = "Không hoàn tiền — huỷ dưới 12 giờ trước khởi hành";
     }
 
-    // Gọi VNPay refund nếu cần hoàn tiền
+    // Gọi VNPay refund nếu cần hoàn tiền (API ngoài — phải gọi TRƯỚC transaction)
+    let refundRes = null;
     if (booking.status === "paid" && refundAmount > 0) {
       if (!booking.payment || booking.payment.status !== "successful") {
         return res
           .status(400)
           .json({ error: "Không tìm thấy giao dịch thanh toán hợp lệ" });
       }
-      const refundRes = await refundVnpay({
+      refundRes = await refundVnpay({
         payment: booking.payment,
         refundAmount,
         ipAddr: req.ip || "127.0.0.1",
@@ -226,19 +228,12 @@ const cancelBooking = async (req, res, next) => {
           error: `Hoàn tiền VNPay thất bại: ${refundRes.message || refundRes.code}`,
         });
       }
-      // Cập nhật payment status
-      await prisma.payment.update({
-        where: { id: booking.payment.id },
-        data: {
-          status: "refunded",
-          vnpRaw: { ...booking.payment.vnpRaw, refund: refundRes.raw },
-        },
-      });
     }
 
     const newStatus =
       booking.status === "paid" && refundAmount > 0 ? "refunded" : "cancelled";
 
+    // Update booking + tripSeat + payment cùng 1 transaction — atomic
     await prisma.$transaction(async (tx) => {
       await tx.booking.update({
         where: { id },
@@ -248,7 +243,25 @@ const cancelBooking = async (req, res, next) => {
         where: { bookingId: id },
         data: { status: "available", bookingId: null, heldUntil: null },
       });
+      if (refundRes) {
+        await tx.payment.update({
+          where: { id: booking.payment.id },
+          data: {
+            status: "refunded",
+            vnpRaw: { ...booking.payment.vnpRaw, refund: refundRes.raw },
+          },
+        });
+      }
     });
+
+    notify(
+      booking.userId,
+      "booking",
+      newStatus === "refunded" ? "Đã huỷ vé & hoàn tiền" : "Đã huỷ vé",
+      refundAmount > 0
+        ? `Vé đã huỷ. ${refundNote}: ${refundAmount.toLocaleString("vi-VN")}đ`
+        : `Vé đã huỷ. ${refundNote}`,
+    );
 
     res.status(200).json({
       message: "Hủy booking thành công",

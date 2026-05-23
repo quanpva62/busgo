@@ -11,6 +11,7 @@ const reportRoutes = require("./routes/report.routes");
 const adminRoutes = require("./routes/admin.routes");
 const chatbotRoutes = require("./routes/chatbot.routes");
 const reviewRoutes = require("./routes/review.routes");
+const notificationRoutes = require("./routes/notification.routes");
 const errorHandler = require("./middlewares/error.middleware");
 const morgan = require("morgan");
 // Middleware
@@ -34,6 +35,7 @@ app.use("/api/reports", reportRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/chatbot", chatbotRoutes);
 app.use("/api/reviews", reviewRoutes);
+app.use("/api/notifications", notificationRoutes);
 // 404 handler
 app.use((req, res, next) => {
   res.status(404).json({ message: "Không tìm thấy tài nguyên" });

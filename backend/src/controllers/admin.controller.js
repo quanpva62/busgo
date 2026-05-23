@@ -1,21 +1,33 @@
 const prisma = require("../lib/prisma");
 const bcrypt = require("bcryptjs");
 const supabase = require("../lib/supabase");
+const { notify, notifyMany } = require("../lib/notify");
 
 const getUsers = async (req, res, next) => {
   try {
-    const users = await prisma.user.findMany({
-      select: {
-        id: true,
-        email: true,
-        fullName: true,
-        phone: true,
-        role: true,
-        isActive: true,
-        createdAt: true,
-      },
-    });
-    res.json(users);
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 15;
+    const skip = (page - 1) * limit;
+
+    const [users, total] = await Promise.all([
+      prisma.user.findMany({
+        select: {
+          id: true,
+          email: true,
+          fullName: true,
+          phone: true,
+          role: true,
+          isActive: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: limit,
+      }),
+      prisma.user.count(),
+    ]);
+
+    res.json({ users, total, page, totalPages: Math.ceil(total / limit) });
   } catch (error) {
     next(error);
   }
@@ -55,17 +67,28 @@ const getCompanyTrips = async (req, res, next) => {
     }
 
     const { companyId } = user;
-    const trips = await prisma.trip.findMany({
-      where: { bus: { companyId } },
-      include: {
-        bus: true,
-        driver: true,
-        assistant: true,
-        route: true,
-      },
-    });
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 15;
+    const skip = (page - 1) * limit;
+    const where = { bus: { companyId } };
 
-    res.json(trips);
+    const [trips, total] = await Promise.all([
+      prisma.trip.findMany({
+        where,
+        include: {
+          bus: true,
+          driver: true,
+          assistant: true,
+          route: true,
+        },
+        orderBy: { departureTime: "desc" },
+        skip,
+        take: limit,
+      }),
+      prisma.trip.count({ where }),
+    ]);
+
+    res.json({ trips, total, page, totalPages: Math.ceil(total / limit) });
   } catch (error) {
     next(error);
   }
@@ -80,21 +103,33 @@ const getCompanyBookings = async (req, res, next) => {
       return res.status(404).json({ error: "Không tìm thấy người dùng" });
     }
     const { companyId } = user;
-    const bookings = await prisma.booking.findMany({
-      where: { trip: { bus: { companyId } } },
-      include: {
-        trip: {
-          include: {
-            bus: true,
-            driver: true,
-            assistant: true,
-            route: true,
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 15;
+    const skip = (page - 1) * limit;
+    const where = { trip: { bus: { companyId } } };
+
+    const [bookings, total] = await Promise.all([
+      prisma.booking.findMany({
+        where,
+        include: {
+          trip: {
+            include: {
+              bus: true,
+              driver: true,
+              assistant: true,
+              route: true,
+            },
           },
+          user: { select: { id: true, fullName: true, email: true } },
         },
-        user: { select: { id: true, fullName: true, email: true } },
-      },
-    });
-    res.json(bookings);
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: limit,
+      }),
+      prisma.booking.count({ where }),
+    ]);
+
+    res.json({ bookings, total, page, totalPages: Math.ceil(total / limit) });
   } catch (error) {
     next(error);
   }
@@ -182,7 +217,7 @@ const updateTripStatus = async (req, res, next) => {
     });
     const trip = await prisma.trip.findUnique({
       where: { id },
-      include: { bus: true },
+      include: { bus: true, route: true },
     });
     if (!trip) return res.status(404).json({ error: "Trip không tồn tại" });
     if (
@@ -197,6 +232,22 @@ const updateTripStatus = async (req, res, next) => {
       where: { id },
       data: { status },
     });
+
+    // Chuyến bị huỷ → thông báo tất cả khách có vé trên chuyến
+    if (status === "cancelled" && trip.status !== "cancelled") {
+      const bookings = await prisma.booking.findMany({
+        where: { tripId: id, status: { in: ["pending", "paid"] } },
+        select: { userId: true },
+      });
+      const userIds = [...new Set(bookings.map((b) => b.userId))];
+      await notifyMany(
+        userIds,
+        "trip",
+        "Chuyến đi bị huỷ",
+        `Chuyến ${trip.route.fromCity} → ${trip.route.toCity} đã bị huỷ. Vui lòng liên hệ để được hỗ trợ hoàn tiền hoặc đặt chuyến khác.`,
+      );
+    }
+
     res.json({ message: "Đã cập nhật trạng thái", trip: updated });
   } catch (error) {
     next(error);

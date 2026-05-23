@@ -2,6 +2,7 @@ const prisma = require("../lib/prisma");
 const crypto = require("crypto");
 const qs = require("qs");
 const { sendTicketEmail } = require("../lib/mailer");
+const { notify } = require("../lib/notify");
 
 const buildVnpUrl = (booking, vnpTxnRef, ipAddr) => {
   const date = new Date();
@@ -181,7 +182,15 @@ const vnpayReturn = async (req, res, next) => {
             },
           })
           .then((booking) => {
-            if (!booking?.passengerEmail) return;
+            if (!booking) return;
+            // Notification thanh toán thành công
+            notify(
+              booking.userId,
+              "payment",
+              "Thanh toán thành công",
+              `Vé ${booking.trip.route.fromCity} → ${booking.trip.route.toCity} đã được xác nhận. Mã vé: ${ticket.ticketCode}`,
+            );
+            if (!booking.passengerEmail) return;
             const seats = booking.bookingSeats
               .map((bs) => bs.seat.seat.seatLabel)
               .join(", ");

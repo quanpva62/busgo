@@ -1,4 +1,5 @@
 const prisma = require("../lib/prisma");
+const { notify } = require("../lib/notify");
 
 const createReport = async (req, res, next) => {
   try {
@@ -114,6 +115,19 @@ const updateReport = async (req, res, next) => {
           : undefined,
       },
     });
+
+    // Report được xử lý xong → thông báo người gửi
+    if (["resolved", "dismissed"].includes(status)) {
+      notify(
+        report.userId,
+        "report",
+        "Báo cáo đã được xử lý",
+        status === "resolved"
+          ? "Báo cáo của bạn đã được giải quyết. Cảm ơn bạn đã phản hồi!"
+          : "Báo cáo của bạn đã được xem xét và khép lại.",
+      );
+    }
+
     res.json({ message: "Đã cập nhật report", report: updated });
   } catch (error) {
     next(error);

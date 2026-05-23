@@ -4,7 +4,10 @@ const reportController = require("../controllers/report.controller");
 const authMiddleware = require("../middlewares/auth.middleware");
 const validate = require("../middlewares/validate.middleware");
 const { isAdmin, isCompanyAdmin } = require("../middlewares/role.middleware");
-const { reportValidation } = require("../validators/report.validator");
+const {
+  reportValidation,
+  updateReportValidation,
+} = require("../validators/report.validator");
 
 // POST / → reportController.createReport
 router.post(
@@ -22,6 +25,13 @@ router.get("/my", authMiddleware, reportController.getMyReports);
 router.get("/", authMiddleware, isAdmin, reportController.getReports);
 
 // PATCH /:id → updateReport (admin + companyadmin)
-router.patch("/:id", authMiddleware, isCompanyAdmin, reportController.updateReport);
+router.patch(
+  "/:id",
+  authMiddleware,
+  isCompanyAdmin,
+  updateReportValidation,
+  validate,
+  reportController.updateReport,
+);
 
 module.exports = router;

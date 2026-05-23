@@ -1,4 +1,4 @@
-const { query } = require("express-validator");
+const { query, body } = require("express-validator");
 
 const searchTripValidation = [
   query("from").optional(),
@@ -11,6 +11,13 @@ const searchTripValidation = [
   query("limit").optional().isInt({ min: 1, max: 20 }).toInt(),
 ];
 
+const updateTripStatusValidation = [
+  body("status")
+    .isIn(["scheduled", "running", "completed", "cancelled"])
+    .withMessage("Trạng thái chuyến không hợp lệ"),
+];
+
 module.exports = {
   searchTripValidation,
+  updateTripStatusValidation,
 };
