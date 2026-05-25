@@ -13,8 +13,6 @@ async function notify(userId, type, title, body) {
   }
 }
 
-// Tạo notification cho nhiều user cùng lúc (vd chuyến bị huỷ -> tất cả khách)
-// Dùng Promise.all + create để lấy được record đầy đủ (createMany không return rows)
 async function notifyMany(userIds, type, title, body) {
   if (userIds.length === 0) return;
   try {

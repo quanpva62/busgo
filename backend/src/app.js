@@ -14,6 +14,9 @@ const reviewRoutes = require("./routes/review.routes");
 const notificationRoutes = require("./routes/notification.routes");
 const errorHandler = require("./middlewares/error.middleware");
 const morgan = require("morgan");
+const cron = require("node-cron");
+const releaseExpireBookings = require("./jobs/releaseExpiredBookings");
+
 // Middleware
 app.use(
   cors({
@@ -39,6 +42,11 @@ app.use("/api/notifications", notificationRoutes);
 // 404 handler
 app.use((req, res, next) => {
   res.status(404).json({ message: "Không tìm thấy tài nguyên" });
+});
+cron.schedule("*/5 * * * *", () => {
+  releaseExpiredBookings().catch((e) =>
+    console.error("[cron] Release expired bookings failed:", e),
+  );
 });
 app.use(errorHandler);
 module.exports = app;
