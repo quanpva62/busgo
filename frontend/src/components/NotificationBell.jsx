@@ -20,29 +20,46 @@ function timeAgo(iso) {
 }
 
 export default function NotificationBell() {
-  const { user, authFetch } = useAuth();
+  const { user, token, authFetch } = useAuth();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState([]);
   const [unread, setUnread] = useState(0);
   const panelRef = useRef(null);
 
+  // Load lịch sử noti khi mount / đổi user
   useEffect(() => {
     if (!user) return;
+    let cancelled = false;
     async function load() {
       try {
         const res = await authFetch(`${API}/api/notifications/my`);
+        if (!res.ok || cancelled) return;
         const data = await res.json();
-        setItems(data.notifications || []);
-        setUnread(data.unreadCount || 0);
+        setItems(data.notifications ?? []);
+        setUnread(data.unreadCount ?? 0);
       } catch {
-        // im lặng — noti không critical
+        // ignore
       }
     }
     load();
-    // Poll mỗi 60s để cập nhật noti mới
-    const timer = setInterval(load, 60000);
-    return () => clearInterval(timer);
-  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
+    return () => {
+      cancelled = true;
+    };
+  }, [user, authFetch]);
+
+  // Subscribe SSE realtime
+  useEffect(() => {
+    if (!user || !token) return;
+    const es = new EventSource(
+      `${API}/api/notifications/stream?token=${encodeURIComponent(token)}`,
+    );
+    es.onmessage = (e) => {
+      const noti = JSON.parse(e.data);
+      setItems((prev) => [noti, ...prev]);
+      setUnread((u) => u + 1);
+    };
+    return () => es.close();
+  }, [user, token]);
 
   // Đóng dropdown khi click ra ngoài
   useEffect(() => {
@@ -61,7 +78,9 @@ export default function NotificationBell() {
     );
     setUnread((u) => Math.max(0, u - 1));
     try {
-      await authFetch(`${API}/api/notifications/${id}/read`, { method: "PATCH" });
+      await authFetch(`${API}/api/notifications/${id}/read`, {
+        method: "PATCH",
+      });
     } catch {
       // ignore
     }
@@ -86,7 +105,9 @@ export default function NotificationBell() {
         className="relative p-2 hover:bg-slate-50 rounded-xl transition-colors cursor-pointer"
         aria-label="Thông báo"
       >
-        <span className="material-symbols-outlined text-slate-600">notifications</span>
+        <span className="material-symbols-outlined text-slate-600">
+          notifications
+        </span>
         {unread > 0 && (
           <span className="absolute top-1 right-1 min-w-4 h-4 px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
             {unread > 9 ? "9+" : unread}
@@ -119,14 +140,18 @@ export default function NotificationBell() {
                   key={n.id}
                   onClick={() => !n.isRead && markRead(n.id)}
                   className={`w-full text-left flex gap-3 px-4 py-3 border-b border-outline-variant/10 last:border-b-0 transition-colors cursor-pointer ${
-                    n.isRead ? "hover:bg-surface-container-low" : "bg-primary/5 hover:bg-primary/10"
+                    n.isRead
+                      ? "hover:bg-surface-container-low"
+                      : "bg-primary/5 hover:bg-primary/10"
                   }`}
                 >
                   <span className="material-symbols-outlined text-primary shrink-0">
                     {TYPE_ICON[n.type] || "notifications"}
                   </span>
                   <div className="flex-1 min-w-0">
-                    <p className="font-bold text-sm text-on-surface">{n.title}</p>
+                    <p className="font-bold text-sm text-on-surface">
+                      {n.title}
+                    </p>
                     <p className="text-secondary text-xs mt-0.5 leading-relaxed">
                       {n.body}
                     </p>

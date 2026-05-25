@@ -1,4 +1,5 @@
 const prisma = require("../lib/prisma");
+const sseManager = require("../lib/sseManager");
 
 const getMyNotifications = async (req, res, next) => {
   try {
@@ -20,7 +21,9 @@ const getMyNotifications = async (req, res, next) => {
 const markRead = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const notification = await prisma.notification.findUnique({ where: { id } });
+    const notification = await prisma.notification.findUnique({
+      where: { id },
+    });
     if (!notification || notification.userId !== req.user.userId) {
       return res.status(404).json({ error: "Không tìm thấy thông báo" });
     }
@@ -46,4 +49,27 @@ const markAllRead = async (req, res, next) => {
   }
 };
 
-module.exports = { getMyNotifications, markRead, markAllRead };
+const stream = (req, res) => {
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.flushHeaders();
+
+  const userId = req.user.userId;
+  sseManager.addClient(userId, res);
+
+  // Heartbeat 25s để proxy/Cloudflare không đóng kết nối khi im lặng
+  const heartbeat = setInterval(() => {
+    try {
+      res.write(": ping\n\n");
+    } catch {
+      clearInterval(heartbeat);
+    }
+  }, 25000);
+
+  req.on("close", () => {
+    clearInterval(heartbeat);
+    sseManager.removeClient(userId, res);
+  });
+};
+module.exports = { getMyNotifications, markRead, markAllRead, stream };

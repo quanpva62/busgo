@@ -1,7 +1,21 @@
 const prisma = require("../lib/prisma");
+const { Prisma } = require("@prisma/client");
 const bcrypt = require("bcryptjs");
 const supabase = require("../lib/supabase");
 const { notify, notifyMany } = require("../lib/notify");
+
+const getCompanyFilter = async (req) => {
+  if (req.user.role !== "company_admin") return Prisma.empty;
+
+  const u = await prisma.user.findUnique({
+    where: { id: req.user.userId },
+    select: { companyId: true },
+  });
+
+  if (!u || !u.companyId) return Prisma.empty;
+
+  return Prisma.sql`AND bus."companyId" = ${u.companyId}`;
+};
 
 const getUsers = async (req, res, next) => {
   try {
@@ -853,24 +867,31 @@ const totalRevenueChart = async (req, res, next) => {
     const year = req.query.year
       ? parseInt(req.query.year)
       : new Date().getFullYear();
+    const companyFilter = await getCompanyFilter(req);
 
     let result;
     if (groupBy === "month") {
       result = await prisma.$queryRaw`
         SELECT DATE_TRUNC('month', "createdAt") as period,
                SUM("totalPrice") as revenue
-        FROM "Booking"
-        WHERE status = 'paid'
-          AND EXTRACT(year FROM "createdAt") = ${year}
+        FROM "Booking" b
+        JOIN "Trip" t On t.id = b."tripId"
+        JOIN "Bus" bus ON bus.id = t."busId"
+        WHERE b.status = 'paid'
+          AND EXTRACT(year FROM b."createdAt") = ${year}
+          ${companyFilter}
         GROUP BY period
         ORDER BY period ASC
       `;
     } else {
       result = await prisma.$queryRaw`
-        SELECT DATE_TRUNC('year', "createdAt") as period,
-               SUM("totalPrice") as revenue
-        FROM "Booking"
-        WHERE status = 'paid'
+        SELECT DATE_TRUNC('year', b."createdAt") as period,
+               SUM(b."totalPrice") as revenue
+        FROM "Booking" b
+        JOIN "Trip" t On t.id = b."tripId"
+        JOIN "Bus" bus ON bus.id = t."busId"
+        WHERE b.status = 'paid'
+          ${companyFilter}
         GROUP BY period
         ORDER BY period ASC
         LIMIT 5
@@ -894,23 +915,30 @@ const totalBookingsChart = async (req, res, next) => {
       ? parseInt(req.query.year)
       : new Date().getFullYear();
 
+    const companyFilter = await getCompanyFilter(req);
     let result;
     if (groupBy === "month") {
       result = await prisma.$queryRaw`
-        SELECT DATE_TRUNC('month', "createdAt") as period,
+        SELECT DATE_TRUNC('month', b."createdAt") as period,
                COUNT(*) as bookings
-        FROM "Booking"
-        WHERE status = 'paid'
-          AND EXTRACT(year FROM "createdAt") = ${year}
+        FROM "Booking" b 
+        JOIN "Trip" t On t.id = b."tripId"
+        JOIN "Bus" bus ON bus.id = t."busId"
+        WHERE b.status = 'paid'
+          AND EXTRACT(year FROM b."createdAt") = ${year}
+          ${companyFilter}
         GROUP BY period
         ORDER BY period ASC
       `;
     } else {
       result = await prisma.$queryRaw`
-        SELECT DATE_TRUNC('year', "createdAt") as period,
+        SELECT DATE_TRUNC('year', b."createdAt") as period,
                COUNT(*) as bookings
-        FROM "Booking"
-        WHERE status = 'paid'
+        FROM "Booking" b
+        JOIN "Trip" t On t.id = b."tripId"
+        JOIN "Bus" bus ON bus.id = t."busId"
+        WHERE b.status = 'paid'
+          ${companyFilter}
         GROUP BY period
         ORDER BY period ASC
         LIMIT 5
@@ -949,12 +977,15 @@ const companyRevenueChart = async (req, res, next) => {
 };
 const topRoutesChart = async (req, res, next) => {
   try {
+    const companyFilter = await getCompanyFilter(req);
     const result = await prisma.$queryRaw`
     SELECT r."fromCity", r."toCity", COUNT(*) as bookings
       FROM "Booking" b
       JOIN "Trip" t ON t.id = b."tripId"
+      JOIN "Bus" bus ON bus.id = t."busId"
       JOIN "Route" r ON r.id = t."routeId"
       WHERE b.status = 'paid'
+      ${companyFilter}
       GROUP BY r.id, r."fromCity", r."toCity"
       ORDER BY bookings DESC
       LIMIT 5`;

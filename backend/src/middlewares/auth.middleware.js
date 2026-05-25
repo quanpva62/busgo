@@ -38,5 +38,17 @@ const optionalAuth = (req, res, next) => {
   });
 };
 
+// Auth cho SSE — đọc token từ query vì EventSource không gửi được header
+const sseAuth = (req, res, next) => {
+  const token = req.query.token;
+  if (!token) return res.status(401).end();
+  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+    if (err || !decoded?.userId) return res.status(403).end();
+    req.user = decoded;
+    next();
+  });
+};
+
 authMiddleware.optionalAuth = optionalAuth;
+authMiddleware.sseAuth = sseAuth;
 module.exports = authMiddleware;

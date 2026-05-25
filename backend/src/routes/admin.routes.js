@@ -1,13 +1,12 @@
 const express = require("express");
 const router = express.Router();
 const adminController = require("../controllers/admin.controller");
+const exportController = require("../controllers/export.controller");
 const authMiddleware = require("../middlewares/auth.middleware");
 const { isAdmin, isCompanyAdmin } = require("../middlewares/role.middleware");
 const upload = require("../middlewares/upload.middleware");
 const validate = require("../middlewares/validate.middleware");
-const {
-  updateTripStatusValidation,
-} = require("../validators/trip.validator");
+const { updateTripStatusValidation } = require("../validators/trip.validator");
 
 router.get("/users", authMiddleware, isAdmin, adminController.getUsers);
 router.patch(
@@ -52,19 +51,19 @@ router.patch(
 router.get(
   "/revenue-chart",
   authMiddleware,
-  isAdmin,
+  isCompanyAdmin,
   adminController.totalRevenueChart,
 );
 router.get(
   "/bookings-chart",
   authMiddleware,
-  isAdmin,
+  isCompanyAdmin,
   adminController.totalBookingsChart,
 );
 router.get(
   "/top-routes-chart",
   authMiddleware,
-  isAdmin,
+  isCompanyAdmin,
   adminController.topRoutesChart,
 );
 router.get(
@@ -170,6 +169,25 @@ router.delete(
   authMiddleware,
   isCompanyAdmin,
   adminController.deleteCompanyTripSeries,
+);
+
+router.get(
+  "/export/users",
+  authMiddleware,
+  isAdmin,
+  exportController.exportUsers,
+);
+router.get(
+  "/export/bookings",
+  authMiddleware,
+  isCompanyAdmin,
+  exportController.exportBookings,
+);
+router.get(
+  "/export/reports",
+  authMiddleware,
+  isCompanyAdmin,
+  exportController.exportReports,
 );
 
 module.exports = router;

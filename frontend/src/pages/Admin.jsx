@@ -76,6 +76,38 @@ function Badge({ map, value }) {
   );
 }
 
+function ExportButton({ authFetch, endpoint, filename }) {
+  const [downloading, setDownloading] = useState(false);
+  async function download() {
+    setDownloading(true);
+    try {
+      const res = await authFetch(`${API}${endpoint}`);
+      if (!res.ok) return;
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${filename}-${Date.now()}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } finally {
+      setDownloading(false);
+    }
+  }
+  return (
+    <button
+      onClick={download}
+      disabled={downloading}
+      className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-bold rounded-xl hover:opacity-90 disabled:opacity-50"
+    >
+      <span className="material-symbols-outlined text-base">download</span>
+      {downloading ? "Đang xuất..." : "Xuất Excel"}
+    </button>
+  );
+}
+
 function StatCard({ icon, label, value }) {
   return (
     <div className="bg-white rounded-2xl p-5 shadow-sm flex items-center gap-4">
@@ -157,7 +189,16 @@ function TotalRevenueChart({ authFetch }) {
           margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
         >
           <XAxis dataKey="period" />
-          <YAxis tickFormatter={(v) => v >= 1000000 ? (v / 1000000).toFixed(1) + "M" : v >= 1000 ? (v / 1000).toFixed(0) + "K" : v} width={55} />
+          <YAxis
+            tickFormatter={(v) =>
+              v >= 1000000
+                ? (v / 1000000).toFixed(1) + "M"
+                : v >= 1000
+                  ? (v / 1000).toFixed(0) + "K"
+                  : v
+            }
+            width={55}
+          />
           <Tooltip formatter={(v) => v.toLocaleString("vi-VN") + "đ"} />
           <Line dataKey="revenue" />
         </LineChart>
@@ -252,7 +293,17 @@ function CompanyRevenueChart({ authFetch }) {
           data={data}
           margin={{ top: 5, right: 30, left: 120, bottom: 5 }}
         >
-          <XAxis type="number" allowDecimals={false} tickFormatter={(v) => v >= 1000000 ? (v / 1000000).toFixed(1) + "M" : v >= 1000 ? (v / 1000).toFixed(0) + "K" : v} />
+          <XAxis
+            type="number"
+            allowDecimals={false}
+            tickFormatter={(v) =>
+              v >= 1000000
+                ? (v / 1000000).toFixed(1) + "M"
+                : v >= 1000
+                  ? (v / 1000).toFixed(0) + "K"
+                  : v
+            }
+          />
           <YAxis type="category" dataKey="name" width={110} />
           <Tooltip formatter={(v) => v.toLocaleString("vi-VN") + "đ"} />
           <Bar dataKey="revenue" fill="#10b981" />
@@ -312,23 +363,37 @@ function CompanyStats({ authFetch }) {
       </p>
     );
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-      <StatCard
-        icon="directions_bus"
-        label="Tổng chuyến"
-        value={stats.totalTrips ?? 0}
-      />
-      <StatCard
-        icon="confirmation_number"
-        label="Đặt vé thành công"
-        value={stats.totalBookings ?? 0}
-      />
-      <StatCard
-        icon="payments"
-        label="Doanh thu"
-        value={formatPrice(stats.totalRevenue)}
-      />
-    </div>
+    <>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <StatCard
+          icon="directions_bus"
+          label="Tổng chuyến"
+          value={stats.totalTrips ?? 0}
+        />
+        <StatCard
+          icon="confirmation_number"
+          label="Đặt vé thành công"
+          value={stats.totalBookings ?? 0}
+        />
+        <StatCard
+          icon="payments"
+          label="Doanh thu"
+          value={formatPrice(stats.totalRevenue)}
+        />
+      </div>
+      <div className="bg-white rounded-2xl p-5 shadow-sm mt-4">
+        <p className="text-sm font-bold text-secondary mb-4">Doanh thu</p>
+        <TotalRevenueChart authFetch={authFetch} />
+      </div>
+      <div className="bg-white rounded-2xl p-5 shadow-sm mt-4">
+        <p className="text-sm font-bold text-secondary mb-4">Booking</p>
+        <TotalBookingsChart authFetch={authFetch} />
+      </div>
+      <div className="bg-white rounded-2xl p-5 shadow-sm mt-4">
+        <p className="text-sm font-bold text-secondary mb-4">Tuyến phổ biến</p>
+        <TopRoutesChart authFetch={authFetch} />
+      </div>
+    </>
   );
 }
 
@@ -527,7 +592,11 @@ function AddTripForm({ authFetch, onCreated, onCancel }) {
           disabled={saving}
           className="px-4 py-2 bg-primary text-white text-sm font-bold rounded-xl disabled:opacity-50"
         >
-          {saving ? "Đang tạo..." : recurring ? `Tạo ${occurrences} chuyến` : "Tạo chuyến"}
+          {saving
+            ? "Đang tạo..."
+            : recurring
+              ? `Tạo ${occurrences} chuyến`
+              : "Tạo chuyến"}
         </button>
         <button
           type="button"
@@ -555,7 +624,9 @@ function CompanyTrips({ authFetch }) {
     async function load() {
       setLoading(true);
       try {
-        const res = await authFetch(`${API}/api/admin/company/trips?page=${page}`);
+        const res = await authFetch(
+          `${API}/api/admin/company/trips?page=${page}`,
+        );
         const data = await res.json();
         setTrips(Array.isArray(data.trips) ? data.trips : []);
         setTotal(data.total || 0);
@@ -605,9 +676,12 @@ function CompanyTrips({ authFetch }) {
       variant: "danger",
     });
     if (!ok) return;
-    const res = await authFetch(`${API}/api/admin/company/trips/series/${seriesId}`, {
-      method: "DELETE",
-    });
+    const res = await authFetch(
+      `${API}/api/admin/company/trips/series/${seriesId}`,
+      {
+        method: "DELETE",
+      },
+    );
     const data = await res.json();
     if (!res.ok) return toast.error(data.error ?? "Không thể xoá chuỗi");
     setTrips((prev) => prev.filter((t) => t.seriesId !== seriesId));
@@ -658,7 +732,11 @@ function CompanyTrips({ authFetch }) {
               </p>
               {t.seriesId && (
                 <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-700">
-                  {t.interval === "daily" ? "Hằng ngày" : t.interval === "weekly" ? "Hằng tuần" : "Hằng tháng"}
+                  {t.interval === "daily"
+                    ? "Hằng ngày"
+                    : t.interval === "weekly"
+                      ? "Hằng tuần"
+                      : "Hằng tháng"}
                 </span>
               )}
             </div>
@@ -686,7 +764,9 @@ function CompanyTrips({ authFetch }) {
                 className="p-1.5 text-purple-500 hover:bg-purple-50 rounded-lg"
                 title="Xoá cả chuỗi"
               >
-                <span className="material-symbols-outlined text-base">delete_sweep</span>
+                <span className="material-symbols-outlined text-base">
+                  delete_sweep
+                </span>
               </button>
             )}
             <button
@@ -694,7 +774,9 @@ function CompanyTrips({ authFetch }) {
               className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"
               title="Xoá chuyến này"
             >
-              <span className="material-symbols-outlined text-base">delete</span>
+              <span className="material-symbols-outlined text-base">
+                delete
+              </span>
             </button>
           </div>
         </div>
@@ -723,7 +805,9 @@ function CompanyBookings({ authFetch }) {
     async function load() {
       setLoading(true);
       try {
-        const res = await authFetch(`${API}/api/admin/company/bookings?page=${page}`);
+        const res = await authFetch(
+          `${API}/api/admin/company/bookings?page=${page}`,
+        );
         const data = await res.json();
         setBookings(Array.isArray(data.bookings) ? data.bookings : []);
         setTotal(data.total || 0);
@@ -737,6 +821,11 @@ function CompanyBookings({ authFetch }) {
   if (loading) return <p className="text-secondary text-sm">Đang tải...</p>;
   return (
     <div className="space-y-3">
+      <ExportButton
+        authFetch={authFetch}
+        endpoint="/api/admin/export/bookings"
+        filename="bookings"
+      />
       {bookings.map((b) => (
         <div
           key={b.id}
@@ -1359,11 +1448,17 @@ function ReportsView({ authFetch, endpoint }) {
   }
 
   if (loading) return <p className="text-secondary text-sm">Đang tải...</p>;
-  if (reports.length === 0)
-    return <p className="text-secondary text-sm">Chưa có báo cáo nào.</p>;
 
   return (
     <div className="space-y-3">
+      <ExportButton
+        authFetch={authFetch}
+        endpoint="/api/admin/export/reports"
+        filename="reports"
+      />
+      {reports.length === 0 && (
+        <p className="text-secondary text-sm">Chưa có báo cáo nào.</p>
+      )}
       {reports.map((r) => (
         <div
           key={r.id}
@@ -1627,13 +1722,20 @@ function UsersView({ authFetch }) {
   return (
     <div className="space-y-3">
       {!adding ? (
-        <button
-          onClick={() => setAdding(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-bold rounded-xl hover:opacity-90"
-        >
-          <span className="material-symbols-outlined text-base">add</span>
-          Thêm tài khoản
-        </button>
+        <div className="flex gap-2 flex-wrap">
+          <button
+            onClick={() => setAdding(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-bold rounded-xl hover:opacity-90"
+          >
+            <span className="material-symbols-outlined text-base">add</span>
+            Thêm tài khoản
+          </button>
+          <ExportButton
+            authFetch={authFetch}
+            endpoint="/api/admin/export/users"
+            filename="users"
+          />
+        </div>
       ) : (
         <AddUserForm
           authFetch={authFetch}
@@ -1961,7 +2063,12 @@ function AdminStats({ authFetch }) {
 
 // ─── Routes view (admin only) ────────────────────────────────────
 
-const EMPTY_ROUTE_FORM = { fromCity: "", toCity: "", distanceKm: "", estimatedDuration: "" };
+const EMPTY_ROUTE_FORM = {
+  fromCity: "",
+  toCity: "",
+  distanceKm: "",
+  estimatedDuration: "",
+};
 
 function RoutesView({ authFetch }) {
   const [routes, setRoutes] = useState([]);
@@ -1995,7 +2102,9 @@ function RoutesView({ authFetch }) {
     try {
       const imageUrl = await uploadImage(routeId, file);
       if (imageUrl)
-        setRoutes((prev) => prev.map((r) => (r.id === routeId ? { ...r, imageUrl } : r)));
+        setRoutes((prev) =>
+          prev.map((r) => (r.id === routeId ? { ...r, imageUrl } : r)),
+        );
     } finally {
       setUploading(null);
     }
@@ -2035,7 +2144,11 @@ function RoutesView({ authFetch }) {
     <div className="space-y-3">
       <div className="flex justify-end">
         <button
-          onClick={() => { setShowForm((v) => !v); setErr(""); setImageFile(null); }}
+          onClick={() => {
+            setShowForm((v) => !v);
+            setErr("");
+            setImageFile(null);
+          }}
           className="flex items-center gap-1.5 px-4 py-2 bg-primary text-white text-sm font-bold rounded-xl hover:bg-primary/90"
         >
           <span className="material-symbols-outlined text-base">add</span>
@@ -2044,60 +2157,89 @@ function RoutesView({ authFetch }) {
       </div>
 
       {showForm && (
-        <form onSubmit={handleCreate} className="bg-white rounded-2xl p-5 shadow-sm space-y-3">
+        <form
+          onSubmit={handleCreate}
+          className="bg-white rounded-2xl p-5 shadow-sm space-y-3"
+        >
           <p className="font-bold text-sm">Tuyến đường mới</p>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-secondary block mb-1">Điểm đi</label>
+              <label className="text-xs text-secondary block mb-1">
+                Điểm đi
+              </label>
               <input
                 className="w-full border border-outline-variant rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-primary"
                 placeholder="VD: Hà Nội"
                 value={form.fromCity}
-                onChange={(e) => setForm((f) => ({ ...f, fromCity: e.target.value }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, fromCity: e.target.value }))
+                }
                 required
               />
             </div>
             <div>
-              <label className="text-xs text-secondary block mb-1">Điểm đến</label>
+              <label className="text-xs text-secondary block mb-1">
+                Điểm đến
+              </label>
               <input
                 className="w-full border border-outline-variant rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-primary"
                 placeholder="VD: TP.HCM"
                 value={form.toCity}
-                onChange={(e) => setForm((f) => ({ ...f, toCity: e.target.value }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, toCity: e.target.value }))
+                }
                 required
               />
             </div>
             <div>
-              <label className="text-xs text-secondary block mb-1">Khoảng cách (km)</label>
+              <label className="text-xs text-secondary block mb-1">
+                Khoảng cách (km)
+              </label>
               <input
-                type="number" min="1"
+                type="number"
+                min="1"
                 className="w-full border border-outline-variant rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-primary"
                 placeholder="VD: 1700"
                 value={form.distanceKm}
-                onChange={(e) => setForm((f) => ({ ...f, distanceKm: e.target.value }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, distanceKm: e.target.value }))
+                }
                 required
               />
             </div>
             <div>
-              <label className="text-xs text-secondary block mb-1">Thời gian ước tính (phút)</label>
+              <label className="text-xs text-secondary block mb-1">
+                Thời gian ước tính (phút)
+              </label>
               <input
-                type="number" min="1"
+                type="number"
+                min="1"
                 className="w-full border border-outline-variant rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-primary"
                 placeholder="VD: 1080"
                 value={form.estimatedDuration}
-                onChange={(e) => setForm((f) => ({ ...f, estimatedDuration: e.target.value }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, estimatedDuration: e.target.value }))
+                }
                 required
               />
             </div>
           </div>
 
           <div>
-            <label className="text-xs text-secondary block mb-1">Ảnh tuyến đường (tuỳ chọn)</label>
+            <label className="text-xs text-secondary block mb-1">
+              Ảnh tuyến đường (tuỳ chọn)
+            </label>
             <label className="flex items-center gap-2 w-fit cursor-pointer px-3 py-2 border border-outline-variant rounded-xl text-sm hover:border-primary transition-colors">
-              <span className="material-symbols-outlined text-base text-secondary">upload</span>
-              <span className="text-secondary">{imageFile ? imageFile.name : "Chọn ảnh..."}</span>
+              <span className="material-symbols-outlined text-base text-secondary">
+                upload
+              </span>
+              <span className="text-secondary">
+                {imageFile ? imageFile.name : "Chọn ảnh..."}
+              </span>
               <input
-                type="file" accept="image/*" className="hidden"
+                type="file"
+                accept="image/*"
+                className="hidden"
                 onChange={(e) => setImageFile(e.target.files[0] ?? null)}
               />
             </label>
@@ -2105,10 +2247,21 @@ function RoutesView({ authFetch }) {
 
           {err && <p className="text-red-500 text-xs">{err}</p>}
           <div className="flex gap-2 justify-end">
-            <button type="button" onClick={() => { setShowForm(false); setImageFile(null); }} className="px-4 py-2 text-sm font-bold text-secondary hover:bg-surface-container rounded-xl">
+            <button
+              type="button"
+              onClick={() => {
+                setShowForm(false);
+                setImageFile(null);
+              }}
+              className="px-4 py-2 text-sm font-bold text-secondary hover:bg-surface-container rounded-xl"
+            >
               Huỷ
             </button>
-            <button type="submit" disabled={saving} className="px-4 py-2 text-sm font-bold bg-primary text-white rounded-xl hover:bg-primary/90 disabled:opacity-60">
+            <button
+              type="submit"
+              disabled={saving}
+              className="px-4 py-2 text-sm font-bold bg-primary text-white rounded-xl hover:bg-primary/90 disabled:opacity-60"
+            >
               {saving ? "Đang lưu..." : "Tạo tuyến"}
             </button>
           </div>
@@ -2116,26 +2269,44 @@ function RoutesView({ authFetch }) {
       )}
 
       {routes.map((r) => (
-        <div key={r.id} className="bg-white rounded-2xl p-4 shadow-sm flex items-center gap-4">
+        <div
+          key={r.id}
+          className="bg-white rounded-2xl p-4 shadow-sm flex items-center gap-4"
+        >
           <div className="w-20 h-14 rounded-xl overflow-hidden shrink-0 bg-surface-container-low">
             {r.imageUrl ? (
-              <img src={r.imageUrl} alt="" className="w-full h-full object-cover" />
+              <img
+                src={r.imageUrl}
+                alt=""
+                className="w-full h-full object-cover"
+              />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
-                <span className="material-symbols-outlined text-2xl text-outline-variant">image</span>
+                <span className="material-symbols-outlined text-2xl text-outline-variant">
+                  image
+                </span>
               </div>
             )}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-bold text-sm">{r.fromCity} → {r.toCity}</p>
+            <p className="font-bold text-sm">
+              {r.fromCity} → {r.toCity}
+            </p>
             <p className="text-xs text-secondary">
-              {r.distanceKm} km · ~{Math.floor(r.estimatedDuration / 60)}h{r.estimatedDuration % 60 > 0 ? `${r.estimatedDuration % 60}p` : ""}
+              {r.distanceKm} km · ~{Math.floor(r.estimatedDuration / 60)}h
+              {r.estimatedDuration % 60 > 0
+                ? `${r.estimatedDuration % 60}p`
+                : ""}
             </p>
           </div>
-          <label className={`px-3 py-1.5 text-xs font-bold rounded-xl cursor-pointer transition-all ${uploading === r.id ? "bg-surface-container text-secondary" : "bg-primary/10 text-primary hover:bg-primary/20"}`}>
+          <label
+            className={`px-3 py-1.5 text-xs font-bold rounded-xl cursor-pointer transition-all ${uploading === r.id ? "bg-surface-container text-secondary" : "bg-primary/10 text-primary hover:bg-primary/20"}`}
+          >
             {uploading === r.id ? "Đang tải..." : "Tải ảnh"}
             <input
-              type="file" accept="image/*" className="hidden"
+              type="file"
+              accept="image/*"
+              className="hidden"
               disabled={uploading === r.id}
               onChange={(e) => handleUpload(r.id, e.target.files[0])}
             />
