@@ -1,4 +1,4 @@
-import { createContext, useContext, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 
 const AuthContext = createContext(null);
 
@@ -67,6 +67,29 @@ export function AuthProvider({ children }) {
     })();
     return refreshingRef.current;
   }
+
+  // Validate token khi load app — nếu token invalid → authFetch tự logout()
+  // Nếu valid → đồng bộ user từ server (source of truth, có thể đổi fullName/phone từ device khác)
+  useEffect(() => {
+    if (!tokenRef.current) return;
+    async function validate() {
+      try {
+        const res = await authFetch(
+          `${import.meta.env.VITE_API_URL}/api/auth/me`,
+        );
+        if (!res.ok) return; // authFetch đã logout nếu 401
+        const data = await res.json();
+        if (data.user) {
+          setUser(data.user);
+          localStorage.setItem("user", JSON.stringify(data.user));
+        }
+      } catch {
+        // ignore — network error
+      }
+    }
+    validate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function authFetch(url, options = {}) {
     const makeRequest = (accessToken) =>

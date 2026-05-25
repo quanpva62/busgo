@@ -38,9 +38,38 @@ const tools = [
       required: ["tripId"],
     },
   },
+  {
+    name: "getPopularRoutes",
+    description: "Lấy danh sách các tuyến đường phổ biến nhất",
+    input_schema: {
+      type: "object",
+      properties: {},
+    },
+  },
+  {
+    name: "checkPromoCode",
+    description: "Kiểm tra mã khuyến mãi và trả về chi tiết nếu hợp lệ",
+    input_schema: {
+      type: "object",
+      properties: {
+        promoCode: { type: "string", description: "Mã khuyến mãi" },
+      },
+      required: ["promoCode"],
+    },
+  },
+  {
+    name: "getUserBookings",
+    description:
+      "Lấy danh sách booking của người dùng hiện tại (đã đăng nhập). KHÔNG nhận userId — tự lấy từ context.",
+    input_schema: {
+      type: "object",
+      properties: {},
+      required: [],
+    },
+  },
 ];
 
-const executeTool = async (toolName, input) => {
+const executeTool = async (toolName, input, context = {}) => {
   switch (toolName) {
     case "searchTrips":
       return await prisma.trip.findMany({
@@ -67,6 +96,54 @@ const executeTool = async (toolName, input) => {
       return await prisma.tripSeat.count({
         where: { tripId: input.tripId, status: "available" },
       });
+    case "getPopularRoutes": {
+      const result = await prisma.$queryRaw`
+      SELECT r.id, r."fromCity", r."toCity", r."distanceKm", r."estimatedDuration", r."imageUrl",
+             COUNT(b.id) as bookings,
+             MIN(t.price) as "minPrice"
+      FROM "Booking" b
+      JOIN "Trip" t ON t.id = b."tripId"
+      JOIN "Route" r ON r.id = t."routeId"
+      WHERE b.status = 'paid'
+      GROUP BY r.id, r."fromCity", r."toCity", r."distanceKm", r."estimatedDuration", r."imageUrl"
+      ORDER BY bookings DESC
+      LIMIT 3
+    `;
+      return result.map((r) => ({
+        id: r.id,
+        fromCity: r.fromCity,
+        toCity: r.toCity,
+        distanceKm: r.distanceKm,
+        estimatedDuration: parseInt(r.estimatedDuration),
+        imageUrl: r.imageUrl,
+        bookings: parseInt(r.bookings),
+        minPrice: parseInt(r.minPrice),
+      }));
+    }
+    case "checkPromoCode": {
+      const promo = await prisma.promotion.findUnique({
+        where: { code: input.promoCode },
+      });
+      if (!promo) return { valid: false, reason: "Mã không tồn tại" };
+      if (!promo.isActive) return { valid: false, reason: "Mã đã hết hạn" };
+      if (promo.expiresAt < new Date())
+        return { valid: false, reason: "Mã đã hết hạn" };
+      if (promo.maxUses && promo.usedCount >= promo.maxUses)
+        return { valid: false, reason: "Mã đã hết lượt sử dụng." };
+      return {
+        valid: true,
+        discountType: promo.discountType,
+        discountValue: promo.discountValue,
+      };
+    }
+    case "getUserBookings":
+      if (!context.userId) return { error: "Cần đăng nhập để xem booking!" };
+      return await prisma.booking.findMany({
+        where: { userId: context.userId },
+        include: { trip: { include: { route: true } } },
+        orderBy: { createdAt: "desc" },
+        take: 5,
+      });
     default:
       throw new Error(`Tool not found: ${toolName}`);
   }
@@ -91,6 +168,12 @@ const chat = async (req, res, next) => {
                 - Gợi ý lựa chọn tốt nhất nếu có nhiều chuyến
                 - Hỗ trợ đặt vé
 
+                Chính sách hủy vé:
+                - Hủy trước khởi hành hơn 24 giờ: hoàn 100%
+                - Hủy trước khởi hành 12-24 giờ: hoàn 50%
+                - Hủy trước khởi hành dưới 12 giờ: không hoàn tiền
+                - Vé chưa thanh toán hủy miễn phí
+
                 Nguyên tắc:
                 - Trả lời ngắn gọn, dễ hiểu
                 - Luôn hỏi thêm nếu thiếu thông tin (điểm đi, điểm đến, ngày)
@@ -114,7 +197,9 @@ const chat = async (req, res, next) => {
 
         for (const block of response.content) {
           if (block.type === "tool_use") {
-            const result = await executeTool(block.name, block.input);
+            const result = await executeTool(block.name, block.input, {
+              userId: req.user?.userId,
+            });
             toolResults.push({
               type: "tool_result",
               tool_use_id: block.id,

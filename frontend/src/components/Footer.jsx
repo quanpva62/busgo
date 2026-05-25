@@ -9,7 +9,7 @@ const links = {
   ],
   "Dịch vụ": [
     { label: "Đặt vé xe", to: "/search" },
-    { label: "Tra cứu vé", to: "/profile" },
+    { label: "Tra cứu vé", to: "/profile", state: { tab: 2 } },
     { label: "Khuyến mãi", to: "#" },
   ],
 };
@@ -59,6 +59,7 @@ export default function Footer() {
                 <li key={item.label || item}>
                   <Link
                     to={item.to}
+                    state={item.state}
                     className="text-white/70 text-sm hover:text-white transition-colors"
                   >
                     {item.label || item}
