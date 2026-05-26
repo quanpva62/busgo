@@ -15,7 +15,7 @@ const notificationRoutes = require("./routes/notification.routes");
 const errorHandler = require("./middlewares/error.middleware");
 const morgan = require("morgan");
 const cron = require("node-cron");
-const releaseExpireBookings = require("./jobs/releaseExpiredBookings");
+const releaseExpiredBookings = require("./jobs/releaseExpiredBookings");
 
 // Middleware
 app.use(

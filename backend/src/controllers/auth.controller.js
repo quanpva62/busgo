@@ -8,7 +8,7 @@ const {
   sendVerificationEmail,
 } = require("../lib/mailer");
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
-
+const supabase = require("../lib/supabase");
 const PASSWORD_COOLDOWN_DAYS = Number(process.env.PASSWORD_COOLDOWN_DAYS) || 3;
 const RESET_TOKEN_TTL_MIN = Number(process.env.RESET_TOKEN_TTL_MIN) || 15;
 const VERIFY_TOKEN_TTL_HOURS = Number(process.env.VERIFY_TOKEN_TTL_HOURS) || 24;
@@ -247,6 +247,7 @@ const me = async (req, res, next) => {
         phone: true,
         role: true,
         createdAt: true,
+        avatarUrl: true,
       },
     });
     if (!user) {
@@ -279,6 +280,7 @@ const updateMe = async (req, res, next) => {
         email: true,
         phone: true,
         role: true,
+        avatarUrl: true,
       },
     });
     res.json({ user });
@@ -510,6 +512,73 @@ const resetPassword = async (req, res, next) => {
   }
 };
 
+const ALLOWED_IMAGE_MIMES = ["image/jpeg", "image/png", "image/webp"];
+
+const uploadAvatar = async (req, res, next) => {
+  try {
+    if (!req.file)
+      return res.status(400).json({ error: "Vui lòng chọn file ảnh" });
+
+    const { fileTypeFromBuffer } = await import("file-type");
+    const detected = await fileTypeFromBuffer(req.file.buffer);
+    if (!detected || !ALLOWED_IMAGE_MIMES.includes(detected.mime)) {
+      return res
+        .status(400)
+        .json({
+          error: "File không hợp lệ. Vui lòng chọn ảnh JPEG, PNG hoặc WEBP.",
+        });
+    }
+    const userId = req.user.userId;
+    const fileName = `${userId}.${detected.ext}`;
+    const { error } = await supabase.storage
+      .from("avatars")
+      .upload(fileName, req.file.buffer, {
+        contentType: detected.mime,
+        upsert: true,
+      });
+    if (error) return res.status(500).json({ error: error.message });
+
+    const { data } = supabase.storage.from("avatars").getPublicUrl(fileName);
+    const avatarUrl = `${data.publicUrl}?t=${Date.now()}`;
+
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { avatarUrl },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        phone: true,
+        role: true,
+        avatarUrl: true,
+      },
+    });
+    res.json({ user });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const removeAvatar = async (req, res, next) => {
+  try {
+    const user = await prisma.user.update({
+      where: { id: req.user.userId },
+      data: { avatarUrl: null },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        phone: true,
+        role: true,
+        avatarUrl: true,
+      },
+    });
+    res.json({ user });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   register,
   login,
@@ -522,4 +591,6 @@ module.exports = {
   googleLogin,
   forgotPassword,
   resetPassword,
+  uploadAvatar,
+  removeAvatar,
 };

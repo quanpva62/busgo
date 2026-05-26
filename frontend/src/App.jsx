@@ -21,6 +21,7 @@ import Support from "./pages/Support.jsx";
 import ForgotPassword from "./pages/ForgotPassword.jsx";
 import ResetPassword from "./pages/ResetPassword.jsx";
 import VerifyEmail from "./pages/VerifyEmail.jsx";
+import CheckIn from "./pages/CheckIn.jsx";
 
 // Chỉ cần đăng nhập
 function ProtectedRoute({ children }) {
@@ -76,6 +77,14 @@ function App() {
         <Route path="/booking/:id" element={<ProtectedRoute><BookingConfirm /></ProtectedRoute>} />
         <Route path="/payment/result" element={<PaymentResult />} />
         <Route path="/tickets/:bookingId" element={<ProtectedRoute><Ticket /></ProtectedRoute>} />
+        <Route
+          path="/checkin"
+          element={
+            <RoleRoute roles={["admin", "company_admin", "staff"]}>
+              <CheckIn />
+            </RoleRoute>
+          }
+        />
         <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/terms" element={<TermsOfService />} />
         <Route path="/support" element={<Support />} />

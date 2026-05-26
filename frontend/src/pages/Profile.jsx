@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext.jsx";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -50,12 +50,15 @@ const REPORT_STATUS_LABELS = {
 
 const TABS = ["Thông tin", "Mật khẩu", "Lịch sử đặt vé"];
 
+const API_URL = import.meta.env.VITE_API_URL;
 export default function Profile() {
   const { user, login, authFetch, logout } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
   const location = useLocation();
   const [tab, setTab] = useState(location.state?.tab ?? 0);
+  const fileRef = useRef(null);
+  const [uploading, setUploading] = useState(false);
 
   // Tab 0 — profile
   const [fullName, setFullName] = useState(user?.fullName || "");
@@ -93,6 +96,39 @@ export default function Profile() {
   const [reviewingId, setReviewingId] = useState(null);
   const [reviewForm, setReviewForm] = useState({ rating: 5, comment: "" });
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
+
+  async function onAvatarChange(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    const fd = new FormData();
+    fd.append("avatar", file);
+    const res = await authFetch(`${API_URL}/api/auth/avatar`, {
+      method: "POST",
+      body: fd,
+    });
+
+    const data = await res.json();
+    if (res.ok) {
+      localStorage.setItem("user", JSON.stringify(data.user));
+      window.location.reload();
+    }
+    setUploading(false);
+  }
+
+  async function removeAvatar() {
+    if (!confirm("Bạn có chắc muốn xoá ảnh đại diện?")) return;
+    setUploading(true);
+    const res = await authFetch(`${API_URL}/api/auth/avatar`, {
+      method: "DELETE",
+    });
+    const data = await res.json();
+    if (res.ok) {
+      localStorage.setItem("user", JSON.stringify(data.user));
+      window.location.reload();
+    }
+    setUploading(false);
+  }
 
   async function handleCancelBooking(booking) {
     const isPaid = booking.status === "paid";
@@ -290,33 +326,67 @@ export default function Profile() {
 
   if (!user) return null;
 
-  const initials = user.fullName
-    ?.split(" ")
-    .slice(-2)
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase();
+  // const initials = user.fullName
+  //   ?.split(" ")
+  //   .slice(-2)
+  //   .map((w) => w[0])
+  //   .join("")
+  //   .toUpperCase();
 
   return (
     <main className="min-h-screen pt-24 pb-16 bg-surface-container-low">
       <div className="max-w-4xl mx-auto px-6">
         {/* Avatar + tên */}
         <div className="flex flex-wrap items-center gap-4 sm:gap-5 mb-8">
-          <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-primary/10 flex items-center justify-center font-black text-primary text-lg sm:text-xl shrink-0">
-            {initials}
+          <div className="ml-4 sm:ml-0">
+            {user.avatarUrl ? (
+              <img
+                src={user.avatarUrl}
+                className="w-28 h-28 rounded-full object-cover"
+              />
+            ) : (
+              <div className="w-28 h-28 rounded-full bg-primary/10 flex items-center justify-center text-2xl font-black text-primary">
+                {user.fullName?.[0]}
+              </div>
+            )}
+            <input
+              type="file"
+              accept="image/*"
+              ref={fileRef}
+              hidden
+              onChange={onAvatarChange}
+            />
           </div>
           <div className="min-w-0 flex-1">
             <h1 className="text-xl sm:text-2xl font-extrabold text-on-surface truncate">
               {user.fullName}
             </h1>
             <p className="text-secondary text-sm truncate">{user.email}</p>
+            <div className="mt-2 flex gap-1.5 whitespace-nowrap">
+              <button
+                onClick={() => fileRef.current?.click()}
+                disabled={uploading}
+                className="px-2.5 py-1 text-xs bg-primary text-white rounded-lg font-semibold cursor-pointer disabled:opacity-50"
+              >
+                {uploading ? "Đang tải..." : "Đổi ảnh"}
+              </button>
+              {user.avatarUrl && (
+                <button
+                  onClick={removeAvatar}
+                  disabled={uploading}
+                  className="px-2.5 py-1 text-xs bg-red-50 text-red-600 rounded-lg font-semibold cursor-pointer disabled:opacity-50"
+                >
+                  Xoá ảnh
+                </button>
+              )}
+            </div>
           </div>
           <button
             onClick={() => {
               logout();
               navigate("/");
             }}
-            className="text-sm text-secondary hover:text-red-500 font-semibold transition-colors shrink-0"
+            className="text-sm text-secondary hover:text-red-500 font-semibold transition-colors shrink-0 cursor-pointer"
           >
             Đăng xuất
           </button>

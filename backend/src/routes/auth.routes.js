@@ -4,6 +4,7 @@ const router = express.Router();
 const authController = require("../controllers/auth.controller");
 const authMiddleware = require("../middlewares/auth.middleware");
 const validate = require("../middlewares/validate.middleware");
+const upload = require("../middlewares/upload.middleware");
 const {
   authLimit,
   passwordResetLimit,
@@ -20,24 +21,77 @@ const {
 } = require("../validators/auth.validator");
 
 // ───── Public: Sign-up & Sign-in ─────
-router.post("/register", authLimit, registerValidation, validate, authController.register);
-router.post("/login", authLimit, loginValidation, validate, authController.login);
+router.post(
+  "/register",
+  authLimit,
+  registerValidation,
+  validate,
+  authController.register,
+);
+router.post(
+  "/login",
+  authLimit,
+  loginValidation,
+  validate,
+  authController.login,
+);
 router.post("/google", authLimit, authController.googleLogin);
 
 // ───── Email verification ─────
-router.post("/verify-email", verifyEmailValidation, validate, authController.verifyEmail);
-router.post("/resend-verification", passwordResetLimit, resendVerificationValidation, validate, authController.resendVerification);
+router.post(
+  "/verify-email",
+  verifyEmailValidation,
+  validate,
+  authController.verifyEmail,
+);
+router.post(
+  "/resend-verification",
+  passwordResetLimit,
+  resendVerificationValidation,
+  validate,
+  authController.resendVerification,
+);
 
 // ───── Password reset (forgot flow) ─────
-router.post("/forgot-password", passwordResetLimit, forgotPasswordValidation, validate, authController.forgotPassword);
-router.post("/reset-password", passwordResetLimit, resetPasswordValidation, validate, authController.resetPassword);
+router.post(
+  "/forgot-password",
+  passwordResetLimit,
+  forgotPasswordValidation,
+  validate,
+  authController.forgotPassword,
+);
+router.post(
+  "/reset-password",
+  passwordResetLimit,
+  resetPasswordValidation,
+  validate,
+  authController.resetPassword,
+);
 
 // ───── Session ─────
-router.post("/refresh-token", refreshTokenValidation, validate, authController.refreshToken);
+router.post(
+  "/refresh-token",
+  refreshTokenValidation,
+  validate,
+  authController.refreshToken,
+);
 
 // ───── Authenticated: profile ─────
 router.get("/me", authMiddleware, authController.me);
 router.patch("/me", authMiddleware, authController.updateMe);
-router.patch("/password", authMiddleware, changePasswordValidation, validate, authController.changePassword);
+router.patch(
+  "/password",
+  authMiddleware,
+  changePasswordValidation,
+  validate,
+  authController.changePassword,
+);
+router.post(
+  "/avatar",
+  authMiddleware,
+  upload.single("avatar"),
+  authController.uploadAvatar,
+);
+router.delete("/avatar", authMiddleware, authController.removeAvatar);
 
 module.exports = router;

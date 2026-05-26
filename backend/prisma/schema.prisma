@@ -26,6 +26,7 @@ model User {
   emailVerifyToken     String?        @unique
   emailVerifyExpires   DateTime?
   passwordChangedAt    DateTime?
+  avatarUrl            String?
   role                 Role           @default(user)
   isActive             Boolean        @default(true)
   companyId            String?
