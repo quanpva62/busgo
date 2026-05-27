@@ -140,7 +140,12 @@ const vnpayReturn = async (req, res, next) => {
 
       const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
       if (responseCode === "00") {
-        const [, , , ticket] = await prisma.$transaction([
+        const bookingMeta = await prisma.booking.findUnique({
+          where: { id: bookingId },
+          select: { promoId: true, userId: true },
+        });
+
+        const ops = [
           prisma.payment.update({
             where: { vnpTxnRef },
             data: {
@@ -155,7 +160,9 @@ const vnpayReturn = async (req, res, next) => {
             data: { status: "paid" },
           }),
           prisma.tripSeat.updateMany({
-            where: { bookingId: payment.bookingId },
+            where: {
+              bookingId: payment.bookingId,
+            },
             data: { status: "booked", heldUntil: null },
           }),
           prisma.ticket.create({
@@ -170,7 +177,26 @@ const vnpayReturn = async (req, res, next) => {
               isUsed: false,
             },
           }),
-        ]);
+        ];
+
+        if (bookingMeta?.promoId) {
+          ops.push(
+            prisma.promotion.update({
+              where: { id: bookingMeta.promoId },
+              data: { usedCount: { increment: 1 } },
+            }),
+            prisma.promoRedemption.create({
+              data: {
+                promoId: bookingMeta.promoId,
+                userId: bookingMeta.userId,
+                bookingId: payment.bookingId,
+              },
+            }),
+          );
+        }
+
+        const result = await prisma.$transaction(ops);
+        const ticket = result[3];
 
         // Gửi email xác nhận vé (fire-and-forget, không block redirect)
         prisma.booking

@@ -1,4 +1,4 @@
-// userId → Set<Response>  (1 user có thể mở nhiều tab/device)
+
 const clients = new Map();
 
 function addClient(userId, res) {
@@ -21,7 +21,6 @@ function sendToUser(userId, data) {
     try {
       res.write(payload);
     } catch {
-      // connection broken — bỏ qua, cleanup sẽ chạy khi req.close
     }
   }
 }

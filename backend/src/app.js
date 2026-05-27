@@ -16,7 +16,7 @@ const errorHandler = require("./middlewares/error.middleware");
 const morgan = require("morgan");
 const cron = require("node-cron");
 const releaseExpiredBookings = require("./jobs/releaseExpiredBookings");
-
+const promoRoutes = require("./routes/promo.routes");
 // Middleware
 app.use(
   cors({
@@ -39,6 +39,8 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/chatbot", chatbotRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/promos", promoRoutes);
+
 // 404 handler
 app.use((req, res, next) => {
   res.status(404).json({ message: "Không tìm thấy tài nguyên" });

@@ -78,6 +78,42 @@ const createBooking = async (req, res, next) => {
           .json({ error: "Mã khuyến mãi đã hết lượt sử dụng" });
       }
 
+      const paidBookingCount = await prisma.booking.count({
+        where: {
+          userId: req.user.userId,
+          status: "paid",
+        },
+      });
+      if (promo.firstBookingOnly && paidBookingCount > 0) {
+        return res
+          .status(400)
+          .json({ error: "Mã khuyến mãi chỉ áp dụng cho đơn hàng đầu tiên" });
+      }
+
+      if (promo.minBookings && paidBookingCount < promo.minBookings) {
+        return res.status(400).json({
+          error: `Mã khuyến mãi yêu cầu ít nhất ${promo.minBookings} đơn hàng đã thanh toán`,
+        });
+      }
+
+      if (promo.oncePerUser) {
+        const used = await prisma.promoRedemption.findUnique({
+          where: {
+            promoId_userId: { promoId: promo.id, userId: req.user.userId },
+          },
+        });
+        if (used) {
+          return res.status(400).json({
+            error: "Mã khuyến mãi này đã được sử dụng!",
+          });
+        }
+      }
+
+      if (promo.minPrice && totalPrice < promo.minPrice) {
+        return res.status(400).json({
+          error: `Mã khuyến mãi yêu cầu giá trị đơn hàng tối thiểu ${promo.minPrice.toLocaleString("vi-VN")}đ`,
+        });
+      }
       if (promo.discountType === "percentage") {
         discountAmount = totalPrice * (promo.discountValue / 100);
       } else if (promo.discountType === "fixed") {

@@ -2317,6 +2317,342 @@ function RoutesView({ authFetch }) {
   );
 }
 
+function PromoForm({ authFetch, promo, onSaved, onCancel }) {
+  const isEdit = !!promo;
+  const [form, setForm] = useState(() => ({
+    code: promo?.code ?? "",
+    discountType: promo?.discountType ?? "percentage",
+    discountValue: promo?.discountValue ?? 10,
+    minPrice: promo?.minPrice ?? "",
+    maxUses: promo?.maxUses ?? "",
+    expiresAt: promo?.expiresAt
+      ? new Date(promo.expiresAt).toISOString().slice(0, 16)
+      : "",
+    isActive: promo?.isActive ?? true,
+    firstBookingOnly: promo?.firstBookingOnly ?? false,
+    oncePerUser: promo?.oncePerUser ?? false,
+    minBookings: promo?.minBookings ?? "",
+  }));
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
+
+  function update(key) {
+    return (e) => {
+      const v =
+        e.target.type === "checkbox" ? e.target.checked : e.target.value;
+      setForm((f) => ({ ...f, [key]: v }));
+    };
+  }
+
+  async function submit(e) {
+    e.preventDefault();
+    setSaving(true);
+    setErr("");
+
+    const body = {
+      ...form,
+      discountValue: Number(form.discountValue),
+      minPrice: form.minPrice ? Number(form.minPrice) : null,
+      maxUses: form.maxUses ? Number(form.maxUses) : null,
+      minBookings: form.minBookings ? Number(form.minBookings) : null,
+      expiresAt: new Date(form.expiresAt).toISOString(),
+    };
+
+    const url = isEdit ? `${API}/api/promos/${promo.id}` : `${API}/api/promos`;
+    const method = isEdit ? "PATCH" : "POST";
+    const res = await authFetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    setSaving(false);
+    if (!res.ok) {
+      setErr(data.error ?? data.errors?.[0]?.msg ?? "Có lỗi xảy ra");
+      return;
+    }
+    onSaved();
+  }
+
+  return (
+    <form
+      onSubmit={submit}
+      className="bg-white rounded-2xl p-6 shadow-sm space-y-4"
+    >
+      <h2 className="text-lg font-extrabold">
+        {isEdit ? "Sửa mã" : "Tạo mã mới"}
+      </h2>
+
+      {err && <p className="text-red-500 text-sm">{err}</p>}
+
+      {!isEdit && (
+        <div>
+          <label className="text-xs font-bold uppercase text-secondary">
+            Mã giảm giá
+          </label>
+          <input
+            required
+            value={form.code}
+            onChange={update("code")}
+            placeholder="VD: SUMMER2026"
+            className="w-full mt-1 px-3 py-2 border border-outline-variant/30 rounded-xl uppercase"
+          />
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="text-xs font-bold uppercase text-secondary">
+            Loại giảm giá
+          </label>
+          <select
+            value={form.discountType}
+            onChange={update("discountType")}
+            className="w-full mt-1 px-3 py-2 border border-outline-variant/30 rounded-xl"
+          >
+            <option value="percentage">Phần trăm (%)</option>
+            <option value="fixed">Cố định (VNĐ)</option>
+          </select>
+        </div>
+        <div>
+          <label className="text-xs font-bold uppercase text-secondary">
+            Giá trị giảm
+          </label>
+          <input
+            required
+            type="number"
+            min="1"
+            value={form.discountValue}
+            onChange={update("discountValue")}
+            className="w-full mt-1 px-3 py-2 border border-outline-variant/30 rounded-xl"
+          />
+        </div>
+      </div>
+
+      <div>
+        <label className="text-xs font-bold uppercase text-secondary">
+          Hạn dùng
+        </label>
+        <input
+          required
+          type="datetime-local"
+          value={form.expiresAt}
+          onChange={update("expiresAt")}
+          className="w-full mt-1 px-3 py-2 border border-outline-variant/30 rounded-xl"
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="text-xs font-bold uppercase text-secondary">
+            Giá vé tối thiểu (VNĐ)
+          </label>
+          <input
+            type="number"
+            value={form.minPrice}
+            onChange={update("minPrice")}
+            placeholder="Không yêu cầu"
+            className="w-full mt-1 px-3 py-2 border border-outline-variant/30 rounded-xl"
+          />
+        </div>
+        <div>
+          <label className="text-xs font-bold uppercase text-secondary">
+            Tổng lượt dùng tối đa
+          </label>
+          <input
+            type="number"
+            value={form.maxUses}
+            onChange={update("maxUses")}
+            placeholder="Không giới hạn"
+            className="w-full mt-1 px-3 py-2 border border-outline-variant/30 rounded-xl"
+          />
+        </div>
+      </div>
+
+      <div className="border-t pt-4 space-y-3">
+        <p className="text-xs font-bold uppercase text-secondary">
+          Điều kiện áp dụng
+        </p>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={form.firstBookingOnly}
+            onChange={update("firstBookingOnly")}
+          />
+          Chỉ khách hàng mới (chưa có vé)
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={form.oncePerUser}
+            onChange={update("oncePerUser")}
+          />
+          Mỗi user chỉ dùng 1 lần
+        </label>
+        <div>
+          <label className="text-xs text-secondary">
+            Số booking tối thiểu (để dùng được)
+          </label>
+          <input
+            type="number"
+            value={form.minBookings}
+            onChange={update("minBookings")}
+            placeholder="Không yêu cầu"
+            className="w-full mt-1 px-3 py-2 border border-outline-variant/30 rounded-xl"
+          />
+        </div>
+      </div>
+
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={form.isActive}
+          onChange={update("isActive")}
+        />
+        Kích hoạt
+      </label>
+
+      <div className="flex gap-2 pt-2">
+        <button
+          type="submit"
+          disabled={saving}
+          className="px-4 py-2 bg-primary text-white rounded-xl font-bold disabled:opacity-50"
+        >
+          {saving ? "Đang lưu..." : isEdit ? "Lưu" : "Tạo"}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="px-4 py-2 bg-surface-container rounded-xl font-bold"
+        >
+          Huỷ
+        </button>
+      </div>
+    </form>
+  );
+}
+
+
+function PromosView({ authFetch }) {
+  const [promos, setPromos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [editing, setEditing] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    async function load() {
+      setLoading(true);
+      const res = await authFetch(`${API}/api/promos?page=${page}`);
+      const data = await res.json();
+      setPromos(data.promos || []);
+      setTotal(data.total || 0);
+      setTotalPages(data.totalPages ?? 1);
+      setLoading(false);
+    }
+    load();
+  }, [page, refreshKey, authFetch]);
+
+  async function deletePromo(id) {
+    if (!confirm("Bạn có chắc muốn xoá khuyến mãi này?")) return;
+    const res = await authFetch(`${API}/api/promos/${id}`, {
+      method: "DELETE",
+    });
+    const data = await res.json();
+    if (!res.ok) return alert(data.error ?? "Có lỗi xảy ra");
+    setRefreshKey((k) => k + 1);
+  }
+
+  if (loading) return <p className="text-secondary text-sm">Đang tải...</p>;
+
+  if (editing) {
+    return (
+      <PromoForm
+        authFetch={authFetch}
+        promo={editing === "new" ? null : promos.find((p) => p.id === editing)}
+        onSaved={() => {
+          setEditing(null);
+          setRefreshKey((k) => k + 1);
+        }}
+        onCancel={() => setEditing(null)}
+      />
+    );
+  }
+  return (
+    <div className="space-y-3">
+      <button
+        onClick={() => setEditing("new")}
+        className="flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-bold rounded-xl hover:opacity-90"
+      >
+        <span className="material-symbols-outlined text-base">add</span>
+        Tạo mã giảm giá
+      </button>
+
+      {promos.length === 0 && (
+        <p className="text-secondary text-sm">Chưa có mã nào</p>
+      )}
+
+      {promos.map((p) => (
+        <div key={p.id} className="bg-white rounded-2xl p-4 shadow-sm">
+          <div className="flex items-center gap-3 flex-wrap">
+            <code className="font-bold text-primary bg-primary/5 px-2 py-1 rounded">
+              {" "}
+              {p.code}
+            </code>
+            <span className="text-sm font-bold">
+              {p.discountType === "percentage"
+                ? `Giảm ${p.discountValue}%`
+                : `Giảm ${formatPrice(p.discountValue)}`}
+            </span>
+            <span
+              className={`px-2 py-0.5 rounded-full text-xs font-bold ${p.isActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}
+            >
+              {p.isActive ? "Đang hoạt động" : "Đã vô hiệu hóa"}
+            </span>
+            <span className="text-xs text-secondary ml-auto">
+              Hết hạn: {formatDate(p.expiresAt)}
+            </span>
+          </div>
+          <div className="mt-2 flex gap-3 text-xs text-secondary flex-wrap">
+            <span>
+              Đã dùng: {p.usedCount}
+              {p.maxUses ? `/${p.maxUses}` : ""}
+            </span>
+            {p.minPrice && <span>Giá tối thiểu:{formatPrice(p.minPrice)}</span>}
+            {p.firstBookingOnly && <span>Khách hàng mới</span>}
+            {p.oncePerUser && <span>1 lần/1 user</span>}
+            {p.minBookings && <span>≥{p.minBookings} booking</span>}
+          </div>
+          <div className="mt-3 flex gap-2">
+            <button
+              onClick={() => setEditing(p.id)}
+              className="px-3 py-1 text-xs bg-primary/5 text-primary rounded-lg font-bold"
+            >
+              Sửa
+            </button>
+            <button
+              onClick={() => deletePromo(p.id)}
+              className="px-3 py-1 text-xs bg-red-50 text-red-500 rounded-lg font-bold"
+            >
+              Xóa
+            </button>
+          </div>
+        </div>
+      ))}
+      {totalPages > 1 && (
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          label="mã"
+          onChange={setPage}
+        />
+      )}
+    </div>
+  );
+}
 // ─── Main page ────────────────────────────────────────────────────
 
 export default function Admin() {
@@ -2328,7 +2664,14 @@ export default function Admin() {
   );
 
   const TABS = isAdmin
-    ? ["Tổng quan", "Người dùng", "Doanh nghiệp", "Tuyến đường", "Báo cáo"]
+    ? [
+        "Tổng quan",
+        "Người dùng",
+        "Doanh nghiệp",
+        "Tuyến đường",
+        "Báo cáo",
+        "Khuyến mãi",
+      ]
     : ["Tổng quan", "Chuyến xe", "Nhân sự", "Xe", "Đặt vé", "Báo cáo"];
 
   const [tab, setTab] = useState(0);
@@ -2385,6 +2728,7 @@ export default function Admin() {
         {isAdmin && tab === 4 && (
           <ReportsView authFetch={stableAuthFetch} endpoint="/api/reports" />
         )}
+        {isAdmin && tab === 5 && <PromosView authFetch={stableAuthFetch} />}
       </div>
     </main>
   );

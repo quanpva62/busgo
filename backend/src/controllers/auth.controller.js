@@ -150,6 +150,7 @@ const login = async (req, res, next) => {
         fullName: user.fullName,
         phone: user.phone,
         role: user.role,
+        avatarUrl: user.avatarUrl,
       },
     });
   } catch (error) {
@@ -414,6 +415,7 @@ const googleLogin = async (req, res, next) => {
         fullName: user.fullName,
         phone: user.phone,
         role: user.role,
+        avatarUrl: user.avatarUrl,
       },
     });
   } catch (error) {
