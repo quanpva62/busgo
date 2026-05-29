@@ -49,18 +49,19 @@ enum Role {
 }
 
 model Company {
-  id          String    @id @default(uuid())
-  name        String
-  hotline     String
-  email       String    @unique
-  address     String
-  description String?
-  isActive    Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  buses       Bus[]
-  drivers     Driver[]
-  bookings    Booking[]
-  users       User[]
+  id             String    @id @default(uuid())
+  name           String
+  hotline        String
+  email          String    @unique
+  address        String
+  description    String?
+  isActive       Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  commissionRate Float     @default(0.1)
+  buses          Bus[]
+  drivers        Driver[]
+  bookings       Booking[]
+  users          User[]
 }
 
 model Bus {
@@ -198,32 +199,33 @@ enum SeatStatus {
 }
 
 model Booking {
-  id             String        @id @default(uuid())
-  userId         String
-  user           User          @relation(fields: [userId], references: [id])
-  tripId         String
-  trip           Trip          @relation(fields: [tripId], references: [id])
-  promoId        String?
-  promo          Promotion?    @relation(fields: [promoId], references: [id])
-  status         BookingStatus @default(pending)
-  totalPrice     Int
-  discountAmount Int           @default(0)
-  passengerName  String
-  passengerPhone String
-  passengerEmail String?
-  expiresAt      DateTime
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  pickupAddress  String
-  dropoffAddress String
-  tripSeats      TripSeat[]
-  bookingSeats   BookingSeat[]
-  payment        Payment?
-  ticket         Ticket?
-  reports        Report[]
-  review         Review?
-  companyId      String
-  company        Company       @relation(fields: [companyId], references: [id])
+  id               String        @id @default(uuid())
+  userId           String
+  user             User          @relation(fields: [userId], references: [id])
+  tripId           String
+  trip             Trip          @relation(fields: [tripId], references: [id])
+  promoId          String?
+  promo            Promotion?    @relation(fields: [promoId], references: [id])
+  status           BookingStatus @default(pending)
+  totalPrice       Int
+  discountAmount   Int           @default(0)
+  passengerName    String
+  passengerPhone   String
+  passengerEmail   String?
+  expiresAt        DateTime
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  pickupAddress    String
+  dropoffAddress   String
+  commissionAmount Int           @default(0)
+  tripSeats        TripSeat[]
+  bookingSeats     BookingSeat[]
+  payment          Payment?
+  ticket           Ticket?
+  reports          Report[]
+  review           Review?
+  companyId        String
+  company          Company       @relation(fields: [companyId], references: [id])
 
   @@index([userId])
   @@index([tripId])

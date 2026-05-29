@@ -110,15 +110,17 @@ function ExportButton({ authFetch, endpoint, filename }) {
 
 function StatCard({ icon, label, value }) {
   return (
-    <div className="bg-white rounded-2xl p-5 shadow-sm flex items-center gap-4">
-      <span className="material-symbols-outlined text-3xl text-primary">
+    <div className="bg-white rounded-2xl p-4 shadow-sm flex items-center gap-3 min-w-0">
+      <span className="material-symbols-outlined text-2xl text-primary shrink-0">
         {icon}
       </span>
-      <div>
-        <p className="text-xs font-bold text-secondary uppercase tracking-widest">
+      <div className="min-w-0">
+        <p className="text-[11px] font-bold text-secondary uppercase tracking-wide">
           {label}
         </p>
-        <p className="text-2xl font-black text-on-surface">{value}</p>
+        <p className="text-lg font-black text-on-surface wrap-break-word">
+          {value}
+        </p>
       </div>
     </div>
   );
@@ -277,6 +279,86 @@ function TotalBookingsChart({ authFetch }) {
   );
 }
 
+function TotalCommissionChart({ authFetch }) {
+  const [groupBy, setGroupBy] = useState("month");
+  const [year, setYear] = useState(CURRENT_YEAR);
+  const [data, setData] = useState([]);
+
+  useEffect(() => {
+    const url =
+      groupBy === "month"
+        ? `${API}/api/admin/commission-chart?groupBy=month&year=${year}`
+        : `${API}/api/admin/commission-chart?groupBy=year`;
+    authFetch(url)
+      .then((r) => r.json())
+      .then((d) =>
+        setData(
+          (d.data ?? []).map((r) => ({
+            ...r,
+            period:
+              groupBy === "month"
+                ? `T${new Date(r.period).getMonth() + 1}`
+                : `${new Date(r.period).getFullYear()}`,
+          })),
+        ),
+      );
+  }, [authFetch, groupBy, year]);
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex gap-1 bg-surface-container rounded-xl p-1">
+          {[
+            ["month", "Theo tháng"],
+            ["year", "Theo năm"],
+          ].map(([k, l]) => (
+            <button
+              key={k}
+              onClick={() => setGroupBy(k)}
+              className={`px-3 py-1 rounded-lg text-xs font-bold ${groupBy === k ? "bg-white text-primary shadow-sm" : "text-secondary"}`}
+            >
+              {l}
+            </button>
+          ))}
+        </div>
+        {groupBy === "month" && (
+          <select
+            value={year}
+            onChange={(e) => setYear(parseInt(e.target.value))}
+            className="px-3 py-1.5 text-sm border border-outline-variant/30 rounded-xl focus:outline-none"
+          >
+            {YEARS.map((y) => (
+              <option key={y} value={y}>
+                {y}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
+      <ResponsiveContainer width="100%" height={300}>
+        <LineChart
+          data={data}
+          margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+        >
+          <XAxis dataKey="period" />
+          <YAxis
+            tickFormatter={(v) =>
+              v >= 1000000
+                ? (v / 1000000).toFixed(1) + "M"
+                : v >= 1000
+                  ? (v / 1000).toFixed(0) + "K"
+                  : v
+            }
+            width={55}
+          />
+          <Tooltip formatter={(v) => v.toLocaleString("vi-VN") + "đ"} />
+          <Line dataKey="commission" stroke="#f59e0b" />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
 function CompanyRevenueChart({ authFetch }) {
   const [data, setData] = useState([]);
   useEffect(() => {
@@ -364,7 +446,7 @@ function CompanyStats({ authFetch }) {
     );
   return (
     <>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
         <StatCard
           icon="directions_bus"
           label="Tổng chuyến"
@@ -380,6 +462,16 @@ function CompanyStats({ authFetch }) {
           label="Doanh thu"
           value={formatPrice(stats.totalRevenue)}
         />
+        <StatCard
+          icon="percent"
+          label="Hoa hồng BusGo"
+          value={formatPrice(stats.totalCommission)}
+        />
+        <StatCard
+          icon="account_balance_wallet"
+          label="Thực nhận"
+          value={formatPrice(stats.netRevenue)}
+        />
       </div>
       <div className="bg-white rounded-2xl p-5 shadow-sm mt-4">
         <p className="text-sm font-bold text-secondary mb-4">Doanh thu</p>
@@ -388,6 +480,12 @@ function CompanyStats({ authFetch }) {
       <div className="bg-white rounded-2xl p-5 shadow-sm mt-4">
         <p className="text-sm font-bold text-secondary mb-4">Booking</p>
         <TotalBookingsChart authFetch={authFetch} />
+      </div>
+      <div className="bg-white rounded-2xl p-5 shadow-sm mt-4">
+        <p className="text-sm font-bold text-secondary mb-4">
+          Hoa hồng đã trả BusGo
+        </p>
+        <TotalCommissionChart authFetch={authFetch} />
       </div>
       <div className="bg-white rounded-2xl p-5 shadow-sm mt-4">
         <p className="text-sm font-bold text-secondary mb-4">Tuyến phổ biến</p>
@@ -1859,6 +1957,34 @@ function CompanyForm({ authFetch, initial, onSaved, onCancel }) {
           onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
           className={inputCls}
         />
+        {initial && (
+          <div>
+            <label className="text-xs text-secondary">
+              Hoa hồng (%) — phần trăm BusGo thu mỗi vé
+            </label>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              step="0.1"
+              placeholder="VD: 10"
+              value={
+                form.commissionRate != null
+                  ? Math.round(form.commissionRate * 1000) / 10
+                  : ""
+              }
+              onChange={(e) =>
+                setForm((f) => ({
+                  ...f,
+                  commissionRate: e.target.value
+                    ? Number(e.target.value) / 100
+                    : 0,
+                }))
+              }
+              className={`${inputCls} mt-1`}
+            />
+          </div>
+        )}
       </div>
       <textarea
         placeholder="Mô tả (tuỳ chọn)"
@@ -2011,7 +2137,7 @@ function AdminStats({ authFetch }) {
     );
   return (
     <>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
         <StatCard
           icon="group"
           label="Người dùng"
@@ -2028,6 +2154,11 @@ function AdminStats({ authFetch }) {
           value={formatPrice(stats.totalRevenue)}
         />
         <StatCard
+          icon="percent"
+          label="Hoa hồng thu được"
+          value={formatPrice(stats.totalCommission)}
+        />
+        <StatCard
           icon="flag"
           label="Báo cáo chờ"
           value={stats.pendingReports ?? 0}
@@ -2038,6 +2169,12 @@ function AdminStats({ authFetch }) {
           Doanh thu theo tháng
         </p>
         <TotalRevenueChart authFetch={authFetch} />
+      </div>
+      <div className="bg-white rounded-2xl p-5 shadow-sm mt-4">
+        <p className="text-sm font-bold text-secondary mb-4">
+          Hoa hồng theo tháng
+        </p>
+        <TotalCommissionChart authFetch={authFetch} />
       </div>
       <div className="bg-white rounded-2xl p-5 shadow-sm mt-4">
         <p className="text-sm font-bold text-secondary mb-4">

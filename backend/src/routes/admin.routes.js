@@ -61,6 +61,12 @@ router.get(
   adminController.totalBookingsChart,
 );
 router.get(
+  "/commission-chart",
+  authMiddleware,
+  isCompanyAdmin,
+  adminController.totalCommissionChart,
+);
+router.get(
   "/top-routes-chart",
   authMiddleware,
   isCompanyAdmin,

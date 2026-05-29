@@ -168,12 +168,16 @@ const getCompanyStats = async (req, res, next) => {
     });
     const totalRevenue = await prisma.booking.aggregate({
       where: { trip: { bus: { companyId } }, status: "paid" },
-      _sum: { totalPrice: true },
+      _sum: { totalPrice: true, commissionAmount: true },
     });
+    const gross = totalRevenue._sum.totalPrice ?? 0;
+    const commission = totalRevenue._sum.commissionAmount ?? 0;
     res.json({
       totalTrips,
       totalBookings,
-      totalRevenue: totalRevenue._sum.totalPrice,
+      totalRevenue: gross,
+      totalCommission: commission,
+      netRevenue: gross - commission,
     });
   } catch (error) {
     next(error);
@@ -188,7 +192,7 @@ const getAdminStats = async (req, res, next) => {
         prisma.booking.count({ where: { status: "paid" } }),
         prisma.booking.aggregate({
           where: { status: "paid" },
-          _sum: { totalPrice: true },
+          _sum: { totalPrice: true, commissionAmount: true },
         }),
         prisma.report.count({ where: { status: "pending" } }),
       ]);
@@ -196,6 +200,7 @@ const getAdminStats = async (req, res, next) => {
       totalUsers,
       totalBookings,
       totalRevenue: revenue._sum.totalPrice ?? 0,
+      totalCommission: revenue._sum.commissionAmount ?? 0,
       pendingReports,
     });
   } catch (error) {
@@ -277,7 +282,7 @@ const updateTripStatus = async (req, res, next) => {
         await prisma.$transaction(async (tx) => {
           await tx.booking.update({
             where: { id: b.id },
-            data: { status: newStatus },
+            data: { status: newStatus, commissionAmount: 0 },
           });
           await tx.tripSeat.updateMany({
             where: { bookingId: b.id },
@@ -898,10 +903,20 @@ const createRoute = async (req, res, next) => {
 const updateCompany = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { name, hotline, email, address, description, isActive } = req.body;
+    const { name, hotline, email, address, description, isActive, commissionRate } =
+      req.body;
     const company = await prisma.company.update({
       where: { id },
-      data: { name, hotline, email, address, description, isActive },
+      data: {
+        name,
+        hotline,
+        email,
+        address,
+        description,
+        isActive,
+        commissionRate:
+          commissionRate !== undefined ? Number(commissionRate) : undefined,
+      },
     });
     res.json({ message: "Cập nhật thành công", company });
   } catch (error) {
@@ -953,6 +968,53 @@ const totalRevenueChart = async (req, res, next) => {
       revenue: parseInt(r.revenue),
     }));
     const total = data.reduce((sum, r) => sum + r.revenue, 0);
+    res.json({ data, total });
+  } catch (error) {
+    next(error);
+  }
+};
+const totalCommissionChart = async (req, res, next) => {
+  try {
+    const groupBy = req.query.groupBy === "year" ? "year" : "month";
+    const year = req.query.year
+      ? parseInt(req.query.year)
+      : new Date().getFullYear();
+    const companyFilter = await getCompanyFilter(req);
+
+    let result;
+    if (groupBy === "month") {
+      result = await prisma.$queryRaw`
+        SELECT DATE_TRUNC('month', b."createdAt") as period,
+               SUM(b."commissionAmount") as commission
+        FROM "Booking" b
+        JOIN "Trip" t ON t.id = b."tripId"
+        JOIN "Bus" bus ON bus.id = t."busId"
+        WHERE b.status = 'paid'
+          AND EXTRACT(year FROM b."createdAt") = ${year}
+          ${companyFilter}
+        GROUP BY period
+        ORDER BY period ASC
+      `;
+    } else {
+      result = await prisma.$queryRaw`
+        SELECT DATE_TRUNC('year', b."createdAt") as period,
+               SUM(b."commissionAmount") as commission
+        FROM "Booking" b
+        JOIN "Trip" t ON t.id = b."tripId"
+        JOIN "Bus" bus ON bus.id = t."busId"
+        WHERE b.status = 'paid'
+          ${companyFilter}
+        GROUP BY period
+        ORDER BY period ASC
+        LIMIT 5
+      `;
+    }
+
+    const data = result.map((r) => ({
+      period: r.period,
+      commission: parseInt(r.commission),
+    }));
+    const total = data.reduce((sum, r) => sum + r.commission, 0);
     res.json({ data, total });
   } catch (error) {
     next(error);
@@ -1122,6 +1184,7 @@ module.exports = {
   uploadRouteImage,
   totalRevenueChart,
   totalBookingsChart,
+  totalCommissionChart,
   topRoutesChart,
   companyRevenueChart,
 };

@@ -115,9 +115,17 @@ const finalizePayment = async (payment, vnpParams) => {
 
   const bookingMeta = await prisma.booking.findUnique({
     where: { id: bookingId },
-    select: { promoId: true, userId: true },
+    select: {
+      promoId: true,
+      userId: true,
+      totalPrice: true,
+      company: { select: { commissionRate: true } },
+    },
   });
 
+  const commissionAmount = Math.round(
+    bookingMeta.totalPrice * (bookingMeta.company?.commissionRate ?? 0),
+  );
   const ops = [
     prisma.payment.update({
       where: { vnpTxnRef },
@@ -130,7 +138,7 @@ const finalizePayment = async (payment, vnpParams) => {
     }),
     prisma.booking.update({
       where: { id: bookingId },
-      data: { status: "paid" },
+      data: { status: "paid", commissionAmount: commissionAmount },
     }),
     prisma.tripSeat.updateMany({
       where: { bookingId },

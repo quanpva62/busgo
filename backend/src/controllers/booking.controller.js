@@ -273,7 +273,7 @@ const cancelBooking = async (req, res, next) => {
     await prisma.$transaction(async (tx) => {
       await tx.booking.update({
         where: { id },
-        data: { status: newStatus },
+        data: { status: newStatus, commissionAmount: 0 },
       });
       await tx.tripSeat.updateMany({
         where: { bookingId: id },
