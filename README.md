@@ -105,6 +105,21 @@ node scripts/testAvatar.js           # test upload avatar
 node scripts/backfillCommission.js   # tính hoa hồng cho booking paid cũ
 ```
 
+## Testing
+
+Test suite dùng **Jest + Supertest**, chạy trên DB PostgreSQL local riêng (`busgo_test`).
+
+```bash
+cd backend
+# 1. Tạo DB test (pgAdmin hoặc psql): CREATE DATABASE busgo_test;
+# 2. Tạo .env.test từ template + điền password local
+cp .env.test.example .env.test
+# 3. Chạy test (tự migrate DB test)
+npm test
+```
+
+Phạm vi: Auth (register/login/me), Booking (giữ ghế, áp promo, điều kiện promo), Payment (`finalizePayment` idempotent + tính hoa hồng). 13 test.
+
 ## Triển khai (deploy)
 
 | Phần | Nền tảng đề xuất | Ghi chú |
