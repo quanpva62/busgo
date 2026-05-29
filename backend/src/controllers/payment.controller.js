@@ -107,6 +107,100 @@ const createPayment = async (req, res, next) => {
   }
 };
 
+const finalizePayment = async (payment, vnpParams) => {
+  if (payment.status === "successful") return false;
+
+  const bookingId = payment.bookingId;
+  const vnpTxnRef = payment.vnpTxnRef;
+
+  const bookingMeta = await prisma.booking.findUnique({
+    where: { id: bookingId },
+    select: { promoId: true, userId: true },
+  });
+
+  const ops = [
+    prisma.payment.update({
+      where: { vnpTxnRef },
+      data: {
+        status: "successful",
+        vnpResponseCode: "00",
+        vnpRaw: vnpParams,
+        paidAt: new Date(),
+      },
+    }),
+    prisma.booking.update({
+      where: { id: bookingId },
+      data: { status: "paid" },
+    }),
+    prisma.tripSeat.updateMany({
+      where: { bookingId },
+      data: { status: "booked", heldUntil: null },
+    }),
+    prisma.ticket.create({
+      data: {
+        bookingId,
+        ticketCode:
+          "BG-" + Math.random().toString(36).substr(2, 9).toUpperCase(),
+        qrCode: JSON.stringify({ bookingId, vnpTxnRef }),
+        isUsed: false,
+      },
+    }),
+  ];
+  if (bookingMeta?.promoId) {
+    ops.push(
+      prisma.promotion.update({
+        where: { id: bookingMeta.promoId },
+        data: { usedCount: { increment: 1 } },
+      }),
+      prisma.promoRedemption.create({
+        data: {
+          promoId: bookingMeta.promoId,
+          userId: bookingMeta.userId,
+          bookingId,
+        },
+      }),
+    );
+  }
+
+  const result = await prisma.$transaction(ops);
+  const ticket = result[3];
+
+  prisma.booking
+    .findUnique({
+      where: { id: bookingId },
+      include: {
+        trip: { include: { route: true } },
+        bookingSeats: { include: { seat: { include: { seat: true } } } },
+      },
+    })
+    .then((booking) => {
+      if (!booking) return;
+      notify(
+        booking.userId,
+        "payment",
+        "Thanh toán thành công",
+        `Vé ${booking.trip.route.fromCity} → ${booking.trip.route.toCity} đã được xác nhận. Mã vé: ${ticket.ticketCode}`,
+      );
+      if (!booking.passengerEmail) return;
+      const seats = booking.bookingSeats
+        .map((bs) => bs.seat.seat.seatLabel)
+        .join(", ");
+      return sendTicketEmail({
+        to: booking.passengerEmail,
+        passengerName: booking.passengerName,
+        ticketCode: ticket.ticketCode,
+        fromCity: booking.trip.route.fromCity,
+        toCity: booking.trip.route.toCity,
+        departureTime: booking.trip.departureTime,
+        seats,
+        totalPrice: booking.totalPrice,
+      });
+    })
+    .catch((err) => console.error("Send email failed:", err));
+
+  return true;
+};
+
 const vnpayReturn = async (req, res, next) => {
   try {
     const vnpParams = { ...req.query };
@@ -135,104 +229,25 @@ const vnpayReturn = async (req, res, next) => {
       if (!payment) {
         return res.status(404).json({ error: "Giao dịch không tồn tại" });
       }
+
       const bookingId = payment.bookingId;
       const responseCode = vnpParams["vnp_ResponseCode"];
 
       const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+
+      if (payment.status === "successful") {
+        return res.redirect(
+          `${frontendUrl}/payment/result?status=success&bookingId=${bookingId}`,
+        );
+      }
+      if (payment.status === "refunded") {
+        return res.redirect(
+          `${frontendUrl}/payment/result?status=failed&bookingId=${bookingId}`,
+        );
+      }
+
       if (responseCode === "00") {
-        const bookingMeta = await prisma.booking.findUnique({
-          where: { id: bookingId },
-          select: { promoId: true, userId: true },
-        });
-
-        const ops = [
-          prisma.payment.update({
-            where: { vnpTxnRef },
-            data: {
-              status: "successful",
-              vnpResponseCode: responseCode,
-              vnpRaw: vnpParams,
-              paidAt: new Date(),
-            },
-          }),
-          prisma.booking.update({
-            where: { id: bookingId },
-            data: { status: "paid" },
-          }),
-          prisma.tripSeat.updateMany({
-            where: {
-              bookingId: payment.bookingId,
-            },
-            data: { status: "booked", heldUntil: null },
-          }),
-          prisma.ticket.create({
-            data: {
-              bookingId: payment.bookingId,
-              ticketCode:
-                "BG-" + Math.random().toString(36).substr(2, 9).toUpperCase(),
-              qrCode: JSON.stringify({
-                bookingId: payment.bookingId,
-                vnpTxnRef,
-              }),
-              isUsed: false,
-            },
-          }),
-        ];
-
-        if (bookingMeta?.promoId) {
-          ops.push(
-            prisma.promotion.update({
-              where: { id: bookingMeta.promoId },
-              data: { usedCount: { increment: 1 } },
-            }),
-            prisma.promoRedemption.create({
-              data: {
-                promoId: bookingMeta.promoId,
-                userId: bookingMeta.userId,
-                bookingId: payment.bookingId,
-              },
-            }),
-          );
-        }
-
-        const result = await prisma.$transaction(ops);
-        const ticket = result[3];
-
-        // Gửi email xác nhận vé (fire-and-forget, không block redirect)
-        prisma.booking
-          .findUnique({
-            where: { id: bookingId },
-            include: {
-              trip: { include: { route: true } },
-              bookingSeats: { include: { seat: { include: { seat: true } } } },
-            },
-          })
-          .then((booking) => {
-            if (!booking) return;
-            // Notification thanh toán thành công
-            notify(
-              booking.userId,
-              "payment",
-              "Thanh toán thành công",
-              `Vé ${booking.trip.route.fromCity} → ${booking.trip.route.toCity} đã được xác nhận. Mã vé: ${ticket.ticketCode}`,
-            );
-            if (!booking.passengerEmail) return;
-            const seats = booking.bookingSeats
-              .map((bs) => bs.seat.seat.seatLabel)
-              .join(", ");
-            return sendTicketEmail({
-              to: booking.passengerEmail,
-              passengerName: booking.passengerName,
-              ticketCode: ticket.ticketCode,
-              fromCity: booking.trip.route.fromCity,
-              toCity: booking.trip.route.toCity,
-              departureTime: booking.trip.departureTime,
-              seats,
-              totalPrice: booking.totalPrice,
-            });
-          })
-          .catch((err) => console.error("Send email failed:", err));
-
+        await finalizePayment(payment, vnpParams);
         return res.redirect(
           `${frontendUrl}/payment/result?status=success&bookingId=${bookingId}`,
         );
@@ -336,8 +351,85 @@ const refundVnpay = async ({ payment, refundAmount, ipAddr, createBy }) => {
   }
 };
 
+const queryVnpayDR = async ({ payment, ipAddr = "127.0.0.1" }) => {
+  const requestId = `${Date.now()}`;
+  const createDate = new Date()
+    .toISOString()
+    .replace(/[-T:.Z]/g, "")
+    .slice(0, 14);
+  const ts = Number(
+    payment.vnpTxnRef.substring(payment.vnpTxnRef.lastIndexOf("-") + 1),
+  );
+  const transactionDate = new Date(ts)
+    .toISOString()
+    .replace(/[-T:.Z]/g, "")
+    .slice(0, 14);
+  const orderInfo = `Truy vấn giao dịch: ${payment.bookingId}`;
+  const ip = ipAddr.includes("::ffff:")
+    ? ipAddr.replace("::ffff:", "")
+    : ipAddr;
+
+  const params = {
+    vnp_RequestId: requestId,
+    vnp_Version: "2.1.0",
+    vnp_Command: "querydr",
+    vnp_TmnCode: process.env.VNP_TMN_CODE,
+    vnp_TxnRef: payment.vnpTxnRef,
+    vnp_OrderInfo: orderInfo,
+    vnp_TransactionDate: transactionDate,
+    vnp_IpAddr: ip,
+    vnp_CreateDate: createDate,
+  };
+
+  const hashData = [
+    params.vnp_RequestId,
+    params.vnp_Version,
+    params.vnp_Command,
+    params.vnp_TmnCode,
+    params.vnp_TxnRef,
+    params.vnp_TransactionDate,
+    params.vnp_CreateDate,
+    params.vnp_IpAddr,
+    params.vnp_OrderInfo,
+  ].join("|");
+
+  params.vnp_SecureHash = crypto
+    .createHmac("sha512", process.env.VNP_HASH_SECRET)
+    .update(hashData)
+    .digest("hex");
+
+  const url =
+    process.env.VNP_QUERY_URL ||
+    "https://sandbox.vnpayment.vn/merchant_webapi/api/transaction";
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(params),
+    });
+    const data = await response.json();
+
+    return {
+      paid:
+        data.vnp_ResponseCode === "00" && data.vnp_TransactionStatus === "00",
+      code: data.vnp_ResponseCode,
+      status: data.vnp_TransactionStatus,
+      raw: data,
+    };
+  } catch (err) {
+    return {
+      paid: false,
+      code: "99",
+      status: null,
+      raw: { error: err.message },
+    };
+  }
+};
 module.exports = {
   createPayment,
   vnpayReturn,
   refundVnpay,
+  queryVnpayDR,
+  finalizePayment,
 };

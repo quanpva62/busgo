@@ -3,6 +3,7 @@ const { Prisma } = require("@prisma/client");
 const bcrypt = require("bcryptjs");
 const supabase = require("../lib/supabase");
 const { notify, notifyMany } = require("../lib/notify");
+const { refundVnpay } = require("./payment.controller");
 
 const getCompanyFilter = async (req) => {
   if (req.user.role !== "company_admin") return Prisma.empty;
@@ -247,19 +248,68 @@ const updateTripStatus = async (req, res, next) => {
       data: { status },
     });
 
-    // Chuyến bị huỷ → thông báo tất cả khách có vé trên chuyến
+    // Chuyến bị huỷ → hoàn tiền 100% + trả ghế + thông báo tất cả khách
     if (status === "cancelled" && trip.status !== "cancelled") {
       const bookings = await prisma.booking.findMany({
         where: { tripId: id, status: { in: ["pending", "paid"] } },
-        select: { userId: true },
+        include: { payment: true },
       });
+
+      const refundFailures = [];
+
+      for (const b of bookings) {
+        // paid → hoàn 100% (operator huỷ, không áp policy thời gian)
+        let refundRes = null;
+        if (b.status === "paid" && b.payment?.status === "successful") {
+          refundRes = await refundVnpay({
+            payment: b.payment,
+            refundAmount: b.totalPrice,
+            ipAddr: req.ip || "127.0.0.1",
+            createBy: req.user.userId,
+          });
+          if (!refundRes.success) {
+            refundFailures.push(b.id);
+            continue; // refund fail → KHÔNG đổi DB, để xử lý tay
+          }
+        }
+
+        const newStatus = refundRes ? "refunded" : "cancelled";
+        await prisma.$transaction(async (tx) => {
+          await tx.booking.update({
+            where: { id: b.id },
+            data: { status: newStatus },
+          });
+          await tx.tripSeat.updateMany({
+            where: { bookingId: b.id },
+            data: { status: "available", bookingId: null, heldUntil: null },
+          });
+          if (refundRes) {
+            await tx.payment.update({
+              where: { id: b.payment.id },
+              data: {
+                status: "refunded",
+                vnpRaw: { ...b.payment.vnpRaw, refund: refundRes.raw },
+              },
+            });
+          }
+        });
+      }
+
       const userIds = [...new Set(bookings.map((b) => b.userId))];
       await notifyMany(
         userIds,
         "trip",
         "Chuyến đi bị huỷ",
-        `Chuyến ${trip.route.fromCity} → ${trip.route.toCity} đã bị huỷ. Vui lòng liên hệ để được hỗ trợ hoàn tiền hoặc đặt chuyến khác.`,
+        `Chuyến ${trip.route.fromCity} → ${trip.route.toCity} đã bị huỷ. Vé đã thanh toán được hoàn tiền 100% tự động.`,
       );
+
+      if (refundFailures.length > 0) {
+        return res.json({
+          message: `Đã huỷ chuyến. ${refundFailures.length}/${bookings.length} vé hoàn tiền thất bại — cần xử lý thủ công.`,
+          trip: updated,
+          refundFailures,
+        });
+      }
     }
 
     res.json({ message: "Đã cập nhật trạng thái", trip: updated });

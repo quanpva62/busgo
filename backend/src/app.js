@@ -12,11 +12,13 @@ const adminRoutes = require("./routes/admin.routes");
 const chatbotRoutes = require("./routes/chatbot.routes");
 const reviewRoutes = require("./routes/review.routes");
 const notificationRoutes = require("./routes/notification.routes");
+const promoRoutes = require("./routes/promo.routes");
 const errorHandler = require("./middlewares/error.middleware");
 const morgan = require("morgan");
 const cron = require("node-cron");
 const releaseExpiredBookings = require("./jobs/releaseExpiredBookings");
-const promoRoutes = require("./routes/promo.routes");
+const { reconcilePendingPayments } = require("./jobs/reconcilePendingPayments");
+
 // Middleware
 app.use(
   cors({
@@ -48,6 +50,11 @@ app.use((req, res, next) => {
 cron.schedule("*/5 * * * *", () => {
   releaseExpiredBookings().catch((e) =>
     console.error("[cron] Release expired bookings failed:", e),
+  );
+});
+cron.schedule("*/2 * * * *", () => {
+  reconcilePendingPayments().catch((e) =>
+    console.error("[cron] Reconcile pending payments failed:", e),
   );
 });
 app.use(errorHandler);
