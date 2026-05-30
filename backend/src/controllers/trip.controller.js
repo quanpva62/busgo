@@ -2,7 +2,7 @@ const prisma = require("../lib/prisma");
 
 const searchTrip = async (req, res, next) => {
   try {
-    const { from, to, date } = req.query;
+    const { from, to, date, busType, maxPrice } = req.query;
     const page = Number(req.query.page) || 1;
     const limit = Number(req.query.limit) || 10;
     const skip = (page - 1) * limit;
@@ -24,8 +24,15 @@ const searchTrip = async (req, res, next) => {
     if (from) routeFilter.fromCity = from;
     if (to) routeFilter.toCity = to;
 
+    // Bus type filter — comma-separated: "sleeper,standard"
+    const busTypes = busType
+      ? String(busType).split(",").filter(Boolean)
+      : [];
+
     const where = {
       ...(Object.keys(routeFilter).length && { route: routeFilter }),
+      ...(busTypes.length > 0 && { bus: { busType: { in: busTypes } } }),
+      ...(maxPrice && { price: { lte: Number(maxPrice) } }),
       departureTime: timeFilter,
       status: { not: "cancelled" },
     };

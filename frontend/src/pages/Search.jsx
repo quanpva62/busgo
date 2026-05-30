@@ -53,13 +53,6 @@ const CANCEL_POLICY = [
   { when: "Trước khởi hành dưới 12 giờ", refund: "Không hoàn tiền (0%)" },
 ];
 
-const TIME_SLOTS = [
-  { label: "Sáng sớm", start: 4, end: 11 },
-  { label: "Buổi trưa", start: 11, end: 14 },
-  { label: "Buổi chiều", start: 14, end: 18 },
-  { label: "Ban đêm", start: 18, end: 4, overnight: true },
-];
-
 export default function Search() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -80,12 +73,11 @@ export default function Search() {
 
   const [selectedTypes, setSelectedTypes] = useState([]);
   const [maxPrice, setMaxPrice] = useState(10000000);
-  const [selectedSlots, setSelectedSlots] = useState([]);
 
-  // Reset về trang 1 khi đổi from/to/date
+  // Reset về trang 1 khi đổi bất kỳ filter nào
   useEffect(() => {
     setPage(1);
-  }, [from, to, filterDate]);
+  }, [from, to, filterDate, selectedTypes, maxPrice]);
 
   useEffect(() => {
     async function fetchTrips() {
@@ -96,6 +88,9 @@ export default function Search() {
         if (from) params.set("from", from);
         if (to) params.set("to", to);
         if (filterDate) params.set("date", filterDate);
+        if (selectedTypes.length > 0)
+          params.set("busType", selectedTypes.join(","));
+        if (maxPrice < 10000000) params.set("maxPrice", String(maxPrice));
         params.set("page", String(page));
         params.set("limit", String(PAGE_SIZE));
         const url = `${import.meta.env.VITE_API_URL}/api/trips?${params.toString()}`;
@@ -113,34 +108,11 @@ export default function Search() {
     }
 
     fetchTrips();
-  }, [from, to, filterDate, page]);
-
-  const filtered = trips.filter((trip) => {
-    if (selectedTypes.length > 0 && !selectedTypes.includes(trip.bus.busType))
-      return false;
-    if (trip.price > maxPrice) return false;
-    if (selectedSlots.length > 0) {
-      const hour = new Date(trip.departureTime).getHours();
-      const inSlot = selectedSlots.some((idx) => {
-        const s = TIME_SLOTS[idx];
-        return s.overnight
-          ? hour >= s.start || hour < s.end
-          : hour >= s.start && hour < s.end;
-      });
-      if (!inSlot) return false;
-    }
-    return true;
-  });
+  }, [from, to, filterDate, selectedTypes, maxPrice, page]);
 
   function toggleType(type) {
     setSelectedTypes((prev) =>
       prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type],
-    );
-  }
-
-  function toggleSlot(idx) {
-    setSelectedSlots((prev) =>
-      prev.includes(idx) ? prev.filter((i) => i !== idx) : [...prev, idx],
     );
   }
 
@@ -261,27 +233,6 @@ export default function Search() {
               </div>
             </div>
 
-            {/* Giờ khởi hành */}
-            <div>
-              <h3 className="text-xs font-bold text-secondary uppercase tracking-widest mb-4">
-                Giờ khởi hành
-              </h3>
-              <div className="grid grid-cols-2 gap-2">
-                {TIME_SLOTS.map((slot, idx) => (
-                  <button
-                    key={slot.label}
-                    onClick={() => toggleSlot(idx)}
-                    className={`py-2 text-sm font-bold border rounded-lg transition-colors hover:cursor-pointer ${
-                      selectedSlots.includes(idx)
-                        ? "bg-primary text-white border-primary"
-                        : "border-outline-variant/30 hover:bg-surface-container-low"
-                    }`}
-                  >
-                    {slot.label}
-                  </button>
-                ))}
-              </div>
-            </div>
           </div>
 
           {/* Promo banner */}
@@ -309,14 +260,14 @@ export default function Search() {
             </div>
           )}
 
-          {!loading && !error && filtered.length === 0 && (
+          {!loading && !error && trips.length === 0 && (
             <div className="text-center py-20 text-secondary font-medium">
               Không tìm thấy chuyến phù hợp.
             </div>
           )}
 
           {!loading &&
-            filtered.map((trip) => (
+            trips.map((trip) => (
               <TripCard
                 key={trip.id}
                 trip={trip}
