@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import iconBus from "../assets/icons/bus.svg";
+import Icon from "../components/Icon.jsx";
 
 export default function VerifyEmail() {
   const [searchParams] = useSearchParams();
@@ -56,7 +57,7 @@ export default function VerifyEmail() {
 
         {status === "loading" && (
           <>
-            <span className="material-symbols-outlined text-6xl text-primary animate-spin">progress_activity</span>
+            <Icon name="progress_activity" className="w-16 h-16 text-primary animate-spin mx-auto" />
             <h1 className="text-2xl font-bold text-on-surface mt-4 mb-2">
               Đang xác thực...
             </h1>
@@ -66,7 +67,7 @@ export default function VerifyEmail() {
 
         {status === "success" && (
           <>
-            <span className="material-symbols-outlined text-6xl text-green-500">check_circle</span>
+            <Icon name="check_circle" className="w-16 h-16 text-green-500 mx-auto" />
             <h1 className="text-2xl font-bold text-on-surface mt-4 mb-2">
               Xác thực thành công!
             </h1>
@@ -82,7 +83,7 @@ export default function VerifyEmail() {
 
         {status === "error" && (
           <>
-            <span className="material-symbols-outlined text-6xl text-red-500">error</span>
+            <Icon name="error" className="w-16 h-16 text-red-500 mx-auto" />
             <h1 className="text-2xl font-bold text-on-surface mt-4 mb-2">
               Xác thực thất bại
             </h1>

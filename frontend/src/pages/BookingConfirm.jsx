@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext.jsx";
+import Icon from "../components/Icon.jsx";
 
 function formatTime(iso) {
   return new Date(iso).toLocaleTimeString("vi-VN", {
@@ -95,7 +96,7 @@ export default function BookingConfirm() {
 
         {/* Status banner */}
         <div className={`flex items-center gap-3 p-4 rounded-2xl border mb-6 ${status.cls}`}>
-          <span className="material-symbols-outlined text-2xl">{status.icon}</span>
+          <Icon name={status.icon} className="w-6 h-6" />
           <div>
             <p className="font-black text-base">{status.label}</p>
             <p className="text-xs font-medium opacity-70">

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { QRCodeSVG } from "qrcode.react";
+import Icon from "../components/Icon.jsx";
 
 function formatTime(iso) {
   return new Date(iso).toLocaleTimeString("vi-VN", {
@@ -62,7 +63,7 @@ export default function Ticket() {
           <div className="bg-linear-to-br from-primary-container to-primary px-6 py-5 text-white">
             <div className="flex items-center justify-between mb-1">
               <span className="text-2xl font-black tracking-tighter">BusGo</span>
-              <span className="material-symbols-outlined text-3xl">confirmation_number</span>
+              <Icon name="confirmation_number" className="w-8 h-8" />
             </div>
             <p className="text-white/70 text-xs font-medium">E-TICKET</p>
           </div>
@@ -76,7 +77,7 @@ export default function Ticket() {
               </div>
               <div className="flex-1 flex items-center gap-1 px-2">
                 <div className="flex-1 h-px bg-outline-variant/40" />
-                <span className="material-symbols-outlined text-secondary text-base">directions_bus</span>
+                <Icon name="directions_bus" className="w-4 h-4 text-secondary" />
                 <div className="flex-1 h-px bg-outline-variant/40" />
               </div>
               <div className="text-center">

@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
-import { useLocation, useParams } from "react-router-dom";
+import { useLocation, useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 const Checkout = () => {
   const { user, authFetch } = useAuth();
+  const navigate = useNavigate();
   const [passengerName, setPassengerName] = useState(user?.fullName || "");
   const [passengerPhone, setPassengerPhone] = useState(user?.phone || "");
   const [passengerEmail, setPassengerEmail] = useState(user?.email || "");
@@ -15,6 +16,12 @@ const Checkout = () => {
   const [promoCode, setPromoCode] = useState("");
 
   const { id } = useParams();
+
+  useEffect(() => {
+    if (selectedSeats.length === 0) {
+      navigate(`/trips/${id}`, { replace: true });
+    }
+  }, [selectedSeats.length, id, navigate]);
 
   useEffect(() => {
     const fetchTrip = async () => {

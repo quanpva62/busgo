@@ -149,8 +149,8 @@ export default function Login() {
                 className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 opacity-40"
               />
               <input
-                type="email"
-                placeholder="e.g. name@busgo.com"
+                type="text"
+                placeholder="name@busgo.com hoặc 0901234567"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required

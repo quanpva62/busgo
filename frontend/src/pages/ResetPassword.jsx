@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
+import Icon from "../components/Icon.jsx";
 import { useToast } from "../context/ToastContext.jsx";
 import iconBus from "../assets/icons/bus.svg";
 import iconPassword from "../assets/icons/password.svg";
@@ -49,7 +50,7 @@ export default function ResetPassword() {
     return (
       <main className="min-h-screen flex items-center justify-center px-6">
         <div className="text-center">
-          <span className="material-symbols-outlined text-red-500 text-6xl">error</span>
+          <Icon name="error" className="w-16 h-16 text-red-500 mx-auto" />
           <h2 className="text-xl font-bold mt-4">Link không hợp lệ</h2>
           <p className="text-secondary mt-2 mb-6">Vui lòng request link mới từ trang quên mật khẩu.</p>
           <Link

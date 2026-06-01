@@ -15,8 +15,17 @@ const registerValidation = [
 ];
 
 const loginValidation = [
-  body("email").isEmail().withMessage("Vui lòng nhập email hợp lệ"),
-
+  body("email")
+    .notEmpty()
+    .withMessage("Vui lòng nhập email hoặc số điện thoại")
+    .custom((value) => {
+      const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+      const isPhone = /^[0-9+\-\s]{8,}$/.test(value);
+      if (!isEmail && !isPhone) {
+        throw new Error("Email hoặc số điện thoại không hợp lệ");
+      }
+      return true;
+    }),
   body("password").notEmpty().withMessage("Vui lòng nhập mật khẩu"),
 ];
 

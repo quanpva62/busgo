@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
+import Icon from "./Icon.jsx";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -102,12 +103,10 @@ export default function NotificationBell() {
     <div className="relative" ref={panelRef}>
       <button
         onClick={() => setOpen((o) => !o)}
-        className="relative p-2 hover:bg-slate-50 rounded-xl transition-colors cursor-pointer"
+        className="relative p-2 hover:bg-slate-50 rounded-xl transition-colors  cursor-pointer"
         aria-label="Thông báo"
       >
-        <span className="material-symbols-outlined text-slate-600">
-          notifications
-        </span>
+        <Icon name="notifications" className="w-6 h-6 text-slate-600 " />
         {unread > 0 && (
           <span className="absolute top-1 right-1 min-w-4 h-4 px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
             {unread > 9 ? "9+" : unread}
@@ -145,9 +144,10 @@ export default function NotificationBell() {
                       : "bg-primary/5 hover:bg-primary/10"
                   }`}
                 >
-                  <span className="material-symbols-outlined text-primary shrink-0">
-                    {TYPE_ICON[n.type] || "notifications"}
-                  </span>
+                  <Icon
+                    name={TYPE_ICON[n.type] || "notifications"}
+                    className="w-5 h-5 text-primary shrink-0"
+                  />
                   <div className="flex-1 min-w-0">
                     <p className="font-bold text-sm text-on-surface">
                       {n.title}

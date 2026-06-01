@@ -1,5 +1,6 @@
-import heroImg from "../assets/img/hero-img.png";
+import heroImg from "../assets/img/hero-img.webp";
 import { useState, useEffect } from "react";
+import Icon from "../components/Icon.jsx";
 import iconLocation from "../assets/icons/location_on.svg";
 import iconFlag from "../assets/icons/flag.svg";
 import iconCalendar from "../assets/icons/calendar.svg";
@@ -68,9 +69,10 @@ export default function Home() {
       {user && !user.phone && (
         <div className="fixed top-20 left-0 right-0 z-40 bg-yellow-50 border-b border-yellow-200">
           <div className="max-w-360 mx-auto px-6 py-3 flex items-center gap-3">
-            <span className="material-symbols-outlined text-yellow-600 shrink-0">info</span>
+            <Icon name="info" className="w-5 h-5 text-yellow-600 shrink-0" />
             <p className="flex-1 text-yellow-900 text-sm">
-              <span className="font-bold">Cần cập nhật số điện thoại</span> để nhà xe có thể liên hệ khi cần thiết.
+              <span className="font-bold">Cần cập nhật số điện thoại</span> để
+              nhà xe có thể liên hệ khi cần thiết.
             </p>
             <button
               onClick={() => navigate("/profile")}
@@ -164,20 +166,18 @@ export default function Home() {
                   </button>
                   {openTo && (
                     <ul className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-outline-variant/30 z-50 overflow-hidden max-h-72 overflow-y-auto">
-                      {toCities.map(
-                        (city) => (
-                          <li
-                            key={city}
-                            onClick={() => {
-                              setSelectedTo(city);
-                              setOpenTo(false);
-                            }}
-                            className="px-4 py-3 hover:bg-surface-container-low font-medium text-on-surface cursor-pointer transition-colors z-40"
-                          >
-                            {city}
-                          </li>
-                        ),
-                      )}
+                      {toCities.map((city) => (
+                        <li
+                          key={city}
+                          onClick={() => {
+                            setSelectedTo(city);
+                            setOpenTo(false);
+                          }}
+                          className="px-4 py-3 hover:bg-surface-container-low font-medium text-on-surface cursor-pointer transition-colors z-40"
+                        >
+                          {city}
+                        </li>
+                      ))}
                     </ul>
                   )}
                 </div>
@@ -209,7 +209,9 @@ export default function Home() {
               <div className="flex items-end">
                 <button
                   onClick={() =>
-                    navigate(`/search?from=${encodeURIComponent(selectedFrom)}&to=${encodeURIComponent(selectedTo)}&date=${date}`)
+                    navigate(
+                      `/search?from=${encodeURIComponent(selectedFrom)}&to=${encodeURIComponent(selectedTo)}&date=${date}`,
+                    )
                   }
                   className="w-full py-4 bg-linear-to-br from-primary-container to-primary text-white font-bold rounded-xl shadow-lg hover:opacity-95 active:scale-[0.98] transition-all flex items-center justify-center gap-2 hover:cursor-pointer"
                 >

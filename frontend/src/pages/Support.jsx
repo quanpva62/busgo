@@ -1,4 +1,5 @@
 import { useState } from "react";
+import Icon from "../components/Icon.jsx";
 
 const FAQ = [
   {
@@ -93,9 +94,10 @@ export default function Support() {
               >
                 <summary className="cursor-pointer py-3 font-bold text-on-surface flex items-center justify-between gap-3 list-none hover:text-primary transition-colors">
                   <span>{item.q}</span>
-                  <span className="material-symbols-outlined text-secondary transition-transform group-open:rotate-180 shrink-0">
-                    {openIdx === idx ? "expand_less" : "expand_more"}
-                  </span>
+                  <Icon
+                    name={openIdx === idx ? "expand_less" : "expand_more"}
+                    className="w-5 h-5 text-secondary transition-transform group-open:rotate-180 shrink-0"
+                  />
                 </summary>
                 <p className="text-secondary text-sm leading-relaxed pb-3 pr-8">
                   {item.a}
@@ -128,9 +130,7 @@ function ContactCard({ icon, label, value, href, note }) {
       href={href}
       className="bg-white rounded-2xl shadow-sm p-5 text-center hover:shadow-md transition-shadow block"
     >
-      <span className="material-symbols-outlined text-primary text-3xl">
-        {icon}
-      </span>
+      <Icon name={icon} className="w-7 h-7 text-primary" />
       <p className="text-[10px] font-bold tracking-widest text-secondary uppercase mt-2">
         {label}
       </p>

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import Icon from "./Icon.jsx";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -118,18 +119,18 @@ export default function Chatbot() {
             className="hidden sm:flex absolute top-0 left-0 w-4 h-4 cursor-nw-resize z-10 items-center justify-center"
             title="Kéo để thay đổi kích thước"
           >
-            <span className="material-symbols-outlined text-white/50 text-sm select-none">drag_indicator</span>
+            <Icon name="drag_indicator" className="w-4 h-4 text-white/50 select-none" />
           </div>
 
           {/* Header */}
           <div className="flex items-center gap-3 px-4 py-3 bg-primary text-white shrink-0">
-            <span className="material-symbols-outlined text-xl">smart_toy</span>
+            <Icon name="smart_toy" className="w-5 h-5" />
             <div className="flex-1 min-w-0">
               <p className="font-bold text-sm leading-tight">BusGo Assistant</p>
               <p className="text-white/70 text-xs">Hỏi về tuyến, giá vé, lịch xe...</p>
             </div>
             <button onClick={() => setOpen(false)} className="hover:bg-white/20 rounded-lg p-1 transition-colors">
-              <span className="material-symbols-outlined text-xl">close</span>
+              <Icon name="close" className="w-5 h-5" />
             </button>
           </div>
 
@@ -137,7 +138,7 @@ export default function Chatbot() {
           <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
             {messages.length === 0 && (
               <div className="text-center text-secondary text-sm mt-8 space-y-2">
-                <span className="material-symbols-outlined text-4xl text-primary/40 block">smart_toy</span>
+                <Icon name="smart_toy" className="w-10 h-10 text-primary/40 mx-auto" />
                 <p>Xin chào! Tôi có thể giúp bạn tìm chuyến xe, xem giá vé và lịch khởi hành.</p>
                 <div className="flex flex-col gap-1.5 mt-4">
                   {[
@@ -201,7 +202,7 @@ export default function Chatbot() {
               disabled={!input.trim() || loading}
               className="px-3 py-2 bg-primary text-white rounded-xl disabled:opacity-40 hover:opacity-90 transition-opacity shrink-0"
             >
-              <span className="material-symbols-outlined text-xl">send</span>
+              <Icon name="send" className="w-5 h-5" />
             </button>
           </div>
         </div>
@@ -212,9 +213,7 @@ export default function Chatbot() {
         onClick={() => setOpen((o) => !o)}
         className="fixed bottom-6 right-4 sm:right-6 z-50 w-14 h-14 bg-primary text-white rounded-full shadow-lg hover:opacity-90 active:scale-95 transition-all flex items-center justify-center"
       >
-        <span className="material-symbols-outlined text-2xl">
-          {open ? "close" : "smart_toy"}
-        </span>
+        <Icon name={open ? "close" : "smart_toy"} className="w-6 h-6" />
       </button>
     </>
   );

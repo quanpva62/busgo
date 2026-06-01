@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import Pagination from "../components/Pagination.jsx";
+import Icon from "../components/Icon.jsx";
 
 function formatTime(isoString) {
   return new Date(isoString).toLocaleTimeString("vi-VN", {
@@ -148,12 +149,10 @@ export default function Search() {
           className="lg:hidden flex items-center justify-between w-full px-4 py-3 bg-white rounded-xl shadow-sm font-bold text-on-surface"
         >
           <span className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-lg">tune</span>
+            <Icon name="tune" className="w-5 h-5" />
             Bộ lọc
           </span>
-          <span className="material-symbols-outlined text-lg">
-            {filtersOpen ? "expand_less" : "expand_more"}
-          </span>
+          <Icon name={filtersOpen ? "expand_less" : "expand_more"} className="w-5 h-5" />
         </button>
 
         {/* Sidebar */}
@@ -411,16 +410,13 @@ function TripCard({ trip, onSelect }) {
           <p className="text-xs font-bold text-secondary uppercase tracking-widest mb-3">
             Tiện ích trên xe
           </p>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-4">
             {amenities.map((a) => (
-              <div
-                key={a.label}
-                className="flex items-center gap-1.5 text-sm text-on-surface"
-              >
-                <span className="material-symbols-outlined text-base text-primary">
-                  {a.icon}
+              <div key={a.label} className="group relative">
+                <Icon name={a.icon} className="w-6 h-6 text-primary" />
+                <span className="absolute -top-8 left-1/2 -translate-x-1/2 hidden group-hover:block whitespace-nowrap bg-on-surface text-white text-xs px-2 py-1 rounded shadow-lg z-10">
+                  {a.label}
                 </span>
-                {a.label}
               </div>
             ))}
           </div>

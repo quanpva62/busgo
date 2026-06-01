@@ -100,9 +100,13 @@ const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
-    const user = await prisma.user.findUnique({ where: { email } });
+    // Detect email vs phone — query DB theo field tương ứng
+    const isPhone = /^[0-9+]/.test(email);
+    const user = await prisma.user.findUnique({
+      where: isPhone ? { phone: email } : { email },
+    });
     if (!user) {
-      return res.status(400).json({ error: "Email hoặc mật khẩu không đúng" });
+      return res.status(400).json({ error: "Tài khoản hoặc mật khẩu không đúng" });
     }
 
     if (!user.passwordHash) {

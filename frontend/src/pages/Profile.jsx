@@ -3,6 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext.jsx";
 import { useNavigate, useLocation } from "react-router-dom";
 import Star from "../components/Star.jsx";
+import Icon from "../components/Icon.jsx";
 
 function formatPrice(price) {
   return price.toLocaleString("vi-VN") + "đ";
@@ -52,7 +53,7 @@ const TABS = ["Thông tin", "Mật khẩu", "Lịch sử đặt vé"];
 
 const API_URL = import.meta.env.VITE_API_URL;
 export default function Profile() {
-  const { user, login, authFetch, logout } = useAuth();
+  const { user, login, authFetch, logout, updateUser } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
   const location = useLocation();
@@ -109,10 +110,7 @@ export default function Profile() {
     });
 
     const data = await res.json();
-    if (res.ok) {
-      localStorage.setItem("user", JSON.stringify(data.user));
-      window.location.reload();
-    }
+    if (res.ok) updateUser(data.user);
     setUploading(false);
   }
 
@@ -123,10 +121,7 @@ export default function Profile() {
       method: "DELETE",
     });
     const data = await res.json();
-    if (res.ok) {
-      localStorage.setItem("user", JSON.stringify(data.user));
-      window.location.reload();
-    }
+    if (res.ok) updateUser(data.user);
     setUploading(false);
   }
 
@@ -395,9 +390,7 @@ export default function Profile() {
         {/* Phone collection prompt */}
         {!user.phone && (
           <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-2xl flex items-start gap-3">
-            <span className="material-symbols-outlined text-yellow-600 shrink-0">
-              info
-            </span>
+            <Icon name="info" className="w-5 h-5 text-yellow-600 shrink-0" />
             <div className="flex-1">
               <p className="font-bold text-yellow-900 text-sm">
                 Cần cập nhật số điện thoại
@@ -610,9 +603,7 @@ export default function Profile() {
                           disabled={cancellingId === b.id}
                           className="text-sm text-red-500 font-bold flex items-center gap-1 hover:opacity-70 disabled:opacity-50 transition-opacity"
                         >
-                          <span className="material-symbols-outlined text-sm">
-                            cancel
-                          </span>
+                          <Icon name="cancel" className="w-3.5 h-3.5" />
                           {cancellingId === b.id ? "Đang huỷ..." : "Huỷ đặt vé"}
                         </button>
                         {b.status === "paid" && (
@@ -778,9 +769,7 @@ export default function Profile() {
                           }}
                           className="mt-3 text-sm text-red-500 font-bold flex items-center gap-1 cursor-pointer group"
                         >
-                          <span className="material-symbols-outlined text-sm">
-                            flag
-                          </span>
+                          <Icon name="flag" className="w-3.5 h-3.5" />
                           <span className="group-hover:underline">
                             Báo cáo sự cố
                           </span>
@@ -871,9 +860,7 @@ export default function Profile() {
                           }}
                           className="mt-3 text-sm text-primary font-bold flex items-center gap-1 cursor-pointer hover:opacity-70"
                         >
-                          <span className="material-symbols-outlined text-sm">
-                            star
-                          </span>
+                          <Icon name="star" className="w-3.5 h-3.5" />
                           Đánh giá chuyến đi
                         </button>
                       )}

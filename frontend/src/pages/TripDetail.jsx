@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import heroImg from "../assets/img/hero-img.png";
+import Icon from "../components/Icon.jsx";
+import heroImg from "../assets/img/hero-img.webp";
 import steeringWheelIcon from "../assets/icons/steering-wheel.svg";
 import { useAuth } from "../context/AuthContext";
 import Star from "../components/Star.jsx";
@@ -66,7 +67,11 @@ export default function TripDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedIds, setSelectedIds] = useState([]);
-  const [reviewsData, setReviewsData] = useState({ avgRating: 0, count: 0, reviews: [] });
+  const [reviewsData, setReviewsData] = useState({
+    avgRating: 0,
+    count: 0,
+    reviews: [],
+  });
 
   useEffect(() => {
     async function fetchData() {
@@ -168,7 +173,7 @@ export default function TripDetail() {
           <div className="absolute inset-0 " />
           <div className="relative h-full p-5 md:p-8 flex flex-col justify-between gap-6">
             <span className="inline-flex self-start items-center gap-1 px-3 py-1 bg-primary text-white text-[10px] font-bold rounded-full tracking-widest uppercase">
-              <span className="material-symbols-outlined text-sm">bolt</span>
+              <Icon name="bolt" className="w-4 h-4" />
               Tuyến thẳng
             </span>
 
@@ -178,9 +183,7 @@ export default function TripDetail() {
                   {trip.route.fromCity} → {trip.route.toCity}
                 </h1>
                 <p className="text-white/90 text-sm font-semibold mt-2 flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-base">
-                    directions_bus
-                  </span>
+                  <Icon name="directions_bus" className="w-5 h-5" />
                   {trip.bus.company?.name}
                 </p>
                 <p className="text-white/70 text-xs mt-0.5">
@@ -223,7 +226,8 @@ export default function TripDetail() {
                     {trip.driver.fullName}
                   </p>
                   <p className="text-secondary text-sm">
-                    {trip.driver._count?.tripsAsDriver ?? 0} chuyến đã hoàn thành
+                    {trip.driver._count?.tripsAsDriver ?? 0} chuyến đã hoàn
+                    thành
                   </p>
                 </div>
               </div>
@@ -287,9 +291,10 @@ export default function TripDetail() {
                         key={key}
                         className="flex items-center gap-2 text-secondary"
                       >
-                        <span className="material-symbols-outlined text-primary text-xl">
-                          {item.icon}
-                        </span>
+                        <Icon
+                          name={item.icon}
+                          className="w-5 h-5 text-primary"
+                        />
                         <span className="text-sm font-medium text-on-surface">
                           {item.label}
                         </span>
@@ -428,8 +433,12 @@ function SeatGrid({
   }
 
   const sleeperW = maxCol <= 2 ? "w-14 sm:w-16" : "w-11 sm:w-12";
-  const seatClass = isSleeper ? `${sleeperW} h-20 sm:h-22` : "w-11 h-11 sm:w-13 sm:h-13";
-  const emptyClass = isSleeper ? `${sleeperW} h-20 sm:h-22` : "w-11 h-11 sm:w-13 sm:h-13";
+  const seatClass = isSleeper
+    ? `${sleeperW} h-20 sm:h-22`
+    : "w-11 h-11 sm:w-13 sm:h-13";
+  const emptyClass = isSleeper
+    ? `${sleeperW} h-20 sm:h-22`
+    : "w-11 h-11 sm:w-13 sm:h-13";
 
   const renderSeat = (ts, cIdx) =>
     ts ? (
@@ -524,11 +533,15 @@ function ReviewsSection({ data }) {
   return (
     <section className="mt-6 bg-white rounded-2xl p-5 md:p-6 shadow-sm">
       <div className="flex items-center justify-between gap-3 mb-4">
-        <h2 className="text-lg font-bold text-on-surface">Đánh giá tuyến này</h2>
+        <h2 className="text-lg font-bold text-on-surface">
+          Đánh giá tuyến này
+        </h2>
         {count > 0 && (
           <div className="flex items-center gap-2">
-            <Star value={Math.round(avgRating)} size="text-lg" />
-            <span className="font-bold text-on-surface">{avgRating.toFixed(1)}</span>
+            <Star value={Math.round(avgRating)} size="w-5 h-5" />
+            <span className="font-bold text-on-surface">
+              {avgRating.toFixed(1)}
+            </span>
             <span className="text-secondary text-sm">({count} đánh giá)</span>
           </div>
         )}
@@ -553,7 +566,7 @@ function ReviewsSection({ data }) {
                   {new Date(r.createdAt).toLocaleDateString("vi-VN")}
                 </span>
               </div>
-              <Star value={r.rating} size="text-sm" />
+              <Star value={r.rating} size="w-3.5 h-3.5" />
               {r.comment && (
                 <p className="text-sm text-on-surface mt-2 leading-relaxed">
                   {r.comment}

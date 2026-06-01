@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { Link, NavLink } from "react-router-dom";
 import NotificationBell from "./NotificationBell.jsx";
+import Icon from "./Icon.jsx";
 
 export default function Navbar() {
   const { user } = useAuth();
@@ -66,9 +67,7 @@ export default function Navbar() {
                   to="/admin"
                   className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-primary hover:bg-primary/5 rounded-xl transition-colors"
                 >
-                  <span className="material-symbols-outlined text-base">
-                    admin_panel_settings
-                  </span>
+                  <Icon name="admin_panel_settings" className="w-5 h-5" />
                   Quản lý
                 </Link>
               )}
@@ -79,9 +78,7 @@ export default function Navbar() {
                   to="/checkin"
                   className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-primary hover:bg-primary/5 rounded-xl transition-colors"
                 >
-                  <span className="material-symbols-outlined text-base">
-                    qr_code_scanner
-                  </span>
+                  <Icon name="qr_code_scanner" className="w-5 h-5" />
                   Check-in
                 </Link>
               )}

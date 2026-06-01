@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import heroImg from "../assets/img/hero-img.png";
+import heroImg from "../assets/img/hero-img.webp";
+import Icon from "../components/Icon.jsx";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -51,12 +52,12 @@ export default function AllRoutes() {
           </div>
         </div>
 
-        {loading && (
-          <p className="text-secondary text-sm">Đang tải...</p>
-        )}
+        {loading && <p className="text-secondary text-sm">Đang tải...</p>}
 
         {!loading && filtered.length === 0 && (
-          <p className="text-secondary text-sm">Không tìm thấy tuyến phù hợp.</p>
+          <p className="text-secondary text-sm">
+            Không tìm thấy tuyến phù hợp.
+          </p>
         )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -64,7 +65,9 @@ export default function AllRoutes() {
             <div
               key={r.id}
               onClick={() =>
-                navigate(`/search?from=${encodeURIComponent(r.fromCity)}&to=${encodeURIComponent(r.toCity)}`)
+                navigate(
+                  `/search?from=${encodeURIComponent(r.fromCity)}&to=${encodeURIComponent(r.toCity)}`,
+                )
               }
               className="group bg-white rounded-3xl overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer border border-transparent hover:border-outline-variant/20"
             >
@@ -81,20 +84,23 @@ export default function AllRoutes() {
                 </h3>
                 <p className="text-secondary text-sm flex items-center gap-3">
                   <span className="flex items-center gap-1">
-                    <span className="material-symbols-outlined text-base">straighten</span>
+                    <Icon name="straighten" className="w-4 h-4" />
                     {r.distanceKm} km
                   </span>
                   <span className="flex items-center gap-1">
-                    <span className="material-symbols-outlined text-base">schedule</span>
+                    <Icon name="schedule" className="w-4 h-4" />
                     {formatDuration(r.estimatedDuration)}
                   </span>
                 </p>
                 <div className="mt-4 flex items-center justify-between">
-                  <span className="text-xs font-bold text-primary">Xem chuyến</span>
+                  <span className="text-xs font-bold text-primary">
+                    Xem chuyến
+                  </span>
                   <div className="w-8 h-8 rounded-full bg-surface-container-low flex items-center justify-center group-hover:bg-primary transition-colors duration-300">
-                    <span className="material-symbols-outlined text-sm group-hover:text-white transition-colors duration-300">
-                      arrow_forward
-                    </span>
+                    <Icon
+                      name="arrow_forward"
+                      className="w-4 h-4 group-hover:text-white transition-colors duration-300"
+                    />
                   </div>
                 </div>
               </div>

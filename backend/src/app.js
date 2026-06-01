@@ -47,15 +47,17 @@ app.use("/api/promos", promoRoutes);
 app.use((req, res, next) => {
   res.status(404).json({ message: "Không tìm thấy tài nguyên" });
 });
-cron.schedule("*/5 * * * *", () => {
-  releaseExpiredBookings().catch((e) =>
-    console.error("[cron] Release expired bookings failed:", e),
-  );
-});
-cron.schedule("*/2 * * * *", () => {
-  reconcilePendingPayments().catch((e) =>
-    console.error("[cron] Reconcile pending payments failed:", e),
-  );
-});
+if (process.env.NODE_ENV !== "test") {
+  cron.schedule("*/5 * * * *", () => {
+    releaseExpiredBookings().catch((e) =>
+      console.error("[cron] Release expired bookings failed:", e),
+    );
+  });
+  cron.schedule("*/2 * * * *", () => {
+    reconcilePendingPayments().catch((e) =>
+      console.error("[cron] Reconcile pending payments failed:", e),
+    );
+  });
+}
 app.use(errorHandler);
 module.exports = app;

@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useState } from "react";
+import Icon from "../components/Icon.jsx";
 
 const ToastContext = createContext(null);
 
@@ -115,13 +116,13 @@ function ToastContainer({ toasts, onClose }) {
             key={t.id}
             className={`flex items-start gap-3 p-4 rounded-2xl border shadow-lg animate-[slideIn_0.2s_ease-out] pointer-events-auto ${s.cls}`}
           >
-            <span className="material-symbols-outlined shrink-0">{s.icon}</span>
+            <Icon name={s.icon} className="w-5 h-5 shrink-0" />
             <p className="flex-1 text-sm font-medium whitespace-pre-line">{t.message}</p>
             <button
               onClick={() => onClose(t.id)}
               className="shrink-0 hover:opacity-70 transition-opacity cursor-pointer"
             >
-              <span className="material-symbols-outlined text-base">close</span>
+              <Icon name="close" className="w-4 h-4" />
             </button>
           </div>
         );

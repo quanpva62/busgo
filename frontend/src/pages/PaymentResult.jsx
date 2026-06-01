@@ -1,4 +1,5 @@
 import { useSearchParams, useNavigate } from "react-router-dom";
+import Icon from "../components/Icon.jsx";
 
 export default function PaymentResult() {
   const [params] = useSearchParams();
@@ -11,9 +12,10 @@ export default function PaymentResult() {
   return (
     <main className="min-h-screen flex items-center justify-center bg-surface-container-low px-6">
       <div className="bg-white rounded-2xl shadow-sm p-10 max-w-md w-full text-center space-y-5">
-        <span className={`material-symbols-outlined text-6xl ${isSuccess ? "text-green-500" : "text-red-500"}`}>
-          {isSuccess ? "check_circle" : "cancel"}
-        </span>
+        <Icon
+          name={isSuccess ? "check_circle" : "cancel"}
+          className={`w-16 h-16 mx-auto ${isSuccess ? "text-green-500" : "text-red-500"}`}
+        />
 
         <div>
           <h1 className="text-2xl font-black text-on-surface mb-2">

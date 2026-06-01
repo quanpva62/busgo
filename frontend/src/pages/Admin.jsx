@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext.jsx";
 import Pagination from "../components/Pagination.jsx";
+import Icon from "../components/Icon.jsx";
 import {
   LineChart,
   BarChart,
@@ -102,7 +103,7 @@ function ExportButton({ authFetch, endpoint, filename }) {
       disabled={downloading}
       className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-bold rounded-xl hover:opacity-90 disabled:opacity-50"
     >
-      <span className="material-symbols-outlined text-base">download</span>
+      <Icon name="download" className="w-4 h-4" />
       {downloading ? "Đang xuất..." : "Xuất Excel"}
     </button>
   );
@@ -111,9 +112,7 @@ function ExportButton({ authFetch, endpoint, filename }) {
 function StatCard({ icon, label, value }) {
   return (
     <div className="bg-white rounded-2xl p-4 shadow-sm flex items-center gap-3 min-w-0">
-      <span className="material-symbols-outlined text-2xl text-primary shrink-0">
-        {icon}
-      </span>
+      <Icon name={icon} className="w-6 h-6 text-primary shrink-0" />
       <div className="min-w-0">
         <p className="text-[11px] font-bold text-secondary uppercase tracking-wide">
           {label}
@@ -793,7 +792,7 @@ function CompanyTrips({ authFetch }) {
           onClick={() => setAdding(true)}
           className="flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-bold rounded-xl hover:opacity-90"
         >
-          <span className="material-symbols-outlined text-base">add</span>
+          <Icon name="add" className="w-4 h-4" />
           Thêm chuyến
         </button>
       ) : (
@@ -862,9 +861,7 @@ function CompanyTrips({ authFetch }) {
                 className="p-1.5 text-purple-500 hover:bg-purple-50 rounded-lg"
                 title="Xoá cả chuỗi"
               >
-                <span className="material-symbols-outlined text-base">
-                  delete_sweep
-                </span>
+                <Icon name="delete_sweep" className="w-4 h-4" />
               </button>
             )}
             <button
@@ -872,9 +869,7 @@ function CompanyTrips({ authFetch }) {
               className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"
               title="Xoá chuyến này"
             >
-              <span className="material-symbols-outlined text-base">
-                delete
-              </span>
+              <Icon name="delete" className="w-4 h-4" />
             </button>
           </div>
         </div>
@@ -1132,7 +1127,7 @@ function DriversView({ authFetch }) {
             onClick={() => setAdding(true)}
             className="flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-bold rounded-xl hover:opacity-90"
           >
-            <span className="material-symbols-outlined text-base">add</span>
+            <Icon name="add" className="w-4 h-4" />
             Thêm nhân sự
           </button>
         )}
@@ -1423,7 +1418,7 @@ function BusesView({ authFetch }) {
           onClick={() => setAdding(true)}
           className="flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-bold rounded-xl hover:opacity-90"
         >
-          <span className="material-symbols-outlined text-base">add</span>
+          <Icon name="add" className="w-4 h-4" />
           Thêm xe
         </button>
       )}
@@ -1461,9 +1456,7 @@ function BusesView({ authFetch }) {
             className="bg-white rounded-2xl p-4 shadow-sm flex items-center gap-3"
           >
             <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-              <span className="material-symbols-outlined text-primary">
-                directions_bus
-              </span>
+              <Icon name="directions_bus" className="w-5 h-5 text-primary" />
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
@@ -1825,7 +1818,7 @@ function UsersView({ authFetch }) {
             onClick={() => setAdding(true)}
             className="flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-bold rounded-xl hover:opacity-90"
           >
-            <span className="material-symbols-outlined text-base">add</span>
+            <Icon name="add" className="w-4 h-4" />
             Thêm tài khoản
           </button>
           <ExportButton
@@ -2038,7 +2031,7 @@ function CompaniesView({ authFetch }) {
           onClick={() => setAdding(true)}
           className="flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-bold rounded-xl hover:opacity-90"
         >
-          <span className="material-symbols-outlined text-base">add</span>
+          <Icon name="add" className="w-4 h-4" />
           Thêm doanh nghiệp
         </button>
       ) : (
@@ -2077,9 +2070,7 @@ function CompaniesView({ authFetch }) {
             className="bg-white rounded-2xl p-4 shadow-sm flex items-start gap-3"
           >
             <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-              <span className="material-symbols-outlined text-primary">
-                apartment
-              </span>
+              <Icon name="apartment" className="w-5 h-5 text-primary" />
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
@@ -2288,7 +2279,7 @@ function RoutesView({ authFetch }) {
           }}
           className="flex items-center gap-1.5 px-4 py-2 bg-primary text-white text-sm font-bold rounded-xl hover:bg-primary/90"
         >
-          <span className="material-symbols-outlined text-base">add</span>
+          <Icon name="add" className="w-4 h-4" />
           Thêm tuyến
         </button>
       </div>
@@ -2367,9 +2358,7 @@ function RoutesView({ authFetch }) {
               Ảnh tuyến đường (tuỳ chọn)
             </label>
             <label className="flex items-center gap-2 w-fit cursor-pointer px-3 py-2 border border-outline-variant rounded-xl text-sm hover:border-primary transition-colors">
-              <span className="material-symbols-outlined text-base text-secondary">
-                upload
-              </span>
+              <Icon name="upload" className="w-4 h-4 text-secondary" />
               <span className="text-secondary">
                 {imageFile ? imageFile.name : "Chọn ảnh..."}
               </span>
@@ -2419,9 +2408,7 @@ function RoutesView({ authFetch }) {
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
-                <span className="material-symbols-outlined text-2xl text-outline-variant">
-                  image
-                </span>
+                <Icon name="image" className="w-6 h-6 text-outline-variant" />
               </div>
             )}
           </div>
@@ -2723,7 +2710,7 @@ function PromosView({ authFetch }) {
         onClick={() => setEditing("new")}
         className="flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-bold rounded-xl hover:opacity-90"
       >
-        <span className="material-symbols-outlined text-base">add</span>
+        <Icon name="add" className="w-4 h-4" />
         Tạo mã giảm giá
       </button>
 
@@ -2817,9 +2804,7 @@ export default function Admin() {
     <main className="min-h-screen pt-24 pb-16 bg-surface-container-low">
       <div className="max-w-5xl mx-auto px-6">
         <div className="flex items-center gap-3 mb-6">
-          <span className="material-symbols-outlined text-2xl text-primary">
-            admin_panel_settings
-          </span>
+          <Icon name="admin_panel_settings" className="w-6 h-6 text-primary" />
           <h1 className="text-2xl font-extrabold">
             {isAdmin ? "Quản trị hệ thống" : "Quản lý nhà xe"}
           </h1>

@@ -179,6 +179,13 @@ const chat = async (req, res, next) => {
                 - Luôn hỏi thêm nếu thiếu thông tin (điểm đi, điểm đến, ngày)
                 - Ưu tiên đề xuất chuyến phù hợp nhất
                 - Dùng ngôn ngữ theo người dùng (VI/EN)
+                - KHÔNG hiển thị layout (cấu trúc xếp ghế) — không hữu ích với khách
+                - Đổi tên tiện ích sang tiếng Việt dễ hiểu khi liệt kê:
+                  + wifi → Wifi
+                  + airConditioner → Điều hòa
+                  + usb → Sạc điện thoại
+                  + blanket → Chăn
+                  + water → Nước uống
                 - Khi liệt kê chuyến xe, luôn thêm link đặt vé ở cuối mỗi chuyến theo đúng định dạng: [Chọn chuyến này →](/trips/TRIP_ID) (thay TRIP_ID bằng id thật của chuyến)
                 - Khi khách hàng muốn đặt vé, hãy gửi theo định dạng: [Đặt vé ngay! →](/trips/TRIP_ID) (thay TRIP_ID bằng id thật của chuyến)
             `,
