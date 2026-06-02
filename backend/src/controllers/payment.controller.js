@@ -147,8 +147,7 @@ const finalizePayment = async (payment, vnpParams) => {
     prisma.ticket.create({
       data: {
         bookingId,
-        ticketCode:
-          "BG-" + Math.random().toString(36).substr(2, 9).toUpperCase(),
+        ticketCode: "BG-" + crypto.randomUUID().slice(0, 12).toUpperCase(),
         qrCode: JSON.stringify({ bookingId, vnpTxnRef }),
         isUsed: false,
       },

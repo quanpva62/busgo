@@ -35,4 +35,13 @@ const apiLimit = rateLimit({
   legacyHeaders: false,
 });
 
-module.exports = { authLimit, passwordResetLimit, apiLimit };
+const globalLimit = rateLimit({
+  windowMs: 60 * 1000, // 1 phút
+  limit: 200, // 200 req/phút/IP
+  keyGenerator: ipKeyGenerator,
+  message: { error: "Quá nhiều yêu cầu, vui lòng thử lại sau ít phút." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+module.exports = { authLimit, passwordResetLimit, apiLimit, globalLimit };

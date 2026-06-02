@@ -7,6 +7,7 @@ import Home from "./pages/Home.jsx";
 import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
 import NotFound from "./pages/NotFound.jsx";
+import CookieConsent from "./components/CookieConsent.jsx";
 
 const Chatbot = lazy(() => import("./components/Chatbot.jsx"));
 const Search = lazy(() => import("./pages/Search.jsx"));
@@ -48,6 +49,7 @@ function MainLayout() {
       <Outlet />
       <Footer />
       <Chatbot />
+      <CookieConsent />
     </>
   );
 }

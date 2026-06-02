@@ -517,27 +517,18 @@ const createCompanyDriver = async (req, res, next) => {
   try {
     const companyId = await getCompanyId(req, res, next);
     if (!companyId) return;
-    const { fullName, phone, driverRole, licenseNo, licenseType, busId } =
-      req.body;
+    const { fullName, phone, driverRole, licenseNo, licenseType } = req.body;
     if (!["driver", "assistant"].includes(driverRole)) {
       return res.status(400).json({ error: "Vai trò không hợp lệ" });
-    }
-    const bus = await prisma.bus.findUnique({ where: { id: busId } });
-    if (!bus || bus.companyId !== companyId) {
-      return res.status(400).json({ error: "Xe không thuộc doanh nghiệp" });
     }
     const driver = await prisma.driver.create({
       data: {
         companyId,
-        busId,
         fullName,
         phone,
         driverRole,
         licenseNo,
         licenseType,
-      },
-      include: {
-        bus: { select: { id: true, licensePlate: true, typeName: true } },
       },
     });
     res.status(201).json({ driver });
@@ -558,19 +549,10 @@ const updateCompanyDriver = async (req, res, next) => {
     if (!driver || driver.companyId !== companyId) {
       return res.status(404).json({ error: "Tài xế không tồn tại" });
     }
-    const { fullName, phone, licenseNo, licenseType, busId, isActive } =
-      req.body;
-    if (busId) {
-      const bus = await prisma.bus.findUnique({ where: { id: busId } });
-      if (!bus || bus.companyId !== companyId)
-        return res.status(400).json({ error: "Xe không hợp lệ" });
-    }
+    const { fullName, phone, licenseNo, licenseType, isActive } = req.body;
     const updated = await prisma.driver.update({
       where: { id },
-      data: { fullName, phone, licenseNo, licenseType, busId, isActive },
-      include: {
-        bus: { select: { id: true, licensePlate: true, typeName: true } },
-      },
+      data: { fullName, phone, licenseNo, licenseType, isActive },
     });
     res.json({ driver: updated });
   } catch (error) {

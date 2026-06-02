@@ -20,7 +20,7 @@ const {
   changePasswordValidation,
 } = require("../validators/auth.validator");
 
-// ───── Public: Sign-up & Sign-in ─────
+// ───── Public: Sign-up & Sign-in / Logout─────
 router.post(
   "/register",
   authLimit,
@@ -36,7 +36,7 @@ router.post(
   authController.login,
 );
 router.post("/google", authLimit, authController.googleLogin);
-
+router.post("/logout", authController.logout);
 // ───── Email verification ─────
 router.post(
   "/verify-email",

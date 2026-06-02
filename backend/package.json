@@ -19,6 +19,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.88.0",
     "@prisma/client": "^5.22.0",
+    "@sentry/node": "^10.55.0",
     "@supabase/supabase-js": "^2.104.1",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",

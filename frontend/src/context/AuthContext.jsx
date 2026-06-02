@@ -29,6 +29,16 @@ export function AuthProvider({ children }) {
   };
 
   const logout = () => {
+    const rt = refreshTokenRef.current;
+    if (rt) {
+      fetch(`${import.meta.env.VITE_API_URL}/api/auth/logout`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refreshToken: rt }),
+      }).catch(() => {
+        // ignore network errors
+      });
+    }
     setUser(null);
     setToken(null);
     setRefreshToken(null);
@@ -58,6 +68,12 @@ export function AuthProvider({ children }) {
         setToken(data.accessToken);
         tokenRef.current = data.accessToken;
         localStorage.setItem("token", data.accessToken);
+
+        if (data.refreshToken) {
+          setRefreshToken(data.refreshToken);
+          refreshTokenRef.current = data.refreshToken;
+          localStorage.setItem("refreshToken", data.refreshToken);
+        }
         return data.accessToken;
       } catch {
         return null;

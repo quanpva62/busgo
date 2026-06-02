@@ -959,7 +959,6 @@ function CompanyBookings({ authFetch }) {
 // ─── Drivers (driver + assistant) ────────────────────────────────
 
 function DriverForm({ authFetch, initial, onSaved, onCancel }) {
-  const [buses, setBuses] = useState([]);
   const [form, setForm] = useState(
     initial ?? {
       fullName: "",
@@ -967,19 +966,10 @@ function DriverForm({ authFetch, initial, onSaved, onCancel }) {
       driverRole: "driver",
       licenseNo: "",
       licenseType: "",
-      busId: "",
     },
   );
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    authFetch(`${API}/api/admin/company/buses`)
-      .then((r) => r.json())
-      .then((data) =>
-        setBuses(Array.isArray(data) ? data.filter((b) => b.isActive) : []),
-      );
-  }, [authFetch]);
 
   async function submit(e) {
     e.preventDefault();
@@ -1033,19 +1023,6 @@ function DriverForm({ authFetch, initial, onSaved, onCancel }) {
             <option value="assistant">Phụ xe</option>
           </select>
         )}
-        <select
-          required
-          value={form.busId ?? ""}
-          onChange={(e) => setForm((f) => ({ ...f, busId: e.target.value }))}
-          className={inputCls}
-        >
-          <option value="">— Xe phụ trách —</option>
-          {buses.map((b) => (
-            <option key={b.id} value={b.id}>
-              {b.licensePlate} ({b.typeName})
-            </option>
-          ))}
-        </select>
         <input
           placeholder="Số bằng lái (tuỳ chọn)"
           value={form.licenseNo ?? ""}

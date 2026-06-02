@@ -144,17 +144,27 @@ export default function Navbar() {
       {/* Mobile menu */}
       {menuOpen && (
         <div className="md:hidden bg-white border-t border-slate-100 px-6 py-4 flex flex-col gap-4">
-          <NavLink
-            to="/"
-            onClick={() => setMenuOpen(false)}
-            className={({ isActive }) =>
-              isActive
-                ? "text-blue-700 font-bold"
-                : "text-slate-600 font-medium"
-            }
-          >
+          <NavLink to="/" onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? "text-blue-700 font-bold" : "text-slate-600 font-medium"}>
             Trang chủ
           </NavLink>
+          <NavLink to="/search" onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? "text-blue-700 font-bold" : "text-slate-600 font-medium"}>
+            Tìm chuyến
+          </NavLink>
+          <NavLink to="/routes" onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? "text-blue-700 font-bold" : "text-slate-600 font-medium"}>
+            Tuyến đường
+          </NavLink>
+          {(user?.role === "admin" || user?.role === "company_admin") && (
+            <NavLink to="/admin" onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? "text-primary font-bold flex items-center gap-2" : "text-primary/80 font-semibold flex items-center gap-2"}>
+              <Icon name="admin_panel_settings" className="w-5 h-5" />
+              Quản lý
+            </NavLink>
+          )}
+          {(user?.role === "admin" || user?.role === "company_admin" || user?.role === "staff") && (
+            <NavLink to="/checkin" onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? "text-primary font-bold flex items-center gap-2" : "text-primary/80 font-semibold flex items-center gap-2"}>
+              <Icon name="qr_code_scanner" className="w-5 h-5" />
+              Check-in
+            </NavLink>
+          )}
           <div className="flex gap-3 pt-2 border-t border-slate-100">
             {user ? (
               <Link

@@ -1,5 +1,6 @@
 const express = require("express");
 const cors = require("cors");
+const Sentry = require("@sentry/node");
 
 const app = express();
 const authRoutes = require("./routes/auth.routes");
@@ -28,6 +29,9 @@ app.use(
 // cho phep goi api
 app.use(express.json()); //cho phep doc json tu request body
 
+const { globalLimit } = require("./middlewares/rateLimit.middleware");
+app.use(globalLimit);
+
 app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 
 // Routes
@@ -47,7 +51,7 @@ app.use("/api/promos", promoRoutes);
 app.use((req, res, next) => {
   res.status(404).json({ message: "Không tìm thấy tài nguyên" });
 });
-if (process.env.NODE_ENV !== "test") {
+if (process.env.RUN_CRON === "true") {
   cron.schedule("*/5 * * * *", () => {
     releaseExpiredBookings().catch((e) =>
       console.error("[cron] Release expired bookings failed:", e),
@@ -59,5 +63,6 @@ if (process.env.NODE_ENV !== "test") {
     );
   });
 }
+Sentry.setupExpressErrorHandler(app);
 app.use(errorHandler);
 module.exports = app;

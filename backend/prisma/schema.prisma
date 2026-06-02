@@ -39,6 +39,7 @@ model User {
   reports              Report[]
   resolvedReports      Report[]          @relation("ReportResolver")
   promoRedemptions     PromoRedemption[]
+  refreshTokens        RefreshToken[]
 }
 
 enum Role {
@@ -101,9 +102,8 @@ model Driver {
   tripsAsDriver    Trip[]     @relation("TripDriver")
   tripsAsAssistant Trip[]     @relation("TripAssistant")
   reports          Report[]
-  busId            String
-
-  bus Bus @relation(fields: [busId], references: [id])
+  bus              Bus?       @relation(fields: [busId], references: [id])
+  busId            String?
 }
 
 enum DriverRole {
@@ -161,7 +161,7 @@ enum TripStatus {
 model Seat {
   id        String     @id @default(uuid())
   busId     String
-  bus       Bus        @relation(fields: [busId], references: [id])
+  bus       Bus        @relation(fields: [busId], references: [id], onDelete: Cascade)
   seatLabel String
   rowNum    Int
   colNum    Int
@@ -179,7 +179,7 @@ enum SeatLevel {
 model TripSeat {
   id           String        @id @default(uuid())
   tripId       String
-  trip         Trip          @relation(fields: [tripId], references: [id])
+  trip         Trip          @relation(fields: [tripId], references: [id], onDelete: Cascade)
   seatId       String
   seat         Seat          @relation(fields: [seatId], references: [id])
   status       SeatStatus    @default(available)
@@ -255,7 +255,7 @@ model Promotion {
   oncePerUser      Boolean           @default(false)
   minBookings      Int?
   bookings         Booking[]
-  redemtions       PromoRedemption[]
+  redemptions      PromoRedemption[]
 }
 
 model PromoRedemption {
@@ -279,17 +279,17 @@ enum DiscountType {
 model BookingSeat {
   id        String   @id @default(uuid())
   bookingId String
-  booking   Booking  @relation(fields: [bookingId], references: [id])
+  booking   Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   seatId    String
-  seat      TripSeat @relation(fields: [seatId], references: [id])
+  seat      TripSeat @relation(fields: [seatId], references: [id], onDelete: Cascade)
   tripId    String
-  trip      Trip     @relation(fields: [tripId], references: [id])
+  trip      Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
 }
 
 model Payment {
   id              String        @id @default(uuid())
   bookingId       String        @unique
-  booking         Booking       @relation(fields: [bookingId], references: [id])
+  booking         Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   vnpTxnRef       String        @unique
   amount          Int
   status          PaymentStatus @default(pending)
@@ -316,7 +316,7 @@ enum PaymentMethod {
 model Ticket {
   id         String    @id @default(uuid())
   bookingId  String    @unique
-  booking    Booking   @relation(fields: [bookingId], references: [id])
+  booking    Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   ticketCode String    @unique
   qrCode     String    @unique
   issuedAt   DateTime  @default(now())
@@ -327,11 +327,11 @@ model Ticket {
 model Report {
   id         String         @id @default(uuid())
   userId     String
-  user       User           @relation(fields: [userId], references: [id])
+  user       User           @relation(fields: [userId], references: [id], onDelete: Restrict)
   driverId   String
-  driver     Driver         @relation(fields: [driverId], references: [id])
+  driver     Driver         @relation(fields: [driverId], references: [id], onDelete: Cascade)
   bookingId  String
-  booking    Booking        @relation(fields: [bookingId], references: [id])
+  booking    Booking        @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   category   ReportCategory
   details    String
   severity   ReportSeverity
@@ -374,7 +374,7 @@ model Review {
   user      User     @relation(fields: [userId], references: [id])
   seriesId  String
   bookingId String   @unique
-  booking   Booking  @relation(fields: [bookingId], references: [id])
+  booking   Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   rating    Int
   comment   String?
   isVisible Boolean  @default(true)
@@ -387,7 +387,7 @@ model Review {
 model Notification {
   id        String           @id @default(uuid())
   userId    String
-  user      User             @relation(fields: [userId], references: [id])
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   type      NotificationType
   title     String
   body      String
@@ -401,4 +401,19 @@ enum NotificationType {
   trip
   report
   promo
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  userAgent String?
+  ip        String?
+
+  @@index([userId])
+  @@index([expiresAt])
 }

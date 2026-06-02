@@ -17,6 +17,12 @@ const JWT_REFRESH_EXPIRES = process.env.JWT_REFRESH_EXPIRES || "7d";
 
 const PASSWORD_COOLDOWN_MS = PASSWORD_COOLDOWN_DAYS * 24 * 60 * 60 * 1000;
 
+function hashToken(raw) {
+  return crypto.createHash("sha256").update(raw).digest("hex");
+}
+
+const REFRESH_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
 function isWithinCooldown(passwordChangedAt) {
   if (!passwordChangedAt) return false;
   return (
@@ -100,13 +106,14 @@ const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
-    // Detect email vs phone — query DB theo field tương ứng
-    const isPhone = /^[0-9+]/.test(email);
+    const isEmail = email.includes("@");
     const user = await prisma.user.findUnique({
-      where: isPhone ? { phone: email } : { email },
+      where: isEmail ? { email } : { phone: email },
     });
     if (!user) {
-      return res.status(400).json({ error: "Tài khoản hoặc mật khẩu không đúng" });
+      return res
+        .status(400)
+        .json({ error: "Tài khoản hoặc mật khẩu không đúng" });
     }
 
     if (!user.passwordHash) {
@@ -138,16 +145,26 @@ const login = async (req, res, next) => {
       { expiresIn: JWT_ACCESS_EXPIRES },
     );
 
-    const refreshToken = jwt.sign(
+    const refreshTokenJwt = jwt.sign(
       { userId: user.id, role: user.role },
       process.env.JWT_REFRESH_SECRET,
       { expiresIn: JWT_REFRESH_EXPIRES },
     );
 
+    await prisma.refreshToken.create({
+      data: {
+        userId: user.id,
+        tokenHash: hashToken(refreshTokenJwt),
+        expiresAt: new Date(Date.now() + REFRESH_TTL_MS),
+        userAgent: req.headers["user-agent"] || "unknown",
+        ip: req.ip || null,
+      },
+    });
+
     res.json({
       message: "Đăng nhập thành công",
       accessToken: accessToken,
-      refreshToken,
+      refreshToken: refreshTokenJwt,
       user: {
         id: user.id,
         email: user.email,
@@ -330,23 +347,59 @@ const changePassword = async (req, res, next) => {
 
 const refreshToken = async (req, res, next) => {
   try {
-    const { refreshToken } = req.body;
+    const { refreshToken: rawToken } = req.body;
+    if (!rawToken)
+      return res.status(400).json({ error: "Vui lòng cung cấp refresh token" });
 
-    jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET, (err, decoded) => {
-      if (err) {
-        return res
-          .status(403)
-          .json({ error: "Refresh token không hợp lệ hoặc đã hết hạn" });
-      }
+    // 1. Verify JWT
+    let decoded;
+    try {
+      decoded = jwt.verify(rawToken, process.env.JWT_REFRESH_SECRET);
+    } catch {
+      return res.status(403).json({ error: "Refresh token không hợp lệ" });
+    }
 
-      const accessToken = jwt.sign(
-        { userId: decoded.userId, role: decoded.role },
-        process.env.JWT_SECRET,
-        { expiresIn: JWT_ACCESS_EXPIRES },
-      );
-
-      res.json({ accessToken });
+    // 2. Check DB
+    const tokenHash = hashToken(rawToken);
+    const record = await prisma.refreshToken.findUnique({
+      where: { tokenHash },
     });
+    if (!record || record.revokedAt || record.expiresAt < new Date()) {
+      return res
+        .status(403)
+        .json({ error: "Refresh token không hợp lệ hoặc đã hết hạn" });
+    }
+
+    // 3. Rotate: revoke current + issue new
+    const newAccessToken = jwt.sign(
+      { userId: decoded.userId, role: decoded.role },
+      process.env.JWT_SECRET,
+      { expiresIn: JWT_ACCESS_EXPIRES },
+    );
+    const newRefreshToken = jwt.sign(
+      { userId: decoded.userId, role: decoded.role },
+      process.env.JWT_REFRESH_SECRET,
+      { expiresIn: JWT_REFRESH_EXPIRES },
+    );
+    await prisma.$transaction([
+      prisma.refreshToken.update({
+        where: { id: record.id },
+        data: {
+          revokedAt: new Date(),
+        },
+      }),
+      prisma.refreshToken.create({
+        data: {
+          userId: decoded.userId,
+          tokenHash: hashToken(newRefreshToken),
+          expiresAt: new Date(Date.now() + REFRESH_TTL_MS),
+          userAgent: req.headers["user-agent"] || null,
+          ip: req.ip || null,
+        },
+      }),
+    ]);
+
+    res.json({ accessToken: newAccessToken, refreshToken: newRefreshToken });
   } catch (error) {
     next(error);
   }
@@ -408,11 +461,26 @@ const googleLogin = async (req, res, next) => {
       process.env.JWT_REFRESH_SECRET,
       { expiresIn: JWT_REFRESH_EXPIRES },
     );
+    const refreshTokenJwt = jwt.sign(
+      { userId: user.id, role: user.role },
+      process.env.JWT_REFRESH_SECRET,
+      { expiresIn: JWT_REFRESH_EXPIRES },
+    );
+
+    await prisma.refreshToken.create({
+      data: {
+        userId: user.id,
+        tokenHash: hashToken(refreshTokenJwt),
+        expiresAt: new Date(Date.now() + REFRESH_TTL_MS),
+        userAgent: req.headers["user-agent"] || "unknown",
+        ip: req.ip || null,
+      },
+    });
 
     res.json({
       message: "Đăng nhập Google thành công",
       accessToken,
-      refreshToken,
+      refreshToken: refreshTokenJwt,
       user: {
         id: user.id,
         email: user.email,
@@ -528,11 +596,9 @@ const uploadAvatar = async (req, res, next) => {
     const { fileTypeFromBuffer } = await import("file-type");
     const detected = await fileTypeFromBuffer(req.file.buffer);
     if (!detected || !ALLOWED_IMAGE_MIMES.includes(detected.mime)) {
-      return res
-        .status(400)
-        .json({
-          error: "File không hợp lệ. Vui lòng chọn ảnh JPEG, PNG hoặc WEBP.",
-        });
+      return res.status(400).json({
+        error: "File không hợp lệ. Vui lòng chọn ảnh JPEG, PNG hoặc WEBP.",
+      });
     }
     const userId = req.user.userId;
     const fileName = `${userId}.${detected.ext}`;
@@ -585,9 +651,27 @@ const removeAvatar = async (req, res, next) => {
   }
 };
 
+const logout = async (req, res, next) => {
+  try {
+    const { refreshToken: rawToken } = req.body;
+    // Cho phép logout kể cả không có rawToken (vd FE đã mất token) — chỉ cần clear FE
+    if (rawToken) {
+      const tokenHash = hashToken(rawToken);
+      await prisma.refreshToken.updateMany({
+        where: { tokenHash, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+    }
+    res.json({ message: "Đăng xuất thành công" });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   register,
   login,
+  logout,
   me,
   updateMe,
   changePassword,
