@@ -919,10 +919,10 @@ const totalRevenueChart = async (req, res, next) => {
     let result;
     if (groupBy === "month") {
       result = await prisma.$queryRaw`
-        SELECT DATE_TRUNC('month', "createdAt") as period,
-               SUM("totalPrice") as revenue
+        SELECT DATE_TRUNC('month', b."createdAt") as period,
+               SUM(b."totalPrice") as revenue
         FROM "Booking" b
-        JOIN "Trip" t On t.id = b."tripId"
+        JOIN "Trip" t ON t.id = b."tripId"
         JOIN "Bus" bus ON bus.id = t."busId"
         WHERE b.status = 'paid'
           AND EXTRACT(year FROM b."createdAt") = ${year}
@@ -935,7 +935,7 @@ const totalRevenueChart = async (req, res, next) => {
         SELECT DATE_TRUNC('year', b."createdAt") as period,
                SUM(b."totalPrice") as revenue
         FROM "Booking" b
-        JOIN "Trip" t On t.id = b."tripId"
+        JOIN "Trip" t ON t.id = b."tripId"
         JOIN "Bus" bus ON bus.id = t."busId"
         WHERE b.status = 'paid'
           ${companyFilter}
