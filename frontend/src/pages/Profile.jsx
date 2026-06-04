@@ -22,6 +22,7 @@ const STATUS_LABELS = {
   paid: { label: "Đã thanh toán", cls: "bg-green-100 text-green-700" },
   confirmed: { label: "Đã xác nhận", cls: "bg-green-100 text-green-700" },
   cancelled: { label: "Đã huỷ", cls: "bg-red-100 text-red-500" },
+  refunded: { label: "Đã hoàn tiền", cls: "bg-orange-100 text-orange-700" },
   completed: { label: "Hoàn thành", cls: "bg-blue-100 text-blue-700" },
 };
 
