@@ -52,8 +52,9 @@ export default function Navbar() {
         </div>
 
         {/* Center: chỉ với user thường + khách — căn giữa tuyệt đối */}
+        {/* lg breakpoint (1024px+) để tránh đè lên auth buttons bên phải */}
         {!isStaffOrAdmin && (
-          <div className="hidden md:flex items-center space-x-8 absolute left-1/2 -translate-x-1/2">
+          <div className="hidden lg:flex items-center space-x-8 absolute left-1/2 -translate-x-1/2">
             {navLinks}
           </div>
         )}
@@ -71,9 +72,7 @@ export default function Navbar() {
                   Quản lý
                 </Link>
               )}
-              {(user.role === "admin" ||
-                user.role === "company_admin" ||
-                user.role === "staff") && (
+              {(user.role === "company_admin" || user.role === "staff") && (
                 <Link
                   to="/checkin"
                   className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-primary hover:bg-primary/5 rounded-xl transition-colors"
@@ -159,7 +158,7 @@ export default function Navbar() {
               Quản lý
             </NavLink>
           )}
-          {(user?.role === "admin" || user?.role === "company_admin" || user?.role === "staff") && (
+          {(user?.role === "company_admin" || user?.role === "staff") && (
             <NavLink to="/checkin" onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? "text-primary font-bold flex items-center gap-2" : "text-primary/80 font-semibold flex items-center gap-2"}>
               <Icon name="qr_code_scanner" className="w-5 h-5" />
               Check-in

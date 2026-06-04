@@ -16,9 +16,9 @@ function formatTime(isoString) {
 
 function formatDate(isoString) {
   return new Date(isoString).toLocaleDateString("vi-VN", {
-    weekday: "short",
-    day: "numeric",
-    month: "numeric",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
   });
 }
 
@@ -563,7 +563,9 @@ function ReviewsSection({ data }) {
                   {r.user?.fullName || "Người dùng ẩn danh"}
                 </p>
                 <span className="text-xs text-secondary">
-                  {new Date(r.createdAt).toLocaleDateString("vi-VN")}
+                  {new Date(r.createdAt).toLocaleDateString("vi-VN", {
+                    day: "2-digit", month: "2-digit", year: "numeric",
+                  })}
                 </span>
               </div>
               <Star value={r.rating} size="w-3.5 h-3.5" />

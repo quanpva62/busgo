@@ -8,6 +8,24 @@ const upload = require("../middlewares/upload.middleware");
 const validate = require("../middlewares/validate.middleware");
 const { updateTripStatusValidation } = require("../validators/trip.validator");
 
+router.get(
+  "/company/staff",
+  authMiddleware,
+  isCompanyAdmin,
+  adminController.getCompanyStaff,
+);
+router.post(
+  "/company/staff",
+  authMiddleware,
+  isCompanyAdmin,
+  adminController.createCompanyStaff,
+);
+router.patch(
+  "/company/staff/:userId/status",
+  authMiddleware,
+  isCompanyAdmin,
+  adminController.updateCompanyStaffStatus,
+);
 router.get("/users", authMiddleware, isAdmin, adminController.getUsers);
 router.patch(
   "/users/:userId/status",

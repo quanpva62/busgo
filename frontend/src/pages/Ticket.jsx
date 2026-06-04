@@ -11,7 +11,7 @@ function formatTime(iso) {
 }
 function formatDate(iso) {
   return new Date(iso).toLocaleDateString("vi-VN", {
-    weekday: "long", day: "numeric", month: "numeric", year: "numeric",
+    day: "2-digit", month: "2-digit", year: "numeric",
   });
 }
 
@@ -114,7 +114,9 @@ export default function Ticket() {
             <div>
               <p className="text-[10px] font-bold text-secondary uppercase tracking-widest mb-1">Ngày xuất vé</p>
               <p className="font-bold text-on-surface text-sm">
-                {new Date(issuedAt).toLocaleDateString("vi-VN")}
+                {new Date(issuedAt).toLocaleDateString("vi-VN", {
+                  day: "2-digit", month: "2-digit", year: "numeric",
+                })}
               </p>
             </div>
           </div>

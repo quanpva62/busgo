@@ -375,6 +375,144 @@ const createUser = async (req, res, next) => {
   }
 };
 
+function defaultStaffPassword(companyName) {
+  const slug = companyName
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/đ/gi, "d")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+  return slug + "123";
+}
+
+const getCompanyStaff = async (req, res, next) => {
+  try {
+    if (req.user.role !== "company_admin") {
+      return res.status(403).json({ error: "Chỉ company_admin được dùng" });
+    }
+    const u = await prisma.user.findUnique({
+      where: { id: req.user.userId },
+      select: { companyId: true },
+    });
+    const staff = await prisma.user.findMany({
+      where: { companyId: u.companyId, role: { in: ["staff", "company_admin"] } },
+      select: {
+        id: true,
+        fullName: true,
+        phone: true,
+        email: true,
+        role: true,
+        isActive: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    res.json(staff);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const createCompanyStaff = async (req, res, next) => {
+  try {
+    if (req.user.role !== "company_admin") {
+      return res.status(403).json({ error: "Chỉ company_admin được dùng" });
+    }
+    const { fullName, phone, email, password, role = "staff" } = req.body;
+    if (!fullName || !phone) {
+      return res.status(400).json({ error: "Cần nhập họ tên và SĐT" });
+    }
+    if (!["staff", "company_admin"].includes(role)) {
+      return res.status(400).json({ error: "Vai trò không hợp lệ" });
+    }
+
+    const me = await prisma.user.findUnique({
+      where: { id: req.user.userId },
+      select: { companyId: true, company: { select: { name: true } } },
+    });
+    if (!me.companyId) {
+      return res.status(400).json({ error: "Tài khoản chưa gắn công ty" });
+    }
+
+    const phoneExists = await prisma.user.findUnique({ where: { phone } });
+    if (phoneExists)
+      return res.status(400).json({ error: "SĐT đã được sử dụng" });
+    if (email) {
+      const emailExists = await prisma.user.findUnique({ where: { email } });
+      if (emailExists)
+        return res.status(400).json({ error: "Email đã được sử dụng" });
+    }
+
+    const plainPassword = password?.trim() || defaultStaffPassword(me.company.name);
+    const passwordHash = await bcrypt.hash(plainPassword, 10);
+
+    const user = await prisma.user.create({
+      data: {
+        fullName,
+        phone,
+        email: email || null,
+        passwordHash,
+        role,
+        companyId: me.companyId,
+        emailVerified: true,
+      },
+      select: {
+        id: true,
+        fullName: true,
+        phone: true,
+        email: true,
+        role: true,
+      },
+    });
+
+    res.status(201).json({
+      message: "Tạo nhân viên thành công",
+      user,
+      credentials: {
+        phone: user.phone,
+        password: plainPassword,
+        note: "Hãy lưu mật khẩu này — sẽ không hiển thị lại",
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updateCompanyStaffStatus = async (req, res, next) => {
+  try {
+    if (req.user.role !== "company_admin") {
+      return res.status(403).json({ error: "Chỉ company_admin được dùng" });
+    }
+    const { userId } = req.params;
+    const { isActive } = req.body;
+
+    const me = await prisma.user.findUnique({
+      where: { id: req.user.userId },
+      select: { companyId: true },
+    });
+    const target = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, companyId: true, role: true },
+    });
+    if (!target || target.companyId !== me.companyId) {
+      return res.status(404).json({ error: "Không tìm thấy nhân viên" });
+    }
+    if (target.id === req.user.userId) {
+      return res.status(400).json({ error: "Không thể tự vô hiệu hoá mình" });
+    }
+
+    const updated = await prisma.user.update({
+      where: { id: userId },
+      data: { isActive: !!isActive },
+      select: { id: true, isActive: true },
+    });
+    res.json({ message: "Đã cập nhật trạng thái", user: updated });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const getCompanies = async (req, res, next) => {
   try {
     const companies = await prisma.company.findMany({
@@ -391,15 +529,68 @@ const getCompanies = async (req, res, next) => {
 
 const createCompany = async (req, res, next) => {
   try {
-    const { name, hotline, email, address, description } = req.body;
-    const existing = await prisma.company.findUnique({ where: { email } });
-    if (existing)
-      return res.status(400).json({ error: "Email doanh nghiệp đã tồn tại" });
+    const {
+      name,
+      hotline,
+      email,
+      address,
+      description,
+      adminPhone,
+      adminFullName,
+      adminPassword,
+    } = req.body;
 
-    const company = await prisma.company.create({
-      data: { name, hotline, email, address, description },
+    if (!adminPhone) {
+      return res
+        .status(400)
+        .json({ error: "Cần nhập SĐT cho tài khoản quản lý nhà xe" });
+    }
+
+    const existingCompany = await prisma.company.findUnique({
+      where: { email },
     });
-    res.status(201).json({ message: "Tạo doanh nghiệp thành công", company });
+    if (existingCompany) {
+      return res.status(400).json({ error: "Email doanh nghiệp đã tồn tại" });
+    }
+    const existingPhone = await prisma.user.findUnique({
+      where: { phone: adminPhone },
+    });
+    if (existingPhone) {
+      return res
+        .status(400)
+        .json({ error: "SĐT quản lý đã được sử dụng" });
+    }
+
+    const plainPassword = adminPassword?.trim() || defaultStaffPassword(name);
+    const passwordHash = await bcrypt.hash(plainPassword, 10);
+    const fullName = adminFullName?.trim() || `Quản lý ${name}`;
+
+    const { company } = await prisma.$transaction(async (tx) => {
+      const company = await tx.company.create({
+        data: { name, hotline, email, address, description },
+      });
+      await tx.user.create({
+        data: {
+          fullName,
+          phone: adminPhone,
+          passwordHash,
+          role: "company_admin",
+          companyId: company.id,
+          emailVerified: true,
+        },
+      });
+      return { company };
+    });
+
+    res.status(201).json({
+      message: "Tạo nhà xe + tài khoản quản lý thành công",
+      company,
+      credentials: {
+        phone: adminPhone,
+        password: plainPassword,
+        note: "Gửi thông tin này cho quản lý nhà xe để đăng nhập",
+      },
+    });
   } catch (error) {
     next(error);
   }
@@ -1169,4 +1360,7 @@ module.exports = {
   totalCommissionChart,
   topRoutesChart,
   companyRevenueChart,
+  getCompanyStaff,
+  createCompanyStaff,
+  updateCompanyStaffStatus,
 };

@@ -11,8 +11,8 @@ function formatPrice(price) {
 
 function formatDate(iso) {
   return new Date(iso).toLocaleDateString("vi-VN", {
-    day: "numeric",
-    month: "numeric",
+    day: "2-digit",
+    month: "2-digit",
     year: "numeric",
   });
 }
@@ -53,7 +53,7 @@ const TABS = ["Thông tin", "Mật khẩu", "Lịch sử đặt vé"];
 
 const API_URL = import.meta.env.VITE_API_URL;
 export default function Profile() {
-  const { user, login, authFetch, logout, updateUser } = useAuth();
+  const { user, authFetch, logout, updateUser } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
   const location = useLocation();
@@ -205,11 +205,8 @@ export default function Profile() {
       );
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      login(
-        data.user,
-        localStorage.getItem("token"),
-        localStorage.getItem("refreshToken"),
-      );
+      // Chỉ update user info — KHÔNG đụng tokens (đã ở memory + cookie)
+      updateUser(data.user);
       setSaveMsg("Cập nhật thành công!");
     } catch (err) {
       setSaveErr(err.message);
@@ -556,8 +553,7 @@ export default function Profile() {
                 ?.map((bs) => bs.seat.seat.seatLabel)
                 .join(", ");
               const eligible =
-                b.status === "paid" &&
-                b.trip.status === "completed" &&
+                (b.status === "paid" || b.status === "completed") &&
                 new Date(b.trip.departureTime) < new Date();
               const hasReport = b.reports?.length > 0;
               return (
@@ -568,7 +564,8 @@ export default function Profile() {
                   {/* Clickable booking info */}
                   <div
                     onClick={() => {
-                      if (b.status === "paid") navigate(`/tickets/${b.id}`);
+                      if (b.status === "paid" || b.status === "completed")
+                        navigate(`/tickets/${b.id}`);
                       else if (b.status === "pending")
                         navigate(`/booking/${b.id}`);
                     }}

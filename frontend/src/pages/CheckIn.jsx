@@ -53,7 +53,7 @@ export default function CheckIn() {
   }
 
   return (
-    <div className="max-w-md mx-auto p-4 space-y-4">
+    <div className="max-w-md mx-auto p-4 space-y-4 mt-18">
       <h1 className="text-2xl font-black">Check-in vé</h1>
 
       <div id="qr-reader" className="w-full" />
@@ -72,6 +72,32 @@ export default function CheckIn() {
               <p>
                 Tuyến: {result.ticket.booking.trip.route.fromCity} →{" "}
                 {result.ticket.booking.trip.route.toCity}
+              </p>
+              <p>
+                Nhà xe:{" "}
+                <b>{result.ticket.booking.trip.bus?.company?.name ?? "—"}</b>
+              </p>
+              <p>
+                Biển số:{" "}
+                <b>{result.ticket.booking.trip.bus?.plateNumber ?? "—"}</b>
+              </p>
+              <p>
+                Giờ khởi hành:{" "}
+                <b>
+                  {new Date(
+                    result.ticket.booking.trip.departureTime,
+                  ).toLocaleString("vi-VN", {
+                    timeZone: "Asia/Ho_Chi_Minh",
+                  })}
+                </b>
+              </p>
+              <p>
+                Ghế (<b>{result.ticket.booking.bookingSeats.length}</b>):{" "}
+                <b>
+                  {result.ticket.booking.bookingSeats
+                    .map((bs) => bs.seat.seat.seatCode)
+                    .join(", ")}
+                </b>
               </p>
               <p>
                 Mã vé: <code>{result.ticket.ticketCode}</code>

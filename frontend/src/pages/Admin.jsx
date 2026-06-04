@@ -21,15 +21,16 @@ function formatPrice(p) {
 }
 function formatDate(iso) {
   return new Date(iso).toLocaleDateString("vi-VN", {
-    day: "numeric",
-    month: "numeric",
+    day: "2-digit",
+    month: "2-digit",
     year: "numeric",
   });
 }
 function formatDateTime(iso) {
   return new Date(iso).toLocaleString("vi-VN", {
-    day: "numeric",
-    month: "numeric",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
   });
@@ -1061,6 +1062,305 @@ function DriverForm({ authFetch, initial, onSaved, onCancel }) {
   );
 }
 
+function HumanResourcesView({ authFetch }) {
+  const [section, setSection] = useState("drivers");
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-2 bg-surface-container rounded-xl p-1 w-fit">
+        {[
+          { id: "drivers", label: "Tài xế" },
+          { id: "staff", label: "Nhân viên" },
+        ].map((s) => (
+          <button
+            key={s.id}
+            onClick={() => setSection(s.id)}
+            className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${
+              section === s.id
+                ? "bg-white text-primary shadow-sm"
+                : "text-secondary hover:text-on-surface"
+            }`}
+          >
+            {s.label}
+          </button>
+        ))}
+      </div>
+      {section === "drivers" ? (
+        <DriversView authFetch={authFetch} />
+      ) : (
+        <StaffView authFetch={authFetch} />
+      )}
+    </div>
+  );
+}
+
+function StaffView({ authFetch }) {
+  const toast = useToast();
+  const [staff, setStaff] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [adding, setAdding] = useState(false);
+  const [credentials, setCredentials] = useState(null);
+
+  const load = useCallback(() => {
+    authFetch(`${API}/api/admin/company/staff`)
+      .then((r) => r.json())
+      .then((data) => setStaff(Array.isArray(data) ? data : []))
+      .finally(() => setLoading(false));
+  }, [authFetch]);
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  async function toggleActive(u) {
+    const res = await authFetch(
+      `${API}/api/admin/company/staff/${u.id}/status`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: !u.isActive }),
+      },
+    );
+    if (res.ok) {
+      setStaff((prev) =>
+        prev.map((x) => (x.id === u.id ? { ...x, isActive: !u.isActive } : x)),
+      );
+    } else {
+      const data = await res.json();
+      toast.error(data.error || "Lỗi");
+    }
+  }
+
+  if (loading) return <p className="text-secondary text-sm">Đang tải...</p>;
+
+  return (
+    <div className="space-y-3">
+      {!adding ? (
+        <button
+          onClick={() => setAdding(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-bold rounded-xl hover:opacity-90"
+        >
+          <Icon name="add" className="w-4 h-4" />
+          Thêm nhân viên
+        </button>
+      ) : (
+        <StaffForm
+          authFetch={authFetch}
+          onCreated={(cred) => {
+            setAdding(false);
+            setCredentials(cred);
+            load();
+          }}
+          onCancel={() => setAdding(false)}
+        />
+      )}
+
+      <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-surface-container text-secondary">
+            <tr>
+              <th className="text-left px-4 py-3">Họ tên</th>
+              <th className="text-left px-4 py-3">SĐT</th>
+              <th className="text-left px-4 py-3">Email</th>
+              <th className="text-left px-4 py-3">Vai trò</th>
+              <th className="text-left px-4 py-3">Trạng thái</th>
+              <th className="text-left px-4 py-3"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {staff.map((u) => (
+              <tr key={u.id} className="border-t border-outline-variant/20">
+                <td className="px-4 py-3 font-bold">{u.fullName}</td>
+                <td className="px-4 py-3">{u.phone}</td>
+                <td className="px-4 py-3 text-secondary">{u.email || "—"}</td>
+                <td className="px-4 py-3">
+                  {u.role === "company_admin" ? "Quản lý" : "Nhân viên"}
+                </td>
+                <td className="px-4 py-3">
+                  <span
+                    className={`px-2 py-1 rounded-lg text-xs font-bold ${
+                      u.isActive
+                        ? "bg-green-100 text-green-700"
+                        : "bg-red-100 text-red-700"
+                    }`}
+                  >
+                    {u.isActive ? "Hoạt động" : "Vô hiệu"}
+                  </span>
+                </td>
+                <td className="px-4 py-3">
+                  <button
+                    onClick={() => toggleActive(u)}
+                    className="text-primary text-xs font-bold hover:underline"
+                  >
+                    {u.isActive ? "Vô hiệu hoá" : "Kích hoạt"}
+                  </button>
+                </td>
+              </tr>
+            ))}
+            {staff.length === 0 && (
+              <tr>
+                <td colSpan={6} className="text-center text-secondary py-8">
+                  Chưa có nhân viên nào
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {credentials && (
+        <CredentialsModal
+          credentials={credentials}
+          onClose={() => setCredentials(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function StaffForm({ authFetch, onCreated, onCancel }) {
+  const [form, setForm] = useState({
+    fullName: "",
+    phone: "",
+    email: "",
+    password: "",
+    role: "staff",
+  });
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function submit(e) {
+    e.preventDefault();
+    setSaving(true);
+    setError("");
+    const res = await authFetch(`${API}/api/admin/company/staff`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
+    const data = await res.json();
+    setSaving(false);
+    if (!res.ok) return setError(data.error ?? "Có lỗi xảy ra");
+    onCreated(data.credentials);
+  }
+
+  const inputCls =
+    "w-full px-3 py-2 text-sm bg-surface-container-low rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30";
+  return (
+    <form
+      onSubmit={submit}
+      className="bg-white rounded-2xl p-4 shadow-sm space-y-3"
+    >
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <input
+          required
+          placeholder="Họ tên"
+          value={form.fullName}
+          onChange={(e) => setForm((f) => ({ ...f, fullName: e.target.value }))}
+          className={inputCls}
+        />
+        <input
+          required
+          placeholder="Số điện thoại (dùng để đăng nhập)"
+          value={form.phone}
+          onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+          className={inputCls}
+        />
+        <input
+          type="email"
+          placeholder="Email (tuỳ chọn)"
+          value={form.email}
+          onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+          className={inputCls}
+        />
+        <input
+          placeholder="Mật khẩu (trống = tên-nhà-xe + 123)"
+          value={form.password}
+          onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+          className={inputCls}
+        />
+        <select
+          value={form.role}
+          onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}
+          className={inputCls}
+        >
+          <option value="staff">Nhân viên (check-in vé)</option>
+          <option value="company_admin">Quản lý nhà xe</option>
+        </select>
+      </div>
+      {error && <p className="text-xs text-red-500">{error}</p>}
+      <div className="flex gap-2">
+        <button
+          type="submit"
+          disabled={saving}
+          className="px-4 py-2 bg-primary text-white text-sm font-bold rounded-xl disabled:opacity-50"
+        >
+          {saving ? "Đang tạo..." : "Tạo tài khoản"}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="px-4 py-2 text-sm text-secondary"
+        >
+          Huỷ
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function CredentialsModal({ credentials, onClose }) {
+  const [copied, setCopied] = useState(false);
+  const text = `SĐT: ${credentials.phone}\nMật khẩu: ${credentials.password}`;
+  function copy() {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+  return (
+    <div
+      onClick={onClose}
+      className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white rounded-2xl p-6 w-full max-w-md space-y-4"
+      >
+        <h3 className="text-lg font-extrabold text-green-700">
+          ✓ Tạo tài khoản thành công
+        </h3>
+        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 space-y-2 text-sm">
+          <p>
+            <b>SĐT đăng nhập:</b>{" "}
+            <code className="bg-white px-2 py-0.5 rounded">
+              {credentials.phone}
+            </code>
+          </p>
+          <p>
+            <b>Mật khẩu:</b>{" "}
+            <code className="bg-white px-2 py-0.5 rounded">
+              {credentials.password}
+            </code>
+          </p>
+          <p className="text-xs text-yellow-800 mt-2">⚠️ {credentials.note}</p>
+        </div>
+        <div className="flex gap-2 justify-end">
+          <button
+            onClick={copy}
+            className="px-4 py-2 border border-outline-variant rounded-xl font-bold text-sm hover:bg-surface-container"
+          >
+            {copied ? "✓ Đã copy" : "📋 Copy"}
+          </button>
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-primary text-white rounded-xl font-bold text-sm"
+          >
+            Đóng
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function DriversView({ authFetch }) {
   const toast = useToast();
   const [drivers, setDrivers] = useState([]);
@@ -1078,8 +1378,8 @@ function DriversView({ authFetch }) {
 
   async function deactivate(id) {
     const ok = await toast.confirm({
-      title: "Ngưng hoạt động nhân viên?",
-      confirmText: "Ngưng hoạt động",
+      title: "Xóa nhân viên?",
+      confirmText: "Xóa",
       variant: "danger",
     });
     if (!ok) return;
@@ -1194,7 +1494,7 @@ function DriversView({ authFetch }) {
                   onClick={() => deactivate(d.id)}
                   className="px-3 py-1 text-xs font-bold text-red-500 hover:bg-red-50 rounded-xl"
                 >
-                  Ngưng
+                  Xóa
                 </button>
               )}
             </div>
@@ -1372,8 +1672,8 @@ function BusesView({ authFetch }) {
 
   async function deactivate(id) {
     const ok = await toast.confirm({
-      title: "Ngưng hoạt động xe?",
-      confirmText: "Ngưng hoạt động",
+      title: "Xóa xe?",
+      confirmTextXóa: "Xóa",
       variant: "danger",
     });
     if (!ok) return;
@@ -1466,7 +1766,7 @@ function BusesView({ authFetch }) {
                   onClick={() => deactivate(b.id)}
                   className="px-3 py-1 text-xs font-bold text-red-500 hover:bg-red-50 rounded-xl"
                 >
-                  Ngưng
+                  Xóa
                 </button>
               )}
             </div>
@@ -1629,131 +1929,10 @@ const ROLE_LABELS = {
   user: "Người dùng",
 };
 
-function AddUserForm({ authFetch, onCreated, onCancel }) {
-  const [form, setForm] = useState({
-    email: "",
-    password: "",
-    fullName: "",
-    phone: "",
-    role: "company_admin",
-    companyId: "",
-  });
-  const [companies, setCompanies] = useState([]);
-  const [error, setError] = useState("");
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    authFetch(`${API}/api/admin/companies`)
-      .then((r) => r.json())
-      .then((data) => setCompanies(Array.isArray(data) ? data : []));
-  }, [authFetch]);
-
-  async function submit(e) {
-    e.preventDefault();
-    setSaving(true);
-    setError("");
-    const res = await authFetch(`${API}/api/admin/users`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    });
-    const data = await res.json();
-    setSaving(false);
-    if (!res.ok) return setError(data.error ?? "Có lỗi xảy ra");
-    onCreated(data.user);
-  }
-
-  const inputCls =
-    "w-full px-3 py-2 text-sm bg-surface-container-low rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30";
-  return (
-    <form
-      onSubmit={submit}
-      className="bg-white rounded-2xl p-4 shadow-sm space-y-3"
-    >
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <input
-          required
-          placeholder="Họ tên"
-          value={form.fullName}
-          onChange={(e) => setForm((f) => ({ ...f, fullName: e.target.value }))}
-          className={inputCls}
-        />
-        <input
-          required
-          placeholder="Số điện thoại"
-          value={form.phone}
-          onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-          className={inputCls}
-        />
-        <input
-          required
-          type="email"
-          placeholder="Email"
-          value={form.email}
-          onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-          className={inputCls}
-        />
-        <input
-          required
-          type="password"
-          placeholder="Mật khẩu"
-          value={form.password}
-          onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-          className={inputCls}
-        />
-        <select
-          value={form.role}
-          onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}
-          className={inputCls}
-        >
-          <option value="company_admin">Quản lý nhà xe</option>
-          <option value="admin">Quản trị viên</option>
-          <option value="staff">Nhân viên</option>
-        </select>
-        {form.role === "company_admin" && (
-          <select
-            required
-            value={form.companyId}
-            onChange={(e) =>
-              setForm((f) => ({ ...f, companyId: e.target.value }))
-            }
-            className={inputCls}
-          >
-            <option value="">— Chọn doanh nghiệp —</option>
-            {companies.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        )}
-      </div>
-      {error && <p className="text-xs text-red-500">{error}</p>}
-      <div className="flex gap-2">
-        <button
-          type="submit"
-          disabled={saving}
-          className="px-4 py-2 bg-primary text-white text-sm font-bold rounded-xl disabled:opacity-50"
-        >
-          {saving ? "Đang tạo..." : "Tạo tài khoản"}
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="px-4 py-2 text-sm text-secondary"
-        >
-          Huỷ
-        </button>
-      </div>
-    </form>
-  );
-}
-
 function UsersView({ authFetch }) {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState(null);
-  const [adding, setAdding] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
@@ -1789,31 +1968,11 @@ function UsersView({ authFetch }) {
   if (loading) return <p className="text-secondary text-sm">Đang tải...</p>;
   return (
     <div className="space-y-3">
-      {!adding ? (
-        <div className="flex gap-2 flex-wrap">
-          <button
-            onClick={() => setAdding(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-bold rounded-xl hover:opacity-90"
-          >
-            <Icon name="add" className="w-4 h-4" />
-            Thêm tài khoản
-          </button>
-          <ExportButton
-            authFetch={authFetch}
-            endpoint="/api/admin/export/users"
-            filename="users"
-          />
-        </div>
-      ) : (
-        <AddUserForm
-          authFetch={authFetch}
-          onCreated={(u) => {
-            setUsers((prev) => [u, ...prev]);
-            setAdding(false);
-          }}
-          onCancel={() => setAdding(false)}
-        />
-      )}
+      <ExportButton
+        authFetch={authFetch}
+        endpoint="/api/admin/export/users"
+        filename="users"
+      />
 
       {users.length === 0 && (
         <p className="text-secondary text-sm">Chưa có người dùng nào.</p>
@@ -1829,7 +1988,7 @@ function UsersView({ authFetch }) {
           <div className="flex-1 min-w-0">
             <p className="font-bold text-sm truncate">{u.fullName}</p>
             <p className="text-xs text-secondary truncate">
-              {u.email} · {ROLE_LABELS[u.role] ?? u.role}
+              {u.email || u.phone} · {ROLE_LABELS[u.role] ?? u.role}
             </p>
           </div>
           <button
@@ -1859,7 +2018,7 @@ function UsersView({ authFetch }) {
   );
 }
 
-function CompanyForm({ authFetch, initial, onSaved, onCancel }) {
+function CompanyForm({ authFetch, initial, onSaved, onCancel, onCredentials }) {
   const [form, setForm] = useState(
     initial ?? {
       name: "",
@@ -1867,6 +2026,9 @@ function CompanyForm({ authFetch, initial, onSaved, onCancel }) {
       email: "",
       address: "",
       description: "",
+      adminPhone: "",
+      adminFullName: "",
+      adminPassword: "",
     },
   );
   const [error, setError] = useState("");
@@ -1887,6 +2049,9 @@ function CompanyForm({ authFetch, initial, onSaved, onCancel }) {
     const data = await res.json();
     setSaving(false);
     if (!res.ok) return setError(data.error ?? "Có lỗi xảy ra");
+    if (!initial && data.credentials) {
+      onCredentials?.(data.credentials);
+    }
     onSaved(data.company);
   }
 
@@ -1956,6 +2121,41 @@ function CompanyForm({ authFetch, initial, onSaved, onCancel }) {
           </div>
         )}
       </div>
+
+      {!initial && (
+        <div className="border-t border-outline-variant/30 pt-3 mt-2 space-y-3">
+          <p className="text-xs font-bold text-secondary uppercase tracking-wide">
+            Tài khoản quản lý nhà xe
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <input
+              required
+              placeholder="SĐT đăng nhập của quản lý *"
+              value={form.adminPhone || ""}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, adminPhone: e.target.value }))
+              }
+              className={inputCls}
+            />
+            <input
+              placeholder="Tên quản lý (mặc định: Quản lý + tên nhà xe)"
+              value={form.adminFullName || ""}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, adminFullName: e.target.value }))
+              }
+              className={inputCls}
+            />
+            <input
+              placeholder="Mật khẩu"
+              value={form.adminPassword || ""}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, adminPassword: e.target.value }))
+              }
+              className={`${inputCls} sm:col-span-2`}
+            />
+          </div>
+        </div>
+      )}
       <textarea
         placeholder="Mô tả (tuỳ chọn)"
         rows={2}
@@ -1991,6 +2191,7 @@ function CompaniesView({ authFetch }) {
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [credentials, setCredentials] = useState(null);
 
   useEffect(() => {
     authFetch(`${API}/api/admin/companies`)
@@ -2019,6 +2220,7 @@ function CompaniesView({ authFetch }) {
             setAdding(false);
           }}
           onCancel={() => setAdding(false)}
+          onCredentials={setCredentials}
         />
       )}
 
@@ -2084,6 +2286,12 @@ function CompaniesView({ authFetch }) {
             </button>
           </div>
         ),
+      )}
+      {credentials && (
+        <CredentialsModal
+          credentials={credentials}
+          onClose={() => setCredentials(null)}
+        />
       )}
     </div>
   );
@@ -2633,7 +2841,6 @@ function PromoForm({ authFetch, promo, onSaved, onCancel }) {
   );
 }
 
-
 function PromosView({ authFetch }) {
   const [promos, setPromos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -2765,14 +2972,7 @@ export default function Admin() {
   );
 
   const TABS = isAdmin
-    ? [
-        "Tổng quan",
-        "Người dùng",
-        "Doanh nghiệp",
-        "Tuyến đường",
-        "Báo cáo",
-        "Khuyến mãi",
-      ]
+    ? ["Tổng quan", "Người dùng", "Doanh nghiệp", "Tuyến đường", "Báo cáo", "Khuyến mãi"]
     : ["Tổng quan", "Chuyến xe", "Nhân sự", "Xe", "Đặt vé", "Báo cáo"];
 
   const [tab, setTab] = useState(0);
@@ -2807,7 +3007,9 @@ export default function Admin() {
         {/* CompanyAdmin tabs */}
         {!isAdmin && tab === 0 && <CompanyStats authFetch={stableAuthFetch} />}
         {!isAdmin && tab === 1 && <CompanyTrips authFetch={stableAuthFetch} />}
-        {!isAdmin && tab === 2 && <DriversView authFetch={stableAuthFetch} />}
+        {!isAdmin && tab === 2 && (
+          <HumanResourcesView authFetch={stableAuthFetch} />
+        )}
         {!isAdmin && tab === 3 && <BusesView authFetch={stableAuthFetch} />}
         {!isAdmin && tab === 4 && (
           <CompanyBookings authFetch={stableAuthFetch} />

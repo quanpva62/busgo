@@ -20,8 +20,9 @@ function formatTime(iso) {
 
 function formatDate(iso) {
   return new Date(iso).toLocaleDateString("vi-VN", {
-    day: "numeric",
-    month: "numeric",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
   });
 }
 

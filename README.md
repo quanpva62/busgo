@@ -35,16 +35,16 @@ Website bán vé xe khách theo mô hình **marketplace** (nhiều nhà xe), tí
 
 ## Tech Stack
 
-| Layer | Công nghệ |
-|---|---|
-| Frontend | React 19 + Vite + Tailwind CSS v4 + React Router 7 + Recharts |
-| Backend | Node.js + Express 5 + Prisma ORM 5 |
-| Database | PostgreSQL 15 (Supabase) |
-| Auth | JWT (access 15p + refresh 7 ngày) + Google OAuth |
-| Thanh toán | VNPay Sandbox (pay / refund / querydr) |
-| Email | Nodemailer + Gmail SMTP |
-| Storage | Supabase Storage (ảnh tuyến, avatar) |
-| AI | Anthropic Claude API + Tool Use |
+| Layer      | Công nghệ                                                     |
+| ---------- | ------------------------------------------------------------- |
+| Frontend   | React 19 + Vite + Tailwind CSS v4 + React Router 7 + Recharts |
+| Backend    | Node.js + Express 5 + Prisma ORM 5                            |
+| Database   | PostgreSQL 15 (Supabase)                                      |
+| Auth       | JWT (access 15p + refresh 7 ngày) + Google OAuth              |
+| Thanh toán | VNPay Sandbox (pay / refund / querydr)                        |
+| Email      | Nodemailer + Gmail SMTP                                       |
+| Storage    | Supabase Storage (ảnh tuyến, avatar)                          |
+| AI         | Anthropic Claude API + Tool Use                               |
 
 ## Cấu trúc thư mục
 
@@ -98,12 +98,10 @@ npm run dev                   # chạy ở http://localhost:5173
 
 ## Scripts hữu ích (backend)
 
-```bash
+````bash
 node scripts/testCheckin.js          # test API check-in vé
 node scripts/testPromo.js            # test CRUD mã giảm giá
 node scripts/testAvatar.js           # test upload avatar
-node scripts/backfillCommission.js   # tính hoa hồng cho booking paid cũ
-```
 
 ## Testing
 
@@ -116,17 +114,17 @@ cd backend
 cp .env.test.example .env.test
 # 3. Chạy test (tự migrate DB test)
 npm test
-```
+````
 
 Phạm vi: Auth (register/login/me), Booking (giữ ghế, áp promo, điều kiện promo), Payment (`finalizePayment` idempotent + tính hoa hồng). 13 test.
 
 ## Triển khai (deploy)
 
-| Phần | Nền tảng đề xuất | Ghi chú |
-|---|---|---|
-| Frontend | Vercel | Set `VITE_API_URL` trỏ về backend; auto HTTPS |
-| Backend | Render / Railway | Build: `npm install && npx prisma generate`, Start: `npm start` |
-| Database | Supabase | Dùng connection pooler cho `DATABASE_URL`, direct cho `DIRECT_URL` |
+| Phần     | Nền tảng đề xuất | Ghi chú                                                            |
+| -------- | ---------------- | ------------------------------------------------------------------ |
+| Frontend | Vercel           | Set `VITE_API_URL` trỏ về backend; auto HTTPS                      |
+| Backend  | Render / Railway | Build: `npm install && npx prisma generate`, Start: `npm start`    |
+| Database | Supabase         | Dùng connection pooler cho `DATABASE_URL`, direct cho `DIRECT_URL` |
 
 Lưu ý khi deploy:
 

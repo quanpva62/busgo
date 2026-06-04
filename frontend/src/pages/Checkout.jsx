@@ -262,9 +262,8 @@ const Checkout = () => {
                 </p>
                 <p className="text-secondary text-sm">
                   {new Date(trip.departureTime).toLocaleDateString("vi-VN", {
-                    weekday: "short",
-                    day: "numeric",
-                    month: "numeric",
+                    day: "2-digit",
+                    month: "2-digit",
                     year: "numeric",
                   })}
                 </p>

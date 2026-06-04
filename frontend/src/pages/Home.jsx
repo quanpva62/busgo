@@ -1,5 +1,5 @@
 import heroImg from "../assets/img/hero-img.webp";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Icon from "../components/Icon.jsx";
 import iconLocation from "../assets/icons/location_on.svg";
 import iconFlag from "../assets/icons/flag.svg";
@@ -42,6 +42,7 @@ export default function Home() {
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
   const [date, setDate] = useState(localDateStr(tomorrow));
+  const dateInputRef = useRef(null);
 
   // Cities phụ thuộc vào routes thực tế trong DB
   const fromCities = [...new Set(routes.map((r) => r.fromCity))].sort();
@@ -188,19 +189,31 @@ export default function Home() {
                 <label className="block text-[10px] font-bold tracking-widest text-secondary uppercase px-1">
                   NGÀY ĐI
                 </label>
-                <div className="relative">
+                <div
+                  onClick={() => dateInputRef.current?.showPicker?.()}
+                  className="relative cursor-pointer"
+                >
                   <img
                     src={iconCalendar}
                     alt=""
-                    className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5"
+                    className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 pointer-events-none"
                   />
+                  <div className="w-full pl-12 pr-4 py-4 bg-surface-container-low rounded-xl font-semibold text-on-surface">
+                    {date
+                      ? new Date(date + "T00:00:00").toLocaleDateString(
+                          "vi-VN",
+                          { day: "2-digit", month: "2-digit", year: "numeric" },
+                        )
+                      : "Chọn ngày"}
+                  </div>
                   <input
+                    ref={dateInputRef}
                     type="date"
                     min={localDateStr()}
                     max="2028-12-31"
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
-                    className="w-full pl-12 pr-4 py-4 bg-surface-container-low rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-fixed font-semibold text-on-surface hover:cursor-pointer"
+                    className="sr-only"
                   />
                 </div>
               </div>

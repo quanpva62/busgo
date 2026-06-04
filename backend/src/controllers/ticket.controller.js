@@ -49,7 +49,12 @@ const checkinTicket = async (req, res, next) => {
       include: {
         booking: {
           include: {
-            trip: { include: { route: true, bus: true } },
+            trip: {
+              include: {
+                route: true,
+                bus: { include: { company: true } },
+              },
+            },
             bookingSeats: { include: { seat: { include: { seat: true } } } },
           },
         },
@@ -84,10 +89,16 @@ const checkinTicket = async (req, res, next) => {
         .json({ error: `Vé chưa được thanh toán: ${ticket.booking.status}` });
     }
 
-    const updated = await prisma.ticket.update({
-      where: { id: ticket.id },
-      data: { isUsed: true, usedAt: new Date() },
-    });
+    const [updated] = await prisma.$transaction([
+      prisma.ticket.update({
+        where: { id: ticket.id },
+        data: { isUsed: true, usedAt: new Date() },
+      }),
+      prisma.booking.update({
+        where: { id: ticket.bookingId },
+        data: { status: "completed" },
+      }),
+    ]);
     res.json({
       message: "Check-in thành công",
       ticket: { ...ticket, ...updated },

@@ -14,7 +14,7 @@ const RESET_TOKEN_TTL_MIN = Number(process.env.RESET_TOKEN_TTL_MIN) || 15;
 const VERIFY_TOKEN_TTL_HOURS = Number(process.env.VERIFY_TOKEN_TTL_HOURS) || 24;
 const JWT_ACCESS_EXPIRES = process.env.JWT_ACCESS_EXPIRES || "15m";
 const JWT_REFRESH_EXPIRES = process.env.JWT_REFRESH_EXPIRES || "7d";
-
+const REFRESH_COOKIE_NAME = "refreshToken";
 const PASSWORD_COOLDOWN_MS = PASSWORD_COOLDOWN_DAYS * 24 * 60 * 60 * 1000;
 
 function hashToken(raw) {
@@ -23,6 +23,22 @@ function hashToken(raw) {
 
 const REFRESH_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
+// Options cho cookie refresh token — phân biệt prod vs dev:
+//   - httpOnly: chặn JS đọc → không bị XSS lấy token
+//   - secure: HTTPS only (prod). Dev http không set vì localhost không HTTPS.
+//   - sameSite "none" (prod): cho phép cross-site (Vercel→Render khác domain) — bắt buộc khi secure=true
+//   - sameSite "lax" (dev): same-origin OK cho dev localhost
+//   - path: chỉ /api/auth/* → các endpoint khác KHÔNG nhận cookie này (giảm surface)
+function refreshCookieOptions() {
+  const isProd = process.env.NODE_ENV === "production";
+  return {
+    httpOnly: true,
+    secure: isProd,
+    sameSite: isProd ? "none" : "lax",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+    path: "/api/auth",
+  };
+}
 function isWithinCooldown(passwordChangedAt) {
   if (!passwordChangedAt) return false;
   return (
@@ -161,10 +177,14 @@ const login = async (req, res, next) => {
       },
     });
 
+    // Set refresh token vào httpOnly cookie thay vì trả về body
+    // → JS frontend không đọc được → an toàn trước XSS
+    res.cookie(REFRESH_COOKIE_NAME, refreshTokenJwt, refreshCookieOptions());
+
     res.json({
       message: "Đăng nhập thành công",
-      accessToken: accessToken,
-      refreshToken: refreshTokenJwt,
+      accessToken,
+      // KHÔNG trả refreshToken trong body — browser tự lưu cookie
       user: {
         id: user.id,
         email: user.email,
@@ -347,9 +367,8 @@ const changePassword = async (req, res, next) => {
 
 const refreshToken = async (req, res, next) => {
   try {
-    const { refreshToken: rawToken } = req.body;
-    if (!rawToken)
-      return res.status(400).json({ error: "Vui lòng cung cấp refresh token" });
+    const rawToken = req.cookies[REFRESH_COOKIE_NAME];
+    if (!rawToken) return res.status(400).json({ error: "Chưa đăng nhập!" });
 
     // 1. Verify JWT
     let decoded;
@@ -398,8 +417,10 @@ const refreshToken = async (req, res, next) => {
         },
       }),
     ]);
+    // Rotation: cookie cũ bị overwrite bằng cookie mới (same name + path)
+    res.cookie(REFRESH_COOKIE_NAME, newRefreshToken, refreshCookieOptions());
 
-    res.json({ accessToken: newAccessToken, refreshToken: newRefreshToken });
+    res.json({ accessToken: newAccessToken });
   } catch (error) {
     next(error);
   }
@@ -477,10 +498,12 @@ const googleLogin = async (req, res, next) => {
       },
     });
 
+    res.cookie(REFRESH_COOKIE_NAME, refreshTokenJwt, refreshCookieOptions());
+
     res.json({
       message: "Đăng nhập Google thành công",
       accessToken,
-      refreshToken: refreshTokenJwt,
+      // refresh đã ở cookie
       user: {
         id: user.id,
         email: user.email,
@@ -653,7 +676,7 @@ const removeAvatar = async (req, res, next) => {
 
 const logout = async (req, res, next) => {
   try {
-    const { refreshToken: rawToken } = req.body;
+    const rawToken = req.cookies[REFRESH_COOKIE_NAME];
     // Cho phép logout kể cả không có rawToken (vd FE đã mất token) — chỉ cần clear FE
     if (rawToken) {
       const tokenHash = hashToken(rawToken);
@@ -662,6 +685,7 @@ const logout = async (req, res, next) => {
         data: { revokedAt: new Date() },
       });
     }
+    res.clearCookie(REFRESH_COOKIE_NAME, refreshCookieOptions());
     res.json({ message: "Đăng xuất thành công" });
   } catch (error) {
     next(error);

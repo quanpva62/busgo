@@ -11,7 +11,7 @@ function formatTime(iso) {
 }
 function formatDate(iso) {
   return new Date(iso).toLocaleDateString("vi-VN", {
-    weekday: "short", day: "numeric", month: "numeric", year: "numeric",
+    day: "2-digit", month: "2-digit", year: "numeric",
   });
 }
 function formatPrice(price) {

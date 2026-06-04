@@ -1,6 +1,5 @@
 const prisma = require("../lib/prisma");
-const Anthropic = require("@anthropic-ai/sdk");
-const client = new Anthropic();
+const aiClient = require("../lib/aiClient");
 
 const tools = [
   {
@@ -71,13 +70,28 @@ const tools = [
 
 const executeTool = async (toolName, input, context = {}) => {
   switch (toolName) {
-    case "searchTrips":
+    case "searchTrips": {
+      const normalize = (s) =>
+        String(s || "")
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[̀-ͯ]/g, "") // bỏ dấu tiếng Việt
+          .replace(/[^a-z0-9]/g, ""); // bỏ space, chấm, etc
+
+      const fromNorm = normalize(input.from);
+      const toNorm = normalize(input.to);
+
+      const routes = await prisma.route.findMany({ where: { isActive: true } });
+      const matchedRoutes = routes.filter(
+        (r) =>
+          normalize(r.fromCity).includes(fromNorm) &&
+          normalize(r.toCity).includes(toNorm),
+      );
+      if (matchedRoutes.length === 0) return [];
+
       return await prisma.trip.findMany({
         where: {
-          route: {
-            fromCity: { contains: input.from, mode: "insensitive" },
-            toCity: { contains: input.to, mode: "insensitive" },
-          },
+          routeId: { in: matchedRoutes.map((r) => r.id) },
           departureTime: {
             gte: new Date(input.date),
             lt: new Date(input.date + "T23:59:59"),
@@ -86,6 +100,7 @@ const executeTool = async (toolName, input, context = {}) => {
         },
         include: { route: true, bus: true },
       });
+    }
 
     case "getTripDetail":
       return await prisma.trip.findUnique({
@@ -149,70 +164,135 @@ const executeTool = async (toolName, input, context = {}) => {
   }
 };
 
+function buildSystemPrompt() {
+  const today = new Date().toLocaleDateString("vi-VN", {
+    weekday: "long",
+    day: "numeric",
+    month: "numeric",
+    year: "numeric",
+    timeZone: "Asia/Ho_Chi_Minh",
+  });
+  return `Hôm nay là ${today}.
+
+Bạn là trợ lý đặt vé BusGo.
+Chức năng:
+- Tìm chuyến xe phù hợp
+- Hiển thị thông tin: giờ đi, giá, nhà xe, ghế trống
+- Gợi ý lựa chọn tốt nhất nếu có nhiều chuyến
+- Hỗ trợ đặt vé
+
+Chính sách hủy vé:
+- Hủy trước khởi hành hơn 24 giờ: hoàn 100%
+- Hủy trước khởi hành 12-24 giờ: hoàn 50%
+- Hủy trước khởi hành dưới 12 giờ: không hoàn tiền
+- Vé chưa thanh toán hủy miễn phí
+
+Tên thành phố CHÍNH XÁC trong DB (dùng đúng khi gọi tool searchTrips):
+TP.HCM (KHÔNG phải TPHCM, TP HCM, Sài Gòn), Hà Nội, Đà Nẵng, Đà Lạt, Vũng Tàu, Cần Thơ, Huế, Hải Phòng, Nha Trang, Vinh, Quy Nhơn
+
+Nguyên tắc:
+- Trả lời ngắn gọn, dễ hiểu
+- Luôn hỏi thêm nếu thiếu thông tin (điểm đi, điểm đến, ngày)
+- Ưu tiên đề xuất chuyến phù hợp nhất
+- Dùng ngôn ngữ theo người dùng (VI/EN)
+- KHÔNG hiển thị layout (cấu trúc xếp ghế) — không hữu ích với khách
+- Đổi tên tiện ích sang tiếng Việt dễ hiểu khi liệt kê:
+  + wifi → Wifi
+  + airConditioner → Điều hòa
+  + usb → Sạc điện thoại
+  + blanket → Chăn
+  + water → Nước uống
+- Khi liệt kê chuyến xe, luôn thêm link đặt vé ở cuối mỗi chuyến theo đúng định dạng: [Chọn chuyến này →](/trips/TRIP_ID)
+- Khi khách hàng muốn đặt vé: [Đặt vé ngay! →](/trips/TRIP_ID)
+`;
+}
+
 const chat = async (req, res, next) => {
-  const { message, history = [] } = req.body;
-  // history: [{ role: "user"|"assistant", content: string }, ...]
-  const messages = [...history, { role: "user", content: message }];
+  const { message, history = [], model = "gemini" } = req.body;
+  if (!message || typeof message !== "string") {
+    return res.status(400).json({ error: "Thiếu message" });
+  }
+  const cleanHistory = history.filter(
+    (m) => m && typeof m.content === "string" && m.content.trim().length > 0,
+  );
+  const messages = [...cleanHistory, { role: "user", content: message }];
+  const context = { userId: req.user?.userId };
+
+  // Production-grade: auto-fallback nếu provider chính lỗi (503 overload, network…)
+  async function callAI(modelKey) {
+    try {
+      return await aiClient.chat({
+        modelKey,
+        system: buildSystemPrompt(),
+        tools,
+        messages,
+      });
+    } catch (err) {
+      // Gemini quá tải → fallback sang Claude (chỉ fallback 1 lần, không loop)
+      if (modelKey === "gemini" && (err.status === 503 || err.status === 429)) {
+        console.warn("[chatbot] Gemini overload, fallback to Claude");
+        return await aiClient.chat({
+          modelKey: "claude",
+          system: buildSystemPrompt(),
+          tools,
+          messages,
+        });
+      }
+      throw err;
+    }
+  }
 
   try {
     while (true) {
-      const response = await client.messages.create({
-        model: "claude-sonnet-4-6",
-        max_tokens: 1024,
-        system: `Hôm nay là ${new Date().toLocaleDateString("vi-VN", { weekday: "long", day: "numeric", month: "numeric", year: "numeric", timeZone: "Asia/Ho_Chi_Minh" })}.
+      const { provider, response } = await callAI(model);
 
-            Bạn là trợ lý đặt vé BusGo.
-                Chức năng:
-                - Tìm chuyến xe phù hợp
-                - Hiển thị thông tin: giờ đi, giá, nhà xe, ghế trống
-                - Gợi ý lựa chọn tốt nhất nếu có nhiều chuyến
-                - Hỗ trợ đặt vé
-
-                Chính sách hủy vé:
-                - Hủy trước khởi hành hơn 24 giờ: hoàn 100%
-                - Hủy trước khởi hành 12-24 giờ: hoàn 50%
-                - Hủy trước khởi hành dưới 12 giờ: không hoàn tiền
-                - Vé chưa thanh toán hủy miễn phí
-
-                Nguyên tắc:
-                - Trả lời ngắn gọn, dễ hiểu
-                - Luôn hỏi thêm nếu thiếu thông tin (điểm đi, điểm đến, ngày)
-                - Ưu tiên đề xuất chuyến phù hợp nhất
-                - Dùng ngôn ngữ theo người dùng (VI/EN)
-                - KHÔNG hiển thị layout (cấu trúc xếp ghế) — không hữu ích với khách
-                - Đổi tên tiện ích sang tiếng Việt dễ hiểu khi liệt kê:
-                  + wifi → Wifi
-                  + airConditioner → Điều hòa
-                  + usb → Sạc điện thoại
-                  + blanket → Chăn
-                  + water → Nước uống
-                - Khi liệt kê chuyến xe, luôn thêm link đặt vé ở cuối mỗi chuyến theo đúng định dạng: [Chọn chuyến này →](/trips/TRIP_ID) (thay TRIP_ID bằng id thật của chuyến)
-                - Khi khách hàng muốn đặt vé, hãy gửi theo định dạng: [Đặt vé ngay! →](/trips/TRIP_ID) (thay TRIP_ID bằng id thật của chuyến)
-            `,
-        tools,
-        messages: messages,
-      });
-
-      if (response.stop_reason === "end_turn") {
-        return res.json({ reply: response.content[0].text });
-      }
-
-      if (response.stop_reason === "tool_use") {
-        messages.push({ role: "assistant", content: response.content });
-
-        const toolResults = [];
-
-        for (const block of response.content) {
-          if (block.type === "tool_use") {
-            const result = await executeTool(block.name, block.input, {
-              userId: req.user?.userId,
-            });
-            toolResults.push({
-              type: "tool_result",
-              tool_use_id: block.id,
-              content: JSON.stringify(result),
-            });
+      if (provider === "claude") {
+        //  Claude flow
+        if (response.stop_reason === "end_turn") {
+          return res.json({ reply: response.content[0].text });
+        }
+        if (response.stop_reason === "tool_use") {
+          messages.push({ role: "assistant", content: response.content });
+          const toolResults = [];
+          for (const block of response.content) {
+            if (block.type === "tool_use") {
+              const result = await executeTool(
+                block.name,
+                block.input,
+                context,
+              );
+              toolResults.push({
+                type: "tool_result",
+                tool_use_id: block.id,
+                content: JSON.stringify(result),
+              });
+            }
           }
+          messages.push({ role: "user", content: toolResults });
+        }
+      } else if (provider === "gemini") {
+        //  Gemini flow
+        const calls = response.functionCalls();
+        if (!calls || calls.length === 0) {
+          return res.json({ reply: response.text() });
+        }
+        messages.push({
+          role: "assistant",
+          content: calls.map((c) => ({
+            type: "tool_use",
+            id: c.name,
+            name: c.name,
+            input: c.args,
+          })),
+        });
+        const toolResults = [];
+        for (const call of calls) {
+          const result = await executeTool(call.name, call.args, context);
+          toolResults.push({
+            type: "tool_result",
+            tool_use_id: call.name,
+            content: JSON.stringify(result),
+          });
         }
         messages.push({ role: "user", content: toolResults });
       }
@@ -221,6 +301,7 @@ const chat = async (req, res, next) => {
     next(error);
   }
 };
+
 module.exports = {
   chat,
 };

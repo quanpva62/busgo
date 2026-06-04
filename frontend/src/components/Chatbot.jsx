@@ -7,22 +7,35 @@ import Icon from "./Icon.jsx";
 const API_URL = import.meta.env.VITE_API_URL;
 
 const mdComponents = {
-  h3: ({ children }) => <p className="font-bold text-on-surface mt-2 mb-1">{children}</p>,
-  strong: ({ children }) => <span className="font-bold text-on-surface">{children}</span>,
+  h3: ({ children }) => (
+    <p className="font-bold text-on-surface mt-2 mb-1">{children}</p>
+  ),
+  strong: ({ children }) => (
+    <span className="font-bold text-on-surface">{children}</span>
+  ),
   table: ({ children }) => (
     <div className="overflow-x-auto my-2">
       <table className="w-full text-xs border-collapse">{children}</table>
     </div>
   ),
   thead: ({ children }) => <thead className="hidden">{children}</thead>,
-  tr: ({ children }) => <tr className="border-b border-outline-variant/20">{children}</tr>,
-  td: ({ children }) => <td className="py-1.5 pr-3 first:text-secondary first:w-28 align-top">{children}</td>,
+  tr: ({ children }) => (
+    <tr className="border-b border-outline-variant/20">{children}</tr>
+  ),
+  td: ({ children }) => (
+    <td className="py-1.5 pr-3 first:text-secondary first:w-28 align-top">
+      {children}
+    </td>
+  ),
   p: ({ children }) => <p className="mb-1 last:mb-0">{children}</p>,
   hr: () => <hr className="my-2 border-outline-variant/30" />,
   li: ({ children }) => <li className="ml-3 list-disc">{children}</li>,
 };
 
-const MIN_W = 280, MAX_W = 700, MIN_H = 300, MAX_H = 750;
+const MIN_W = 280,
+  MAX_W = 700,
+  MIN_H = 300,
+  MAX_H = 750;
 
 export default function Chatbot() {
   const navigate = useNavigate();
@@ -32,7 +45,10 @@ export default function Chatbot() {
     ...mdComponents,
     a: ({ href, children }) => (
       <button
-        onClick={() => { navigate(href); setOpen(false); }}
+        onClick={() => {
+          navigate(href);
+          setOpen(false);
+        }}
         className="inline text-primary font-bold underline hover:opacity-75 transition-opacity cursor-pointer"
       >
         {children}
@@ -43,7 +59,15 @@ export default function Chatbot() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [size, setSize] = useState({ width: 384, height: 500 });
+  const [model, setModel] = useState(
+    () => localStorage.getItem("busgo_chat_model") || "gemini",
+  );
   const bottomRef = useRef(null);
+
+  function changeModel(newModel) {
+    setModel(newModel);
+    localStorage.setItem("busgo_chat_model", newModel);
+  }
 
   function startResize(e) {
     e.preventDefault();
@@ -54,7 +78,7 @@ export default function Chatbot() {
 
     function onMove(e) {
       setSize({
-        width:  Math.min(MAX_W, Math.max(MIN_W, startW + (startX - e.clientX))),
+        width: Math.min(MAX_W, Math.max(MIN_W, startW + (startX - e.clientX))),
         height: Math.min(MAX_H, Math.max(MIN_H, startH + (startY - e.clientY))),
       });
     }
@@ -86,13 +110,23 @@ export default function Chatbot() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: text,
-          history: messages, // gửi lịch sử để giữ ngữ cảnh
+          history: messages,
+          model, // claude | gemini
         }),
       });
       const data = await res.json();
-      setMessages([...nextMessages, { role: "assistant", content: data.reply }]);
+      setMessages([
+        ...nextMessages,
+        { role: "assistant", content: data.reply },
+      ]);
     } catch {
-      setMessages([...nextMessages, { role: "assistant", content: "Xin lỗi, có lỗi xảy ra. Vui lòng thử lại." }]);
+      setMessages([
+        ...nextMessages,
+        {
+          role: "assistant",
+          content: "Xin lỗi, có lỗi xảy ra. Vui lòng thử lại.",
+        },
+      ]);
     } finally {
       setLoading(false);
     }
@@ -119,7 +153,10 @@ export default function Chatbot() {
             className="hidden sm:flex absolute top-0 left-0 w-4 h-4 cursor-nw-resize z-10 items-center justify-center"
             title="Kéo để thay đổi kích thước"
           >
-            <Icon name="drag_indicator" className="w-4 h-4 text-white/50 select-none" />
+            <Icon
+              name="drag_indicator"
+              className="w-4 h-4 text-white/50 select-none"
+            />
           </div>
 
           {/* Header */}
@@ -127,9 +164,28 @@ export default function Chatbot() {
             <Icon name="smart_toy" className="w-5 h-5" />
             <div className="flex-1 min-w-0">
               <p className="font-bold text-sm leading-tight">BusGo Assistant</p>
-              <p className="text-white/70 text-xs">Hỏi về tuyến, giá vé, lịch xe...</p>
+              <p className="text-white/70 text-xs">
+                Hỏi về tuyến, giá vé, lịch xe...
+              </p>
             </div>
-            <button onClick={() => setOpen(false)} className="hover:bg-white/20 rounded-lg p-1 transition-colors">
+            {/* Model picker */}
+            <select
+              value={model}
+              onChange={(e) => changeModel(e.target.value)}
+              className="bg-white/10 text-white text-xs font-bold rounded-lg px-2 py-1 border border-white/20 focus:outline-none cursor-pointer hover:bg-white/20"
+              title="Chọn mô hình AI"
+            >
+              <option value="gemini" className="text-on-surface">
+                Gemini
+              </option>
+              <option value="claude" className="text-on-surface">
+                Claude
+              </option>
+            </select>
+            <button
+              onClick={() => setOpen(false)}
+              className="hover:bg-white/20 rounded-lg p-1 transition-colors"
+            >
               <Icon name="close" className="w-5 h-5" />
             </button>
           </div>
@@ -138,8 +194,14 @@ export default function Chatbot() {
           <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
             {messages.length === 0 && (
               <div className="text-center text-secondary text-sm mt-8 space-y-2">
-                <Icon name="smart_toy" className="w-10 h-10 text-primary/40 mx-auto" />
-                <p>Xin chào! Tôi có thể giúp bạn tìm chuyến xe, xem giá vé và lịch khởi hành.</p>
+                <Icon
+                  name="smart_toy"
+                  className="w-10 h-10 text-primary/40 mx-auto"
+                />
+                <p>
+                  Xin chào! Tôi có thể giúp bạn tìm chuyến xe, xem giá vé và
+                  lịch khởi hành.
+                </p>
                 <div className="flex flex-col gap-1.5 mt-4">
                   {[
                     "Có chuyến Hà Nội → Vinh ngày mai không?",
@@ -147,7 +209,9 @@ export default function Chatbot() {
                   ].map((q) => (
                     <button
                       key={q}
-                      onClick={() => { setInput(q); }}
+                      onClick={() => {
+                        setInput(q);
+                      }}
                       className="text-xs text-primary border border-primary/30 rounded-xl px-3 py-2 hover:bg-primary/5 transition-colors text-left"
                     >
                       {q}
@@ -158,7 +222,10 @@ export default function Chatbot() {
             )}
 
             {messages.map((m, i) => (
-              <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+              <div
+                key={i}
+                className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
+              >
                 <div
                   className={`max-w-[80%] px-3 py-2 rounded-2xl text-sm ${
                     m.role === "user"
@@ -166,8 +233,13 @@ export default function Chatbot() {
                       : "bg-surface-container-low text-on-surface rounded-bl-sm"
                   }`}
                 >
-                  {m.role === "user" ? m.content : (
-                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdWithNav}>
+                  {m.role === "user" ? (
+                    m.content
+                  ) : (
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={mdWithNav}
+                    >
                       {m.content}
                     </ReactMarkdown>
                   )}

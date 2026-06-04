@@ -32,6 +32,7 @@ export default function Login() {
         `${import.meta.env.VITE_API_URL}/api/auth/login`,
         {
           method: "POST",
+          credentials: "include", // BẮT BUỘC: nhận httpOnly cookie từ BE
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, password }),
         },
@@ -41,7 +42,8 @@ export default function Login() {
         if (data.needVerification) setNeedVerification(true);
         throw new Error(data.error || "Đăng nhập thất bại");
       }
-      login(data.user, data.accessToken, data.refreshToken); // Lưu token vào context
+      // refreshToken không còn trong body — đã ở cookie
+      login(data.user, data.accessToken);
       navigate("/"); // Điều hướng về trang chủ sau khi login thành công
     } catch (err) {
       setError(err.message);
@@ -78,13 +80,14 @@ export default function Login() {
         `${import.meta.env.VITE_API_URL}/api/auth/google`,
         {
           method: "POST",
+          credentials: "include", // BẮT BUỘC: nhận httpOnly cookie
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ idToken: credentialResponse.credential }),
         },
       );
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Đăng nhập Google thất bại");
-      login(data.user, data.accessToken, data.refreshToken);
+      login(data.user, data.accessToken);
       navigate("/");
     } catch (err) {
       setError(err.message);
@@ -112,7 +115,7 @@ export default function Login() {
             </span>
           </div>
           <h1 className="text-3xl font-bold text-on-surface mb-1">
-            Chào mừng trở lại
+            Chào mừng đến với
           </h1>
           <p className="text-secondary text-sm">
             Mạng lưới di chuyển hàng đầu Việt Nam

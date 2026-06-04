@@ -19,11 +19,23 @@ const morgan = require("morgan");
 const cron = require("node-cron");
 const releaseExpiredBookings = require("./jobs/releaseExpiredBookings");
 const { reconcilePendingPayments } = require("./jobs/reconcilePendingPayments");
+const cookieParser = require("cookie-parser");
 
+app.use(cookieParser());
 // Middleware
+// Cho phép nhiều origin (dev localhost + prod Vercel) — phân tách bằng dấu phẩy trong env
+const allowedOrigins = (process.env.FRONTEND_URL || "http://localhost:5173")
+  .split(",")
+  .map((s) => s.trim());
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:5173",
+    origin: (origin, cb) => {
+      // Cho phép requests không có origin (Postman, server-to-server, healthcheck)
+      if (!origin) return cb(null, true);
+      if (allowedOrigins.includes(origin)) return cb(null, true);
+      cb(new Error(`CORS blocked: ${origin}`));
+    },
+    credentials: true,
   }),
 );
 // cho phep goi api

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import Pagination from "../components/Pagination.jsx";
 import Icon from "../components/Icon.jsx";
@@ -27,9 +27,8 @@ function localDateStr(date = new Date()) {
 
 function formatDate(dateStr) {
   return new Date(dateStr + "T00:00:00").toLocaleDateString("vi-VN", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
+    day: "2-digit",
+    month: "2-digit",
     year: "numeric",
   });
 }
@@ -66,6 +65,7 @@ export default function Search() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [filterDate, setFilterDate] = useState(dateParam);
+  const dateInputRef = useRef(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -166,12 +166,24 @@ export default function Search() {
                 Ngày đi
               </h3>
               <div className="flex items-center gap-2">
+                <div
+                  onClick={() => dateInputRef.current?.showPicker?.()}
+                  className="flex-1 border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white cursor-pointer hover:border-primary"
+                >
+                  {filterDate
+                    ? new Date(filterDate + "T00:00:00").toLocaleDateString(
+                        "vi-VN",
+                        { day: "2-digit", month: "2-digit", year: "numeric" },
+                      )
+                    : "Chọn ngày"}
+                </div>
                 <input
+                  ref={dateInputRef}
                   type="date"
                   value={filterDate}
                   min={localDateStr()}
                   onChange={(e) => setFilterDate(e.target.value)}
-                  className="flex-1 border border-outline-variant rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                  className="sr-only"
                 />
                 {filterDate && (
                   <button
@@ -325,8 +337,9 @@ function TripCard({ trip, onSelect }) {
             </p>
             <p className="text-secondary text-xs mt-0.5">
               {new Date(trip.departureTime).toLocaleDateString("vi-VN", {
-                day: "numeric",
-                month: "numeric",
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
               })}
             </p>
           </div>
@@ -349,8 +362,9 @@ function TripCard({ trip, onSelect }) {
             </p>
             <p className="text-secondary text-xs mt-0.5">
               {new Date(trip.arrivalTime).toLocaleDateString("vi-VN", {
-                day: "numeric",
-                month: "numeric",
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
               })}
             </p>
           </div>

@@ -8,6 +8,8 @@ const upload = require("../middlewares/upload.middleware");
 const {
   authLimit,
   passwordResetLimit,
+  refreshLimit,
+  verifyEmailLimit,
 } = require("../middlewares/rateLimit.middleware");
 const {
   registerValidation,
@@ -40,6 +42,7 @@ router.post("/logout", authController.logout);
 // ───── Email verification ─────
 router.post(
   "/verify-email",
+  verifyEmailLimit,
   verifyEmailValidation,
   validate,
   authController.verifyEmail,
@@ -69,12 +72,8 @@ router.post(
 );
 
 // ───── Session ─────
-router.post(
-  "/refresh-token",
-  refreshTokenValidation,
-  validate,
-  authController.refreshToken,
-);
+// Refresh đọc từ httpOnly cookie, không cần body validation
+router.post("/refresh-token", refreshLimit, authController.refreshToken);
 
 // ───── Authenticated: profile ─────
 router.get("/me", authMiddleware, authController.me);
