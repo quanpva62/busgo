@@ -70,7 +70,7 @@ const checkinTicket = async (req, res, next) => {
         select: { companyId: true },
       });
       const ticketCompanyId = ticket.booking.trip.bus?.companyId;
-      if (u.companyId !== ticketCompanyId) {
+      if (!u.companyId || u.companyId !== ticketCompanyId) {
         return res
           .status(403)
           .json({ error: "Vé này không thuộc về công ty của bạn!" });
@@ -89,16 +89,11 @@ const checkinTicket = async (req, res, next) => {
         .json({ error: `Vé chưa được thanh toán: ${ticket.booking.status}` });
     }
 
-    const [updated] = await prisma.$transaction([
-      prisma.ticket.update({
-        where: { id: ticket.id },
-        data: { isUsed: true, usedAt: new Date() },
-      }),
-      prisma.booking.update({
-        where: { id: ticket.bookingId },
-        data: { status: "completed" },
-      }),
-    ]);
+    // Check-in chỉ đánh dấu vé đã dùng; booking giữ nguyên "paid"
+    const updated = await prisma.ticket.update({
+      where: { id: ticket.id },
+      data: { isUsed: true, usedAt: new Date() },
+    });
     res.json({
       message: "Check-in thành công",
       ticket: { ...ticket, ...updated },

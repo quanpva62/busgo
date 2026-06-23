@@ -115,10 +115,12 @@ const createBooking = async (req, res, next) => {
         });
       }
       if (promo.discountType === "percentage") {
-        discountAmount = totalPrice * (promo.discountValue / 100);
+        discountAmount = Math.round(totalPrice * (promo.discountValue / 100));
       } else if (promo.discountType === "fixed") {
         discountAmount = promo.discountValue;
       }
+      // Không để giảm quá tổng tiền (tránh totalPrice âm) và luôn là số nguyên
+      discountAmount = Math.min(discountAmount, totalPrice);
 
       promoId = promo.id;
     }
@@ -260,6 +262,11 @@ const cancelBooking = async (req, res, next) => {
         createBy: req.user.userId,
       });
       if (!refundRes.success) {
+        // Hoàn tiền thất bại → đánh dấu refund_failed để xử lý tay (nhất quán với luồng admin)
+        await prisma.booking.update({
+          where: { id },
+          data: { status: "refund_failed" },
+        });
         return res.status(502).json({
           error: `Hoàn tiền VNPay thất bại: ${refundRes.message || refundRes.code}`,
         });
@@ -270,25 +277,36 @@ const cancelBooking = async (req, res, next) => {
       booking.status === "paid" && refundAmount > 0 ? "refunded" : "cancelled";
 
     // Update booking + tripSeat + payment cùng 1 transaction — atomic
-    await prisma.$transaction(async (tx) => {
-      await tx.booking.update({
-        where: { id },
-        data: { status: newStatus, commissionAmount: 0 },
-      });
-      await tx.tripSeat.updateMany({
-        where: { bookingId: id },
-        data: { status: "available", bookingId: null, heldUntil: null },
-      });
-      if (refundRes) {
-        await tx.payment.update({
-          where: { id: booking.payment.id },
-          data: {
-            status: "refunded",
-            vnpRaw: { ...booking.payment.vnpRaw, refund: refundRes.raw },
-          },
+    try {
+      await prisma.$transaction(async (tx) => {
+        await tx.booking.update({
+          where: { id },
+          data: { status: newStatus, commissionAmount: 0 },
         });
+        await tx.tripSeat.updateMany({
+          where: { bookingId: id },
+          data: { status: "available", bookingId: null, heldUntil: null },
+        });
+        if (refundRes) {
+          await tx.payment.update({
+            where: { id: booking.payment.id },
+            data: {
+              status: "refunded",
+              vnpRaw: { ...booking.payment.vnpRaw, refund: refundRes.raw },
+            },
+          });
+        }
+      });
+    } catch (txErr) {
+      // Tiền có thể đã hoàn nhưng ghi DB lỗi → cảnh báo để đối soát/xử lý tay
+      if (refundRes) {
+        console.error(
+          `[cancelBooking] CRITICAL: refund VNPay thành công nhưng cập nhật DB thất bại cho booking ${id}. Cần đối soát thủ công.`,
+          txErr,
+        );
       }
-    });
+      throw txErr;
+    }
 
     notify(
       booking.userId,
