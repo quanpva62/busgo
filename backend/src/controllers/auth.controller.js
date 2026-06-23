@@ -389,14 +389,28 @@ const refreshToken = async (req, res, next) => {
         .json({ error: "Refresh token không hợp lệ hoặc đã hết hạn" });
     }
 
-    // 3. Rotate: revoke current + issue new
+    // 3. Đọc lại user từ DB — không tin role/trạng thái đóng băng trong token cũ.
+    //    Nếu bị khoá hoặc xoá → revoke token hiện tại, từ chối refresh.
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+      select: { id: true, role: true, isActive: true },
+    });
+    if (!user || !user.isActive) {
+      await prisma.refreshToken.update({
+        where: { id: record.id },
+        data: { revokedAt: new Date() },
+      });
+      return res.status(403).json({ error: "Tài khoản không hợp lệ hoặc đã bị khoá" });
+    }
+
+    // 4. Rotate: revoke current + issue new (role lấy từ DB, không từ token cũ)
     const newAccessToken = jwt.sign(
-      { userId: decoded.userId, role: decoded.role },
+      { userId: user.id, role: user.role },
       process.env.JWT_SECRET,
       { expiresIn: JWT_ACCESS_EXPIRES },
     );
     const newRefreshToken = jwt.sign(
-      { userId: decoded.userId, role: decoded.role },
+      { userId: user.id, role: user.role },
       process.env.JWT_REFRESH_SECRET,
       { expiresIn: JWT_REFRESH_EXPIRES },
     );
@@ -409,7 +423,7 @@ const refreshToken = async (req, res, next) => {
       }),
       prisma.refreshToken.create({
         data: {
-          userId: decoded.userId,
+          userId: user.id,
           tokenHash: hashToken(newRefreshToken),
           expiresAt: new Date(Date.now() + REFRESH_TTL_MS),
           userAgent: req.headers["user-agent"] || null,
@@ -476,11 +490,6 @@ const googleLogin = async (req, res, next) => {
       { userId: user.id, role: user.role },
       process.env.JWT_SECRET,
       { expiresIn: JWT_ACCESS_EXPIRES },
-    );
-    const refreshToken = jwt.sign(
-      { userId: user.id, role: user.role },
-      process.env.JWT_REFRESH_SECRET,
-      { expiresIn: JWT_REFRESH_EXPIRES },
     );
     const refreshTokenJwt = jwt.sign(
       { userId: user.id, role: user.role },
