@@ -42,7 +42,9 @@ describe("Auth API", () => {
     });
     expect(res.status).toBe(200);
     expect(res.body.accessToken).toBeDefined();
-    expect(res.body.refreshToken).toBeDefined();
+    // Refresh token nằm trong httpOnly cookie, không trả trong body
+    const cookies = res.headers["set-cookie"] || [];
+    expect(cookies.some((c) => c.startsWith("refreshToken="))).toBe(true);
   });
 
   test("login sai mật khẩu → 400", async () => {
