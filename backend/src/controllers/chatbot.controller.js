@@ -208,7 +208,7 @@ Nguyên tắc:
 }
 
 const chat = async (req, res, next) => {
-  const { message, history = [], model = "gemini" } = req.body;
+  const { message, history = [] } = req.body;
   if (!message || typeof message !== "string") {
     return res.status(400).json({ error: "Thiếu message" });
   }
@@ -218,81 +218,29 @@ const chat = async (req, res, next) => {
   const messages = [...cleanHistory, { role: "user", content: message }];
   const context = { userId: req.user?.userId };
 
-  // Production-grade: auto-fallback nếu provider chính lỗi (503 overload, network…)
-  async function callAI(modelKey) {
-    try {
-      return await aiClient.chat({
-        modelKey,
+  try {
+    while (true) {
+      const response = await aiClient.chat({
         system: buildSystemPrompt(),
         tools,
         messages,
       });
-    } catch (err) {
-      // Gemini quá tải → fallback sang Claude (chỉ fallback 1 lần, không loop)
-      if (modelKey === "gemini" && (err.status === 503 || err.status === 429)) {
-        console.warn("[chatbot] Gemini overload, fallback to Claude");
-        return await aiClient.chat({
-          modelKey: "claude",
-          system: buildSystemPrompt(),
-          tools,
-          messages,
-        });
+
+      if (response.stop_reason === "end_turn") {
+        return res.json({ reply: response.content[0].text });
       }
-      throw err;
-    }
-  }
-
-  try {
-    while (true) {
-      const { provider, response } = await callAI(model);
-
-      if (provider === "claude") {
-        //  Claude flow
-        if (response.stop_reason === "end_turn") {
-          return res.json({ reply: response.content[0].text });
-        }
-        if (response.stop_reason === "tool_use") {
-          messages.push({ role: "assistant", content: response.content });
-          const toolResults = [];
-          for (const block of response.content) {
-            if (block.type === "tool_use") {
-              const result = await executeTool(
-                block.name,
-                block.input,
-                context,
-              );
-              toolResults.push({
-                type: "tool_result",
-                tool_use_id: block.id,
-                content: JSON.stringify(result),
-              });
-            }
-          }
-          messages.push({ role: "user", content: toolResults });
-        }
-      } else if (provider === "gemini") {
-        //  Gemini flow
-        const calls = response.functionCalls();
-        if (!calls || calls.length === 0) {
-          return res.json({ reply: response.text() });
-        }
-        messages.push({
-          role: "assistant",
-          content: calls.map((c) => ({
-            type: "tool_use",
-            id: c.name,
-            name: c.name,
-            input: c.args,
-          })),
-        });
+      if (response.stop_reason === "tool_use") {
+        messages.push({ role: "assistant", content: response.content });
         const toolResults = [];
-        for (const call of calls) {
-          const result = await executeTool(call.name, call.args, context);
-          toolResults.push({
-            type: "tool_result",
-            tool_use_id: call.name,
-            content: JSON.stringify(result),
-          });
+        for (const block of response.content) {
+          if (block.type === "tool_use") {
+            const result = await executeTool(block.name, block.input, context);
+            toolResults.push({
+              type: "tool_result",
+              tool_use_id: block.id,
+              content: JSON.stringify(result),
+            });
+          }
         }
         messages.push({ role: "user", content: toolResults });
       }
