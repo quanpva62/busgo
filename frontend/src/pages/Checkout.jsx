@@ -154,7 +154,7 @@ const Checkout = () => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="block text-[10px] font-bold tracking-widest text-secondary uppercase">
+                    <label className="block text-[10px] font-semibold text-secondary">
                       Họ và tên
                     </label>
                     <input
@@ -167,7 +167,7 @@ const Checkout = () => {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="block text-[10px] font-bold tracking-widest text-secondary uppercase">
+                    <label className="block text-[10px] font-semibold text-secondary">
                       Số điện thoại
                     </label>
                     <input
@@ -182,7 +182,7 @@ const Checkout = () => {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="block text-[10px] font-bold tracking-widest text-secondary uppercase">
+                  <label className="block text-[10px] font-semibold text-secondary">
                     Email nhận vé
                   </label>
                   <input
@@ -202,7 +202,7 @@ const Checkout = () => {
                 </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="block text-[10px] font-bold tracking-widest text-secondary uppercase">
+                    <label className="block text-[10px] font-semibold text-secondary">
                       Điểm đón
                     </label>
                     <div className="flex items-start gap-3 p-4 bg-surface-container-low rounded-xl">
@@ -213,7 +213,7 @@ const Checkout = () => {
                     </div>
                   </div>
                   <div className="space-y-1.5">
-                    <label className="block text-[10px] font-bold tracking-widest text-secondary uppercase">
+                    <label className="block text-[10px] font-semibold text-secondary">
                       Điểm trả
                     </label>
                     <div className="flex items-start gap-3 p-4 bg-surface-container-low rounded-xl">
@@ -228,7 +228,7 @@ const Checkout = () => {
 
               {/* Mã giảm giá */}
               <div className="bg-white rounded-2xl p-6 shadow-sm">
-                <label className="block text-[10px] font-bold tracking-widest text-secondary uppercase mb-3">
+                <label className="block text-[10px] font-semibold text-secondary mb-3">
                   Mã giảm giá
                 </label>
                 <div className="flex gap-3">
@@ -254,7 +254,7 @@ const Checkout = () => {
 
               {/* Tuyến */}
               <div>
-                <p className="text-xs font-bold text-secondary uppercase tracking-widest mb-1">
+                <p className="text-xs font-semibold text-secondary mb-1">
                   Lộ trình
                 </p>
                 <p className="font-black text-on-surface">
@@ -305,7 +305,7 @@ const Checkout = () => {
               {/* Ghế */}
               <div className="flex justify-between items-center">
                 <div>
-                  <p className="text-xs font-bold text-secondary uppercase tracking-widest mb-1">
+                  <p className="text-xs font-semibold text-secondary mb-1">
                     Ghế đã chọn
                   </p>
                   <p className="font-bold text-primary">
@@ -338,7 +338,7 @@ const Checkout = () => {
               <button
                 disabled={submitting}
                 onClick={() => document.getElementById("submit-btn").click()}
-                className="w-full py-4 bg-linear-to-br from-primary-container to-primary text-white font-bold rounded-xl shadow-lg hover:opacity-95 active:scale-[0.98] transition-all disabled:opacity-60 hover:cursor-pointer"
+                className="w-full py-4 bg-primary text-white font-bold rounded-lg hover:bg-primary-container transition-colors disabled:opacity-60 cursor-pointer"
               >
                 {submitting ? "Đang xử lý..." : "Thanh toán →"}
               </button>

@@ -58,9 +58,9 @@ export default function Ticket() {
     <main className="min-h-screen pt-24 pb-16 bg-surface-container-low flex flex-col items-center px-4">
       <div className="w-full max-w-sm">
         {/* Ticket card */}
-        <div className="bg-white rounded-3xl shadow-lg overflow-hidden">
+        <div className="bg-white rounded-xl border border-outline-variant overflow-hidden">
           {/* Header */}
-          <div className="bg-linear-to-br from-primary-container to-primary px-6 py-5 text-white">
+          <div className="bg-primary px-6 py-5 text-white">
             <div className="flex items-center justify-between mb-1">
               <span className="text-2xl font-black tracking-tighter">BusGo</span>
               <Icon name="confirmation_number" className="w-8 h-8" />
@@ -98,21 +98,21 @@ export default function Ticket() {
           {/* Details grid */}
           <div className="px-6 pb-5 grid grid-cols-2 gap-4">
             <div>
-              <p className="text-[10px] font-bold text-secondary uppercase tracking-widest mb-1">Hành khách</p>
+              <p className="text-[10px] font-semibold text-secondary mb-1">Hành khách</p>
               <p className="font-bold text-on-surface text-sm">{passengerName}</p>
               <p className="text-secondary text-xs">{passengerPhone}</p>
             </div>
             <div>
-              <p className="text-[10px] font-bold text-secondary uppercase tracking-widest mb-1">Ghế</p>
+              <p className="text-[10px] font-semibold text-secondary mb-1">Ghế</p>
               <p className="font-bold text-primary text-sm">{seats}</p>
               <p className="text-secondary text-xs">{bookingSeats?.length} ghế</p>
             </div>
             <div>
-              <p className="text-[10px] font-bold text-secondary uppercase tracking-widest mb-1">Tổng tiền</p>
+              <p className="text-[10px] font-semibold text-secondary mb-1">Tổng tiền</p>
               <p className="font-bold text-on-surface text-sm">{totalPrice.toLocaleString("vi-VN")}đ</p>
             </div>
             <div>
-              <p className="text-[10px] font-bold text-secondary uppercase tracking-widest mb-1">Ngày xuất vé</p>
+              <p className="text-[10px] font-semibold text-secondary mb-1">Ngày xuất vé</p>
               <p className="font-bold text-on-surface text-sm">
                 {new Date(issuedAt).toLocaleDateString("vi-VN", {
                   day: "2-digit", month: "2-digit", year: "numeric",
@@ -150,7 +150,7 @@ export default function Ticket() {
           </button>
           <button
             onClick={() => navigate("/")}
-            className="flex-1 py-3 bg-linear-to-br from-primary-container to-primary text-white font-bold rounded-xl hover:opacity-95 transition-all"
+            className="flex-1 py-3 bg-primary text-white font-bold rounded-xl hover:opacity-95 transition-all"
           >
             Về trang chủ
           </button>

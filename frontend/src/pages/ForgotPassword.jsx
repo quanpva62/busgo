@@ -35,7 +35,7 @@ export default function ForgotPassword() {
 
   return (
     <main className="min-h-screen bg-white sm:bg-surface-container-low flex flex-col items-center justify-center px-6 py-12">
-      <div className="bg-white sm:rounded-3xl sm:shadow-lg p-0 sm:p-10 w-full max-w-md">
+      <div className="bg-white sm:rounded-xl sm:border sm:border-outline-variant p-0 sm:p-10 w-full max-w-md">
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
           <div className="flex items-center gap-3 mb-6">
@@ -67,7 +67,7 @@ export default function ForgotPassword() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <label className="block text-[10px] font-bold tracking-widest text-secondary uppercase">
+            <label className="block text-[10px] font-semibold text-secondary">
               Email
             </label>
             <div className="relative">
@@ -90,7 +90,7 @@ export default function ForgotPassword() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-4 bg-linear-to-br from-primary-container to-primary text-white font-bold rounded-xl shadow-lg hover:opacity-95 active:scale-[0.98] transition-all disabled:opacity-60 hover:cursor-pointer mt-2"
+            className="w-full py-4 bg-primary text-white font-bold rounded-lg hover:bg-primary-container transition-colors disabled:opacity-60 cursor-pointer mt-2"
           >
             {loading ? "Đang gửi..." : "Gửi link đặt lại"}
           </button>

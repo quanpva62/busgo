@@ -109,7 +109,7 @@ export default function BookingConfirm() {
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden mb-4">
           {/* Route header */}
           <div className="bg-primary/5 px-6 py-5 border-b border-outline-variant/20">
-            <p className="text-xs font-bold text-secondary uppercase tracking-widest mb-1">
+            <p className="text-xs font-semibold text-secondary mb-1">
               Lộ trình
             </p>
             <p className="text-2xl font-black text-on-surface">
@@ -124,13 +124,13 @@ export default function BookingConfirm() {
             {/* Giờ đi / đến */}
             <div className="flex gap-8">
               <div>
-                <p className="text-[10px] font-bold text-secondary uppercase tracking-widest mb-1">Khởi hành</p>
+                <p className="text-[10px] font-semibold text-secondary mb-1">Khởi hành</p>
                 <p className="text-xl font-black">{formatTime(booking.trip.departureTime)}</p>
                 <p className="text-xs text-secondary mt-0.5">{booking.pickupAddress}</p>
               </div>
               <div className="flex items-center text-outline-variant/60 text-xl">→</div>
               <div>
-                <p className="text-[10px] font-bold text-secondary uppercase tracking-widest mb-1">Đến nơi</p>
+                <p className="text-[10px] font-semibold text-secondary mb-1">Đến nơi</p>
                 <p className="text-xl font-black">{formatTime(booking.trip.arrivalTime)}</p>
                 <p className="text-xs text-secondary mt-0.5">{booking.dropoffAddress}</p>
               </div>
@@ -142,12 +142,12 @@ export default function BookingConfirm() {
             {/* Hành khách */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-[10px] font-bold text-secondary uppercase tracking-widest mb-1">Hành khách</p>
+                <p className="text-[10px] font-semibold text-secondary mb-1">Hành khách</p>
                 <p className="font-bold text-on-surface">{booking.passengerName}</p>
                 <p className="text-sm text-secondary">{booking.passengerPhone}</p>
               </div>
               <div>
-                <p className="text-[10px] font-bold text-secondary uppercase tracking-widest mb-1">Ghế</p>
+                <p className="text-[10px] font-semibold text-secondary mb-1">Ghế</p>
                 <p className="font-bold text-primary">{seats}</p>
                 <p className="text-sm text-secondary">{booking.bookingSeats?.length} ghế</p>
               </div>
@@ -158,7 +158,7 @@ export default function BookingConfirm() {
 
             {/* Giá */}
             <div className="flex items-center justify-between">
-              <p className="text-[10px] font-bold text-secondary uppercase tracking-widest">Tổng cộng</p>
+              <p className="text-[10px] font-semibold text-secondary">Tổng cộng</p>
               <p className="text-2xl font-black text-primary">{formatPrice(booking.totalPrice)}</p>
             </div>
           </div>
@@ -170,7 +170,7 @@ export default function BookingConfirm() {
             <button
               onClick={handlePay}
               disabled={paying}
-              className="flex-1 py-3 bg-linear-to-br from-primary-container to-primary text-white font-bold rounded-xl hover:opacity-95 transition-all disabled:opacity-60 hover:cursor-pointer"
+              className="flex-1 py-3 bg-primary text-white font-bold rounded-xl hover:opacity-95 transition-all disabled:opacity-60 hover:cursor-pointer"
             >
               {paying ? "Đang xử lý..." : "Thanh toán ngay"}
             </button>
@@ -178,7 +178,7 @@ export default function BookingConfirm() {
           {booking.status === "paid" && (
             <button
               onClick={() => navigate(`/tickets/${booking.id}`)}
-              className="flex-1 py-3 bg-linear-to-br from-primary-container to-primary text-white font-bold rounded-xl hover:opacity-95 transition-all hover:cursor-pointer"
+              className="flex-1 py-3 bg-primary text-white font-bold rounded-xl hover:opacity-95 transition-all hover:cursor-pointer"
             >
               Xem vé
             </button>

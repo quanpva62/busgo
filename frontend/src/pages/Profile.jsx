@@ -23,6 +23,7 @@ const STATUS_LABELS = {
   confirmed: { label: "Đã xác nhận", cls: "bg-green-100 text-green-700" },
   cancelled: { label: "Đã huỷ", cls: "bg-red-100 text-red-500" },
   refunded: { label: "Đã hoàn tiền", cls: "bg-orange-100 text-orange-700" },
+  refund_failed: { label: "Đang xử lý hoàn tiền", cls: "bg-amber-100 text-amber-700" },
   completed: { label: "Hoàn thành", cls: "bg-blue-100 text-blue-700" },
 };
 
@@ -438,7 +439,7 @@ export default function Profile() {
               <p className="text-red-500 text-sm font-medium">{saveErr}</p>
             )}
             <div className="space-y-1.5">
-              <label className="block text-[10px] font-bold tracking-widest text-secondary uppercase">
+              <label className="block text-[10px] font-semibold text-secondary">
                 Họ và tên
               </label>
               <input
@@ -450,7 +451,7 @@ export default function Profile() {
               />
             </div>
             <div className="space-y-1.5">
-              <label className="block text-[10px] font-bold tracking-widest text-secondary uppercase">
+              <label className="block text-[10px] font-semibold text-secondary">
                 Số điện thoại
               </label>
               <input
@@ -462,7 +463,7 @@ export default function Profile() {
               />
             </div>
             <div className="space-y-1.5">
-              <label className="block text-[10px] font-bold tracking-widest text-secondary uppercase">
+              <label className="block text-[10px] font-semibold text-secondary">
                 Email
               </label>
               <input
@@ -475,7 +476,7 @@ export default function Profile() {
             <button
               type="submit"
               disabled={saving}
-              className="px-6 py-3 bg-linear-to-br from-primary-container to-primary text-white font-bold rounded-xl hover:opacity-95 transition-all disabled:opacity-60 hover:cursor-pointer"
+              className="px-6 py-3 bg-primary text-white font-bold rounded-xl hover:opacity-95 transition-all disabled:opacity-60 hover:cursor-pointer"
             >
               {saving ? "Đang lưu..." : "Lưu thay đổi"}
             </button>
@@ -513,7 +514,7 @@ export default function Profile() {
               },
             ].map(({ label, value, set }) => (
               <div key={label} className="space-y-1.5">
-                <label className="block text-[10px] font-bold tracking-widest text-secondary uppercase">
+                <label className="block text-[10px] font-semibold text-secondary">
                   {label}
                 </label>
                 <input
@@ -528,7 +529,7 @@ export default function Profile() {
             <button
               type="submit"
               disabled={pwSaving}
-              className="px-6 py-3 bg-linear-to-br from-primary-container to-primary text-white font-bold rounded-xl hover:opacity-95 transition-all disabled:opacity-60 hover:cursor-pointer"
+              className="px-6 py-3 bg-primary text-white font-bold rounded-xl hover:opacity-95 transition-all disabled:opacity-60 hover:cursor-pointer"
             >
               {pwSaving ? "Đang lưu..." : "Đổi mật khẩu"}
             </button>
@@ -570,7 +571,7 @@ export default function Profile() {
                       else if (b.status === "pending")
                         navigate(`/booking/${b.id}`);
                     }}
-                    className={`p-5 flex flex-col sm:flex-row sm:items-center gap-4 transition-all ${b.status === "paid" || b.status === "pending" ? "cursor-pointer hover:bg-surface-container-low/50 active:scale-[0.99]" : ""}`}
+                    className={`p-5 flex flex-col sm:flex-row sm:items-center gap-4 transition-colors ${b.status === "paid" || b.status === "pending" ? "cursor-pointer hover:bg-surface-container-low/50" : ""}`}
                   >
                     <div className="flex-1 min-w-0">
                       <p className="font-black text-on-surface">
@@ -624,7 +625,7 @@ export default function Profile() {
                     <div className="px-5 pb-4 border-t border-surface-container-low">
                       {hasReport ? (
                         <div className="pt-3 space-y-1.5">
-                          <p className="text-[10px] font-bold tracking-widest text-secondary uppercase">
+                          <p className="text-[10px] font-semibold text-secondary">
                             Báo cáo của bạn
                           </p>
                           {(() => {
@@ -659,7 +660,7 @@ export default function Profile() {
                           <p className="text-sm font-bold">Báo cáo sự cố</p>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div className="space-y-1">
-                              <label className="text-[10px] font-bold tracking-widest text-secondary uppercase">
+                              <label className="text-[10px] font-semibold text-secondary">
                                 Loại sự cố
                               </label>
                               <select
@@ -693,7 +694,7 @@ export default function Profile() {
                               </select>
                             </div>
                             <div className="space-y-1">
-                              <label className="text-[10px] font-bold tracking-widest text-secondary uppercase">
+                              <label className="text-[10px] font-semibold text-secondary">
                                 Mức độ
                               </label>
                               <select
@@ -782,7 +783,7 @@ export default function Profile() {
                         // Đã review: hiển thị + nút sửa
                         <div className="pt-3">
                           <div className="flex items-center justify-between mb-1">
-                            <p className="text-[10px] font-bold tracking-widest text-secondary uppercase">
+                            <p className="text-[10px] font-semibold text-secondary">
                               Đánh giá của bạn
                             </p>
                             <button

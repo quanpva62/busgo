@@ -54,12 +54,12 @@ export default function CheckIn() {
 
   return (
     <div className="max-w-md mx-auto p-4 space-y-4 mt-18">
-      <h1 className="text-2xl font-black">Check-in vé</h1>
+      <h1 className="text-2xl font-bold">Check-in vé</h1>
 
       <div id="qr-reader" className="w-full" />
       {result && (
         <div
-          className={`p-4 rounded-2xl ${result.ok ? "bg-green-50 border border-green-300" : "bg-red-50 border border-red-300"}`}
+          className={`p-4 rounded-xl ${result.ok ? "bg-green-50 border border-green-300" : "bg-red-50 border border-red-300"}`}
         >
           <p className="font-bold">
             {result.ok ? "✅ " + result.message : "❌ " + result.error}

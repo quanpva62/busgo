@@ -66,7 +66,7 @@ export default function ResetPassword() {
 
   return (
     <main className="min-h-screen bg-white sm:bg-surface-container-low flex flex-col items-center justify-center px-6 py-12">
-      <div className="bg-white sm:rounded-3xl sm:shadow-lg p-0 sm:p-10 w-full max-w-md">
+      <div className="bg-white sm:rounded-xl sm:border sm:border-outline-variant p-0 sm:p-10 w-full max-w-md">
         <div className="flex flex-col items-center mb-8">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center shrink-0">
@@ -109,7 +109,7 @@ export default function ResetPassword() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-4 bg-linear-to-br from-primary-container to-primary text-white font-bold rounded-xl shadow-lg hover:opacity-95 active:scale-[0.98] transition-all disabled:opacity-60 hover:cursor-pointer mt-2"
+            className="w-full py-4 bg-primary text-white font-bold rounded-lg hover:bg-primary-container transition-colors disabled:opacity-60 cursor-pointer mt-2"
           >
             {loading ? "Đang xử lý..." : "Đặt lại mật khẩu"}
           </button>
@@ -128,7 +128,7 @@ export default function ResetPassword() {
 function PasswordField({ label, value, onChange, show, onToggle }) {
   return (
     <div className="space-y-1.5">
-      <label className="block text-[10px] font-bold tracking-widest text-secondary uppercase">
+      <label className="block text-[10px] font-semibold text-secondary">
         {label}
       </label>
       <div className="relative">

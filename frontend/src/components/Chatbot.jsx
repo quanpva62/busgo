@@ -59,15 +59,7 @@ export default function Chatbot() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [size, setSize] = useState({ width: 384, height: 500 });
-  const [model, setModel] = useState(
-    () => localStorage.getItem("busgo_chat_model") || "gemini",
-  );
   const bottomRef = useRef(null);
-
-  function changeModel(newModel) {
-    setModel(newModel);
-    localStorage.setItem("busgo_chat_model", newModel);
-  }
 
   function startResize(e) {
     e.preventDefault();
@@ -111,7 +103,6 @@ export default function Chatbot() {
         body: JSON.stringify({
           message: text,
           history: messages,
-          model, // claude | gemini
         }),
       });
       const data = await res.json();
@@ -144,7 +135,7 @@ export default function Chatbot() {
       {/* Chat panel */}
       {open && (
         <div
-          className="fixed bottom-20 right-2 left-2 sm:left-auto sm:right-6 z-50 bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-outline-variant/20 sm:w-(--cw) sm:h-(--ch) h-[70vh] max-h-[calc(100vh-6rem)]"
+          className="fixed bottom-20 right-2 left-2 sm:left-auto sm:right-6 z-50 bg-white rounded-xl shadow-lg flex flex-col overflow-hidden border border-outline-variant sm:w-(--cw) sm:h-(--ch) h-[70vh] max-h-[calc(100vh-6rem)]"
           style={{ "--cw": `${size.width}px`, "--ch": `${size.height}px` }}
         >
           {/* Resize handle — góc trên trái (ẩn trên mobile) */}
@@ -168,20 +159,6 @@ export default function Chatbot() {
                 Hỏi về tuyến, giá vé, lịch xe...
               </p>
             </div>
-            {/* Model picker */}
-            <select
-              value={model}
-              onChange={(e) => changeModel(e.target.value)}
-              className="bg-white/10 text-white text-xs font-bold rounded-lg px-2 py-1 border border-white/20 focus:outline-none cursor-pointer hover:bg-white/20"
-              title="Chọn mô hình AI"
-            >
-              <option value="gemini" className="text-on-surface">
-                Gemini
-              </option>
-              <option value="claude" className="text-on-surface">
-                Claude
-              </option>
-            </select>
             <button
               onClick={() => setOpen(false)}
               className="hover:bg-white/20 rounded-lg p-1 transition-colors"
@@ -283,7 +260,7 @@ export default function Chatbot() {
       {/* Floating button */}
       <button
         onClick={() => setOpen((o) => !o)}
-        className="fixed bottom-6 right-4 sm:right-6 z-50 w-14 h-14 bg-primary text-white rounded-full shadow-lg hover:opacity-90 active:scale-95 transition-all flex items-center justify-center"
+        className="fixed bottom-6 right-4 sm:right-6 z-50 w-14 h-14 bg-primary text-white rounded-full shadow-md hover:bg-primary-container transition-colors flex items-center justify-center"
       >
         <Icon name={open ? "close" : "smart_toy"} className="w-6 h-6" />
       </button>

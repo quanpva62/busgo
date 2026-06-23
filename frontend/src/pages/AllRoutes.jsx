@@ -35,7 +35,7 @@ export default function AllRoutes() {
       <div className="max-w-360 mx-auto px-6">
         {/* Header */}
         <div className="mb-8">
-          <span className="text-primary font-bold tracking-widest text-xs uppercase mb-2 block">
+          <span className="text-primary font-semibold text-sm mb-2 block">
             KHÁM PHÁ VIỆT NAM
           </span>
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
@@ -69,7 +69,7 @@ export default function AllRoutes() {
                   `/search?from=${encodeURIComponent(r.fromCity)}&to=${encodeURIComponent(r.toCity)}`,
                 )
               }
-              className="group bg-white rounded-3xl overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer border border-transparent hover:border-outline-variant/20"
+              className="group bg-white rounded-xl overflow-hidden cursor-pointer border border-outline-variant hover:border-primary transition-colors"
             >
               <div className="relative h-48 overflow-hidden bg-surface-container-high">
                 <img

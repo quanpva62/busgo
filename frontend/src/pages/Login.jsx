@@ -99,32 +99,30 @@ export default function Login() {
   return (
     <main className="min-h-screen bg-white sm:bg-surface-container-low flex flex-col items-center justify-center px-6 py-12">
       {/* Card */}
-      <div className="bg-white sm:rounded-3xl sm:shadow-lg p-0 sm:p-10 w-full max-w-md">
+      <div className="bg-white sm:rounded-lg sm:border sm:border-outline-variant p-0 sm:p-10 w-full max-w-md">
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center shrink-0">
+            <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center shrink-0">
               <img
                 src={iconBus}
                 alt=""
                 className="w-7 h-7 brightness-0 invert"
               />
             </div>
-            <span className="text-2xl font-black tracking-tighter text-primary">
+            <span className="text-2xl font-extrabold tracking-tight text-primary">
               BusGo
             </span>
           </div>
-          <h1 className="text-3xl font-bold text-on-surface mb-1">
-            Chào mừng đến với
-          </h1>
+          <h1 className="text-2xl font-bold text-on-surface mb-1">Đăng nhập</h1>
           <p className="text-secondary text-sm">
-            Mạng lưới di chuyển hàng đầu Việt Nam
+            Đặt vé và quản lý chuyến đi của bạn
           </p>
         </div>
 
         {/* Error */}
         {error && (
-          <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-xl text-sm font-medium">
+          <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-lg text-sm font-medium">
             {error}
             {needVerification && (
               <button
@@ -142,7 +140,7 @@ export default function Login() {
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Email */}
           <div className="space-y-1.5">
-            <label className="block text-[10px] font-bold tracking-widest text-secondary uppercase">
+            <label className="block text-xs font-semibold text-secondary">
               Email hoặc số điện thoại
             </label>
             <div className="relative">
@@ -157,7 +155,7 @@ export default function Login() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full pl-12 pr-4 py-4 bg-surface-container-low rounded-xl text-on-surface font-medium placeholder:text-secondary/40 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="w-full pl-12 pr-4 py-4 bg-surface-container-low rounded-lg text-on-surface font-medium placeholder:text-secondary/40 focus:outline-none focus:ring-2 focus:ring-primary/30"
               />
             </div>
           </div>
@@ -165,12 +163,12 @@ export default function Login() {
           {/* Password */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label className="block text-[10px] font-bold tracking-widest text-secondary uppercase">
+              <label className="block text-xs font-semibold text-secondary">
                 Mật khẩu
               </label>
               <Link
                 to="/forgot-password"
-                className="text-[10px] font-bold tracking-widest text-primary uppercase hover:opacity-70"
+                className="text-xs font-semibold text-primary hover:opacity-70"
               >
                 Quên mật khẩu?
               </Link>
@@ -187,7 +185,7 @@ export default function Login() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full pl-12 pr-12 py-4 bg-surface-container-low rounded-xl text-on-surface font-medium placeholder:text-secondary/40 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="w-full pl-12 pr-12 py-4 bg-surface-container-low rounded-lg text-on-surface font-medium placeholder:text-secondary/40 focus:outline-none focus:ring-2 focus:ring-primary/30"
               />
               <button
                 type="button"
@@ -207,7 +205,7 @@ export default function Login() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-4 bg-linear-to-br from-primary-container to-primary text-white font-bold rounded-xl shadow-lg hover:opacity-95 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-60 hover:cursor-pointer mt-2"
+            className="w-full py-4 bg-primary text-white font-bold rounded-lg hover:bg-primary-container transition-colors flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer mt-2"
           >
             {loading ? (
               "Đang đăng nhập..."
@@ -227,14 +225,14 @@ export default function Login() {
         {/* Divider */}
         <div className="flex items-center gap-4 my-6">
           <div className="flex-1 h-px bg-outline-variant/30" />
-          <span className="text-[10px] font-bold tracking-widest text-secondary uppercase">
+          <span className="text-xs font-semibold text-secondary">
             Hoặc đăng nhập bằng
           </span>
           <div className="flex-1 h-px bg-outline-variant/30" />
         </div>
 
         {/* Google sign-in */}
-        <div className="flex justify-center overflow-hidden rounded-2xl">
+        <div className="flex justify-center overflow-hidden rounded-lg">
           <GoogleLogin
             onSuccess={handleGoogleSubmit}
             onError={() => setError("Đăng nhập Google thất bại")}
@@ -262,25 +260,25 @@ export default function Login() {
       <div className="flex items-center gap-6 mt-8">
         <Link
           to="/privacy"
-          className="text-[10px] font-bold tracking-widest text-secondary/60 uppercase hover:text-secondary transition-colors"
+          className="text-xs font-medium text-secondary/70 hover:text-secondary transition-colors"
         >
           Chính sách bảo mật
         </Link>
         <Link
           to="/terms"
-          className="text-[10px] font-bold tracking-widest text-secondary/60 uppercase hover:text-secondary transition-colors"
+          className="text-xs font-medium text-secondary/70 hover:text-secondary transition-colors"
         >
           Điều khoản dịch vụ
         </Link>
         <Link
           to="/support"
-          className="text-[10px] font-bold tracking-widest text-secondary/60 uppercase hover:text-secondary transition-colors"
+          className="text-xs font-medium text-secondary/70 hover:text-secondary transition-colors"
         >
           Hỗ trợ
         </Link>
       </div>
-      <p className="mt-3 text-[10px] font-bold tracking-widest text-secondary/40 uppercase text-center">
-        © 2026 BusGo • Đặt vé xe khách hàng đầu Việt Nam
+      <p className="mt-3 text-xs text-secondary/60 text-center">
+        © 2026 BusGo
       </p>
     </main>
   );

@@ -58,7 +58,7 @@ function ConfirmModal({ title, message, confirmText, cancelText, variant, onClos
   const btnCls =
     variant === "danger"
       ? "bg-red-500 hover:bg-red-600"
-      : "bg-linear-to-br from-primary-container to-primary hover:opacity-95";
+      : "bg-primary hover:bg-primary-container";
 
   return (
     <div
@@ -67,7 +67,7 @@ function ConfirmModal({ title, message, confirmText, cancelText, variant, onClos
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-[slideIn_0.2s_ease-out]"
+        className="bg-white rounded-xl shadow-lg max-w-md w-full p-6 animate-[slideIn_0.2s_ease-out]"
       >
         {title && <h3 className="text-lg font-bold text-on-surface mb-2">{title}</h3>}
         {message && (
@@ -82,7 +82,7 @@ function ConfirmModal({ title, message, confirmText, cancelText, variant, onClos
           </button>
           <button
             onClick={() => onClose(true)}
-            className={`px-5 py-2.5 rounded-xl text-sm font-bold text-white shadow-lg transition-all active:scale-[0.98] cursor-pointer ${btnCls}`}
+            className={`px-5 py-2.5 rounded-lg text-sm font-bold text-white transition-colors cursor-pointer ${btnCls}`}
           >
             {confirmText}
           </button>
