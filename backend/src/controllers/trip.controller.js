@@ -140,7 +140,7 @@ const getUpcomingTrips = async (req, res, next) => {
       toCity: t.route.toCity,
       departureTime: t.departureTime,
       price: t.price,
-      busType: t.bus.busType,
+      totalSeats: t.bus.totalSeats,
       companyName: t.bus.company?.name,
       availableSeats: t._count.tripSeats,
     }));
