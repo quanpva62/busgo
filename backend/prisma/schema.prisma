@@ -239,6 +239,7 @@ enum BookingStatus {
   paid
   cancelled
   refunded
+  refund_failed
 }
 
 model Promotion {
