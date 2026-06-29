@@ -119,7 +119,6 @@ const createBooking = async (req, res, next) => {
       } else if (promo.discountType === "fixed") {
         discountAmount = promo.discountValue;
       }
-      // Không để giảm quá tổng tiền (tránh totalPrice âm) và luôn là số nguyên
       discountAmount = Math.min(discountAmount, totalPrice);
 
       promoId = promo.id;
