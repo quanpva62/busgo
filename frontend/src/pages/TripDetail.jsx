@@ -164,7 +164,7 @@ export default function TripDetail() {
     <main className="min-h-screen pt-24 pb-32 bg-surface-container-low">
       <div className="max-w-360 mx-auto px-6">
         {/* Banner */}
-        <div className="relative rounded-2xl md:rounded-3xl overflow-hidden mb-6 md:mb-8 min-h-56 md:h-72">
+        <div className="relative rounded-xl overflow-hidden mb-6 md:mb-8 min-h-56 md:h-72">
           <img
             src={trip.route.imageUrl || heroImg}
             alt=""
@@ -172,7 +172,7 @@ export default function TripDetail() {
           />
           <div className="absolute inset-0 " />
           <div className="relative h-full p-5 md:p-8 flex flex-col justify-between gap-6">
-            <span className="inline-flex self-start items-center gap-1 px-3 py-1 bg-primary text-white text-[10px] font-bold rounded-full tracking-widest uppercase">
+            <span className="inline-flex self-start items-center gap-1 px-3 py-1 bg-primary text-white text-xs font-semibold rounded-full">
               <Icon name="bolt" className="w-4 h-4" />
               Tuyến thẳng
             </span>
@@ -198,7 +198,7 @@ export default function TripDetail() {
                 </p>
               </div>
               <div className="text-left sm:text-right shrink-0 bg-white/1 backdrop-blur-xs rounded-2xl px-4 py-3 md:px-7 md:py-5 self-start sm:self-auto">
-                <p className="text-white/70 text-[10px] font-bold uppercase tracking-widest">
+                <p className="text-white/70 text-xs font-semibold">
                   Giá vé từ
                 </p>
                 <p className="text-white text-xl md:text-4xl font-black">
@@ -214,7 +214,7 @@ export default function TripDetail() {
           <aside className="lg:col-span-4 space-y-4">
             {/* Driver */}
             <div className="bg-white rounded-2xl p-5 shadow-sm">
-              <p className="text-xs font-bold text-secondary uppercase tracking-widest mb-3">
+              <p className="text-xs font-semibold text-secondary mb-3">
                 Tài xế chuyến này
               </p>
               <div className="flex items-center gap-3">
@@ -237,7 +237,7 @@ export default function TripDetail() {
             <div className="bg-white rounded-2xl p-5 shadow-sm space-y-4">
               <div className="flex justify-between items-start">
                 <div>
-                  <p className="text-xs font-bold text-secondary uppercase tracking-widest mb-1">
+                  <p className="text-xs font-semibold text-secondary mb-1">
                     Khởi hành
                   </p>
                   <p className="text-xl font-black text-on-surface">
@@ -251,7 +251,7 @@ export default function TripDetail() {
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-xs font-bold text-secondary uppercase tracking-widest mb-1">
+                  <p className="text-xs font-semibold text-secondary mb-1">
                     Dự kiến đến
                   </p>
                   <p className="text-xl font-black text-on-surface">
@@ -266,7 +266,7 @@ export default function TripDetail() {
                 </div>
               </div>
               <div className="pt-3 border-t border-outline-variant/20">
-                <p className="text-xs font-bold text-secondary uppercase tracking-widest mb-1">
+                <p className="text-xs font-semibold text-secondary mb-1">
                   Biển số xe
                 </p>
                 <p className="font-bold text-on-surface">
@@ -278,7 +278,7 @@ export default function TripDetail() {
             {/* Amenities */}
             {trip.bus.amenities && (
               <div className="bg-white rounded-2xl p-5 shadow-sm">
-                <p className="text-xs font-bold text-secondary uppercase tracking-widest mb-3">
+                <p className="text-xs font-semibold text-secondary mb-3">
                   Tiện ích
                 </p>
                 <div className="grid grid-cols-2 gap-3">
@@ -373,7 +373,7 @@ export default function TripDetail() {
         <div className="max-w-360 mx-auto px-4 md:px-6 py-3 md:py-4 flex items-center justify-between gap-3 md:gap-6">
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 min-w-0 flex-1">
             <div className="min-w-0 hidden sm:block">
-              <p className="text-xs font-bold text-secondary uppercase tracking-widest">
+              <p className="text-xs font-semibold text-secondary">
                 Ghế đã chọn
               </p>
               <p className="font-bold text-primary truncate">
@@ -383,7 +383,7 @@ export default function TripDetail() {
               </p>
             </div>
             <div>
-              <p className="text-[10px] sm:text-xs font-bold text-secondary uppercase tracking-widest">
+              <p className="text-[10px] sm:text-xs font-semibold text-secondary">
                 {selectedSeats.length > 0
                   ? `${selectedSeats.length} ghế · Tổng cộng`
                   : "Tổng cộng"}
@@ -400,7 +400,7 @@ export default function TripDetail() {
                 state: { selectedSeats, totalPrice },
               })
             }
-            className="shrink-0 px-5 md:px-8 py-3 bg-linear-to-br from-primary-container to-primary text-white text-sm md:text-base font-bold rounded-xl shadow-lg hover:opacity-95 active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:cursor-pointer"
+            className="shrink-0 px-5 md:px-8 py-3 bg-primary text-white text-sm md:text-base font-bold rounded-lg hover:bg-primary-container transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
           >
             <span className="hidden sm:inline">Đặt vé ngay →</span>
             <span className="sm:hidden">Đặt vé →</span>
@@ -465,7 +465,7 @@ function SeatGrid({
   return (
     <div>
       {label && (
-        <p className="text-xs font-bold text-secondary uppercase tracking-widest text-center mb-4">
+        <p className="text-xs font-semibold text-secondary text-center mb-4">
           {label}
         </p>
       )}

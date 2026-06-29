@@ -51,7 +51,7 @@ export default function Footer() {
         {/* Links */}
         {Object.entries(links).map(([group, items]) => (
           <div key={group}>
-            <h4 className="text-sm font-bold tracking-widest uppercase text-white/40 mb-4">
+            <h4 className="text-sm font-semibold text-white/50 mb-4">
               {group}
             </h4>
             <ul className="space-y-3">

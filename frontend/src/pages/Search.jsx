@@ -54,13 +54,14 @@ const CANCEL_POLICY = [
 ];
 
 export default function Search() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
 
   const from = searchParams.get("from") || "";
   const to = searchParams.get("to") || "";
   const dateParam = searchParams.get("date") || "";
 
+  const [routes, setRoutes] = useState([]);
   const [trips, setTrips] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -74,6 +75,32 @@ export default function Search() {
 
   const [selectedTypes, setSelectedTypes] = useState([]);
   const [maxPrice, setMaxPrice] = useState(10000000);
+
+  // Danh sách thành phố lấy từ các tuyến thực tế trong DB
+  useEffect(() => {
+    fetch(`${import.meta.env.VITE_API_URL}/api/trips/routes`)
+      .then((r) => r.json())
+      .then((d) => setRoutes(Array.isArray(d) ? d : []))
+      .catch(() => setRoutes([]));
+  }, []);
+
+  const fromCities = [...new Set(routes.map((r) => r.fromCity))].sort();
+  const toCities = [
+    ...new Set(
+      routes
+        .filter((r) => !from || r.fromCity === from)
+        .map((r) => r.toCity),
+    ),
+  ].sort();
+
+  function updateLocation(nextFrom, nextTo) {
+    const params = new URLSearchParams(searchParams);
+    if (nextFrom) params.set("from", nextFrom);
+    else params.delete("from");
+    if (nextTo) params.set("to", nextTo);
+    else params.delete("to");
+    setSearchParams(params);
+  }
 
   // Reset về trang 1 khi đổi bất kỳ filter nào
   useEffect(() => {
@@ -160,9 +187,56 @@ export default function Search() {
           className={`lg:col-span-3 space-y-6 ${filtersOpen ? "block" : "hidden lg:block"}`}
         >
           <div className="bg-white p-6 rounded-xl shadow-sm space-y-8">
+            {/* Điểm đi / Điểm đến */}
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-xs font-semibold text-secondary mb-2">
+                  Điểm đi
+                </h3>
+                <select
+                  value={from}
+                  onChange={(e) => {
+                    const nf = e.target.value;
+                    const validTo = routes
+                      .filter((r) => r.fromCity === nf)
+                      .map((r) => r.toCity);
+                    updateLocation(
+                      nf,
+                      nf && to && !validTo.includes(to) ? "" : to,
+                    );
+                  }}
+                  className="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white cursor-pointer hover:border-primary focus:outline-none focus:border-primary"
+                >
+                  <option value="">Tất cả điểm đi</option>
+                  {fromCities.map((city) => (
+                    <option key={city} value={city}>
+                      {city}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <h3 className="text-xs font-semibold text-secondary mb-2">
+                  Điểm đến
+                </h3>
+                <select
+                  value={to}
+                  onChange={(e) => updateLocation(from, e.target.value)}
+                  className="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white cursor-pointer hover:border-primary focus:outline-none focus:border-primary"
+                >
+                  <option value="">Tất cả điểm đến</option>
+                  {toCities.map((city) => (
+                    <option key={city} value={city}>
+                      {city}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
             {/* Ngày đi */}
             <div>
-              <h3 className="text-xs font-bold text-secondary uppercase tracking-widest mb-4">
+              <h3 className="text-xs font-semibold text-secondary mb-4">
                 Ngày đi
               </h3>
               <div className="flex items-center gap-2">
@@ -198,7 +272,7 @@ export default function Search() {
 
             {/* Loại xe */}
             <div>
-              <h3 className="text-xs font-bold text-secondary uppercase tracking-widest mb-4">
+              <h3 className="text-xs font-semibold text-secondary mb-4">
                 Loại xe
               </h3>
               <div className="space-y-3">
@@ -223,7 +297,7 @@ export default function Search() {
 
             {/* Khoảng giá */}
             <div>
-              <h3 className="text-xs font-bold text-secondary uppercase tracking-widest mb-4">
+              <h3 className="text-xs font-semibold text-secondary mb-4">
                 Khoảng giá (VNĐ)
               </h3>
               <input
@@ -377,7 +451,7 @@ function TripCard({ trip, onSelect }) {
           </p>
           <button
             onClick={onSelect}
-            className="px-6 sm:px-8 py-2.5 lg:py-3 bg-linear-to-br from-primary-container to-primary text-white text-sm lg:text-base font-bold rounded-xl shadow-lg hover:opacity-95 active:scale-[0.98] transition-all hover:cursor-pointer"
+            className="px-6 sm:px-8 py-2.5 lg:py-3 bg-primary text-white text-sm lg:text-base font-bold rounded-lg hover:bg-primary-container transition-colors cursor-pointer"
           >
             Chọn chuyến
           </button>
@@ -405,7 +479,7 @@ function TripCard({ trip, onSelect }) {
 
       {expanded === "policy" && (
         <div className="px-6 lg:px-8 py-4 border-t border-surface-container-low">
-          <p className="text-xs font-bold text-secondary uppercase tracking-widest mb-3">
+          <p className="text-xs font-semibold text-secondary mb-3">
             Chính sách hủy vé
           </p>
           <div className="space-y-2">
@@ -421,7 +495,7 @@ function TripCard({ trip, onSelect }) {
 
       {expanded === "amenities" && (
         <div className="px-6 lg:px-8 py-4 border-t border-surface-container-low">
-          <p className="text-xs font-bold text-secondary uppercase tracking-widest mb-3">
+          <p className="text-xs font-semibold text-secondary mb-3">
             Tiện ích trên xe
           </p>
           <div className="flex flex-wrap gap-4">

@@ -43,6 +43,9 @@ import {
   Tag,
   Bot,
   Mail,
+  Phone,
+  MessageCircle,
+  AlertTriangle,
 } from "lucide-react";
 
 const MAP = {
@@ -99,6 +102,9 @@ const MAP = {
   sell: Tag,
   smart_toy: Bot,
   mail: Mail,
+  call: Phone,
+  chat: MessageCircle,
+  warning: AlertTriangle,
 };
 
 export default function Icon({ name, className = "w-5 h-5", ...rest }) {

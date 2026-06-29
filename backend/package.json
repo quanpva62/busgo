@@ -18,7 +18,6 @@
   "type": "commonjs",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.100.1",
-    "@google/generative-ai": "^0.24.1",
     "@prisma/client": "^5.22.0",
     "@sentry/node": "^10.55.0",
     "@supabase/supabase-js": "^2.104.1",

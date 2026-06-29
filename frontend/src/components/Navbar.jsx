@@ -16,8 +16,8 @@ export default function Navbar() {
 
   const navLinkClass = ({ isActive }) =>
     isActive
-      ? "text-blue-700 font-bold border-b-2 border-blue-700 pb-1"
-      : "text-slate-600 font-medium hover:text-blue-600 transition-colors";
+      ? "text-primary font-bold border-b-2 border-primary pb-1"
+      : "text-slate-600 font-medium hover:text-primary transition-colors";
 
   const navLinks = (
     <>
@@ -34,13 +34,13 @@ export default function Navbar() {
   );
 
   return (
-    <nav className="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-xl shadow-sm">
+    <nav className="fixed top-0 w-full z-50 bg-white border-b border-outline-variant">
       <div className="max-w-360 mx-auto px-6 h-20 flex items-center justify-between">
         {/* Left: Logo + (admin/staff) links sát logo */}
         <div className="flex items-center gap-8">
           <Link
             to="/"
-            className="text-2xl font-black tracking-tighter text-blue-700"
+            className="text-2xl font-extrabold tracking-tight text-primary"
           >
             BusGo
           </Link>
@@ -112,7 +112,7 @@ export default function Navbar() {
               </Link>
               <Link
                 to="/register"
-                className="px-6 py-2 bg-linear-to-br from-blue-500 to-blue-700 text-white font-bold rounded-xl shadow-lg hover:opacity-90 active:scale-95 transition-all"
+                className="px-6 py-2 bg-primary text-white font-bold rounded-lg hover:bg-primary-container transition-colors"
               >
                 Đăng ký
               </Link>
@@ -143,13 +143,13 @@ export default function Navbar() {
       {/* Mobile menu */}
       {menuOpen && (
         <div className="md:hidden bg-white border-t border-slate-100 px-6 py-4 flex flex-col gap-4">
-          <NavLink to="/" onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? "text-blue-700 font-bold" : "text-slate-600 font-medium"}>
+          <NavLink to="/" onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? "text-primary font-bold" : "text-slate-600 font-medium"}>
             Trang chủ
           </NavLink>
-          <NavLink to="/search" onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? "text-blue-700 font-bold" : "text-slate-600 font-medium"}>
+          <NavLink to="/search" onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? "text-primary font-bold" : "text-slate-600 font-medium"}>
             Tìm chuyến
           </NavLink>
-          <NavLink to="/routes" onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? "text-blue-700 font-bold" : "text-slate-600 font-medium"}>
+          <NavLink to="/routes" onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? "text-primary font-bold" : "text-slate-600 font-medium"}>
             Tuyến đường
           </NavLink>
           {(user?.role === "admin" || user?.role === "company_admin") && (
@@ -185,7 +185,7 @@ export default function Navbar() {
                 <Link
                   to="/register"
                   onClick={() => setMenuOpen(false)}
-                  className="flex-1 text-center py-2 bg-blue-600 text-white font-bold rounded-xl"
+                  className="flex-1 text-center py-2 bg-primary text-white font-bold rounded-lg"
                 >
                   Đăng ký
                 </Link>

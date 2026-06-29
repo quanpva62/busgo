@@ -46,6 +46,8 @@ const BOOKING_STATUS = {
   pending: { label: "Chờ TT", cls: "bg-yellow-100 text-yellow-700" },
   paid: { label: "Đã TT", cls: "bg-green-100 text-green-700" },
   cancelled: { label: "Đã huỷ", cls: "bg-red-100 text-red-500" },
+  refunded: { label: "Đã hoàn", cls: "bg-orange-100 text-orange-700" },
+  refund_failed: { label: "Hoàn lỗi", cls: "bg-amber-100 text-amber-700" },
 };
 const REPORT_STATUS = {
   pending: { label: "Chờ xử lý", cls: "bg-gray-100 text-gray-600" },
@@ -118,7 +120,7 @@ function StatCard({ icon, label, value }) {
         <p className="text-[11px] font-bold text-secondary uppercase tracking-wide">
           {label}
         </p>
-        <p className="text-lg font-black text-on-surface wrap-break-word">
+        <p className="text-lg font-bold text-on-surface wrap-break-word">
           {value}
         </p>
       </div>
@@ -717,6 +719,27 @@ function CompanyTrips({ authFetch }) {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
+  const [expandedId, setExpandedId] = useState(null);
+  const [tripBookings, setTripBookings] = useState([]);
+  const [bookingsLoading, setBookingsLoading] = useState(false);
+
+  async function toggleBookings(tripId) {
+    if (expandedId === tripId) {
+      setExpandedId(null);
+      return;
+    }
+    setExpandedId(tripId);
+    setBookingsLoading(true);
+    try {
+      const res = await authFetch(
+        `${API}/api/admin/company/bookings?tripId=${tripId}&limit=100`,
+      );
+      const data = await res.json();
+      setTripBookings(Array.isArray(data.bookings) ? data.bookings : []);
+    } finally {
+      setBookingsLoading(false);
+    }
+  }
 
   useEffect(() => {
     async function load() {
@@ -744,10 +767,12 @@ function CompanyTrips({ authFetch }) {
       body: JSON.stringify({ status }),
     });
     const data = await res.json();
-    if (res.ok)
+    if (res.ok) {
       setTrips((prev) =>
         prev.map((t) => (t.id === id ? { ...t, status: data.trip.status } : t)),
       );
+      if (data.refundFailures?.length) toast.warning(data.message);
+    }
     setUpdating(null);
   }
 
@@ -821,58 +846,102 @@ function CompanyTrips({ authFetch }) {
       {trips.map((t) => (
         <div
           key={t.id}
-          className="bg-white rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row sm:items-center gap-3"
+          className="bg-white rounded-2xl shadow-sm overflow-hidden"
         >
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <p className="font-bold">
-                {t.route.fromCity} → {t.route.toCity}
+          <div className="p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="font-bold">
+                  {t.route.fromCity} → {t.route.toCity}
+                </p>
+                {t.seriesId && (
+                  <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-700">
+                    {t.interval === "daily"
+                      ? "Hằng ngày"
+                      : t.interval === "weekly"
+                        ? "Hằng tuần"
+                        : "Hằng tháng"}
+                  </span>
+                )}
+              </div>
+              <p className="text-secondary text-sm">
+                {formatDateTime(t.departureTime)} · {t.bus.typeName} ·{" "}
+                {t.driver.fullName}
               </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Badge map={TRIP_STATUS} value={t.status} />
+              <select
+                value={t.status}
+                disabled={updating === t.id}
+                onChange={(e) => changeStatus(t.id, e.target.value)}
+                className="text-xs px-2 py-1 border border-outline-variant/30 rounded-lg focus:outline-none"
+              >
+                <option value="scheduled">Lịch trình</option>
+                <option value="running">Đang chạy</option>
+                <option value="completed">Hoàn thành</option>
+                <option value="cancelled">Huỷ</option>
+              </select>
               {t.seriesId && (
-                <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-700">
-                  {t.interval === "daily"
-                    ? "Hằng ngày"
-                    : t.interval === "weekly"
-                      ? "Hằng tuần"
-                      : "Hằng tháng"}
-                </span>
+                <button
+                  onClick={() => deleteSeries(t.seriesId)}
+                  className="p-1.5 text-purple-500 hover:bg-purple-50 rounded-lg"
+                  title="Xoá cả chuỗi"
+                >
+                  <Icon name="delete_sweep" className="w-4 h-4" />
+                </button>
+              )}
+              <button
+                onClick={() => deleteTrip(t.id)}
+                className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"
+                title="Xoá chuyến này"
+              >
+                <Icon name="delete" className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => toggleBookings(t.id)}
+                className="p-1.5 text-secondary hover:bg-surface-container-low rounded-lg"
+                title="Xem vé của chuyến"
+              >
+                <Icon
+                  name={expandedId === t.id ? "expand_less" : "expand_more"}
+                  className="w-4 h-4"
+                />
+              </button>
+            </div>
+          </div>
+          {expandedId === t.id && (
+            <div className="border-t border-outline-variant/30 px-4 py-3 bg-surface-container-low/50 space-y-2">
+              {bookingsLoading ? (
+                <p className="text-secondary text-sm">Đang tải vé...</p>
+              ) : tripBookings.length === 0 ? (
+                <p className="text-secondary text-sm">Chuyến này chưa có vé.</p>
+              ) : (
+                tripBookings.map((b) => (
+                  <div
+                    key={b.id}
+                    className="flex items-center justify-between gap-3 text-sm"
+                  >
+                    <div className="min-w-0 truncate">
+                      <span className="font-semibold">
+                        {b.user?.fullName ?? b.passengerName}
+                      </span>
+                      <span className="text-secondary">
+                        {" "}
+                        · {b.passengerPhone}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Badge map={BOOKING_STATUS} value={b.status} />
+                      <span className="text-primary font-semibold">
+                        {formatPrice(b.totalPrice)}
+                      </span>
+                    </div>
+                  </div>
+                ))
               )}
             </div>
-            <p className="text-secondary text-sm">
-              {formatDateTime(t.departureTime)} · {t.bus.typeName} ·{" "}
-              {t.driver.fullName}
-            </p>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <Badge map={TRIP_STATUS} value={t.status} />
-            <select
-              value={t.status}
-              disabled={updating === t.id}
-              onChange={(e) => changeStatus(t.id, e.target.value)}
-              className="text-xs px-2 py-1 border border-outline-variant/30 rounded-lg focus:outline-none"
-            >
-              <option value="scheduled">Lịch trình</option>
-              <option value="running">Đang chạy</option>
-              <option value="completed">Hoàn thành</option>
-              <option value="cancelled">Huỷ</option>
-            </select>
-            {t.seriesId && (
-              <button
-                onClick={() => deleteSeries(t.seriesId)}
-                className="p-1.5 text-purple-500 hover:bg-purple-50 rounded-lg"
-                title="Xoá cả chuỗi"
-              >
-                <Icon name="delete_sweep" className="w-4 h-4" />
-              </button>
-            )}
-            <button
-              onClick={() => deleteTrip(t.id)}
-              className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"
-              title="Xoá chuyến này"
-            >
-              <Icon name="delete" className="w-4 h-4" />
-            </button>
-          </div>
+          )}
         </div>
       ))}
 
@@ -895,12 +964,13 @@ function CompanyBookings({ authFetch }) {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
+  const [status, setStatus] = useState("");
   useEffect(() => {
     async function load() {
       setLoading(true);
       try {
         const res = await authFetch(
-          `${API}/api/admin/company/bookings?page=${page}`,
+          `${API}/api/admin/company/bookings?page=${page}${status ? `&status=${status}` : ""}`,
         );
         const data = await res.json();
         setBookings(Array.isArray(data.bookings) ? data.bookings : []);
@@ -911,40 +981,59 @@ function CompanyBookings({ authFetch }) {
       }
     }
     load();
-  }, [authFetch, page]);
-  if (loading) return <p className="text-secondary text-sm">Đang tải...</p>;
+  }, [authFetch, page, status]);
   return (
     <div className="space-y-3">
-      <ExportButton
-        authFetch={authFetch}
-        endpoint="/api/admin/export/bookings"
-        filename="bookings"
-      />
-      {bookings.map((b) => (
-        <div
-          key={b.id}
-          className="bg-white rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row sm:items-center gap-3"
+      <div className="flex flex-wrap items-center gap-3">
+        <select
+          value={status}
+          onChange={(e) => {
+            setStatus(e.target.value);
+            setPage(1);
+          }}
+          className="border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white"
         >
-          <div className="flex-1 min-w-0">
-            <p className="font-bold">{b.user?.fullName ?? b.passengerName}</p>
-            <p className="text-secondary text-sm">
-              {b.trip.route.fromCity} → {b.trip.route.toCity} ·{" "}
-              {formatDate(b.trip.departureTime)}
-            </p>
-          </div>
-          <div className="flex items-center gap-3 shrink-0">
-            <Badge map={BOOKING_STATUS} value={b.status} />
-            <p className="font-black text-primary text-sm">
-              {formatPrice(b.totalPrice)}
-            </p>
-          </div>
-        </div>
-      ))}
-      {bookings.length === 0 && (
+          <option value="">Tất cả trạng thái</option>
+          <option value="pending">Chờ thanh toán</option>
+          <option value="paid">Đã thanh toán</option>
+          <option value="cancelled">Đã huỷ</option>
+          <option value="refunded">Đã hoàn tiền</option>
+          <option value="refund_failed">Hoàn tiền lỗi — cần xử lý</option>
+        </select>
+        <ExportButton
+          authFetch={authFetch}
+          endpoint="/api/admin/export/bookings"
+          filename="bookings"
+        />
+      </div>
+      {loading ? (
+        <p className="text-secondary text-sm">Đang tải...</p>
+      ) : bookings.length === 0 ? (
         <p className="text-secondary text-sm">Chưa có booking nào.</p>
+      ) : (
+        bookings.map((b) => (
+          <div
+            key={b.id}
+            className="bg-white rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row sm:items-center gap-3"
+          >
+            <div className="flex-1 min-w-0">
+              <p className="font-bold">{b.user?.fullName ?? b.passengerName}</p>
+              <p className="text-secondary text-sm">
+                {b.trip.route.fromCity} → {b.trip.route.toCity} ·{" "}
+                {formatDate(b.trip.departureTime)}
+              </p>
+            </div>
+            <div className="flex items-center gap-3 shrink-0">
+              <Badge map={BOOKING_STATUS} value={b.status} />
+              <p className="font-bold text-primary text-sm">
+                {formatPrice(b.totalPrice)}
+              </p>
+            </div>
+          </div>
+        ))
       )}
 
-      {totalPages > 1 && (
+      {!loading && totalPages > 1 && (
         <Pagination
           page={page}
           totalPages={totalPages}

@@ -45,12 +45,12 @@ export default function VerifyEmail() {
 
   return (
     <main className="min-h-screen bg-white sm:bg-surface-container-low flex flex-col items-center justify-center px-6 py-12">
-      <div className="bg-white sm:rounded-3xl sm:shadow-lg p-0 sm:p-10 w-full max-w-md text-center">
+      <div className="bg-white sm:rounded-xl sm:border sm:border-outline-variant p-0 sm:p-10 w-full max-w-md text-center">
         <div className="flex items-center justify-center gap-3 mb-8">
-          <div className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center shrink-0">
+          <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center shrink-0">
             <img src={iconBus} alt="" className="w-7 h-7 brightness-0 invert" />
           </div>
-          <span className="text-2xl font-black tracking-tighter text-primary">
+          <span className="text-2xl font-extrabold tracking-tight text-primary">
             BusGo
           </span>
         </div>
@@ -74,7 +74,7 @@ export default function VerifyEmail() {
             <p className="text-secondary text-sm mb-6">{message}</p>
             <Link
               to="/login"
-              className="inline-block px-6 py-3 bg-linear-to-br from-primary-container to-primary text-white font-bold rounded-xl shadow-lg hover:opacity-95 transition-all"
+              className="inline-block px-6 py-3 bg-primary text-white font-bold rounded-lg hover:bg-primary-container transition-colors"
             >
               Đăng nhập ngay
             </Link>
@@ -91,13 +91,13 @@ export default function VerifyEmail() {
             <div className="flex gap-3 justify-center">
               <Link
                 to="/login"
-                className="px-5 py-3 bg-white border border-outline-variant/30 text-on-surface font-bold rounded-xl hover:bg-surface-container-low transition-all"
+                className="px-5 py-3 bg-white border border-outline-variant text-on-surface font-bold rounded-lg hover:bg-surface-container-low transition-colors"
               >
                 Về đăng nhập
               </Link>
               <Link
                 to="/register"
-                className="px-5 py-3 bg-linear-to-br from-primary-container to-primary text-white font-bold rounded-xl shadow-lg hover:opacity-95 transition-all"
+                className="px-5 py-3 bg-primary text-white font-bold rounded-lg hover:bg-primary-container transition-colors"
               >
                 Đăng ký lại
               </Link>

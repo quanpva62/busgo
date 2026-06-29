@@ -93,27 +93,28 @@ export default function Home() {
             alt="hero"
             className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 " />
+          <div className="absolute inset-0 bg-on-surface/40" />
         </div>
 
         <div className="relative z-10 max-w-360 w-full mx-auto px-6">
-          <div className="max-w-2xl mb-12">
-            <h1 className="text-white text-4xl sm:text-5xl lg:text-[72px] font-normal mb-4 lg:mb-6 leading-normal">
-              Hành trình <br />
-              Thông minh
+          <div className="max-w-2xl mb-10">
+            <h1 className="text-white text-4xl sm:text-5xl lg:text-6xl font-extrabold mb-4 leading-[1.1] tracking-tight">
+              Đặt vé xe khách,
+              <br />
+              nhanh và rõ ràng
             </h1>
-            <p className="text-white/90 text-base lg:text-xl font-medium max-w-lg">
-              Trải nghiệm dịch vụ đặt vé xe khách hiện đại hàng đầu Việt Nam.
-              Nhanh chóng, tin cậy và tận tâm.
+            <p className="text-white/85 text-base lg:text-lg max-w-xl">
+              Tìm chuyến, chọn ghế và thanh toán trực tuyến. So sánh giá giữa
+              các nhà xe trên cùng một tuyến.
             </p>
           </div>
 
           {/* Form tìm kiếm */}
-          <div className="bg-white/95 backdrop-blur-md px-6 py-6 rounded-3xl shadow-2xl border border-outline-variant/20">
+          <div className="bg-white p-5 rounded-xl border border-outline-variant shadow-sm">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Điểm đi */}
               <div className="space-y-2">
-                <label className="block text-[10px] font-bold tracking-widest text-secondary uppercase px-1">
+                <label className="block text-[10px] font-semibold text-secondary px-1">
                   Điểm đi
                 </label>
                 <div className="relative">
@@ -125,13 +126,13 @@ export default function Home() {
                   <button
                     type="button"
                     onClick={() => setOpenFrom(!openFrom)}
-                    className="w-full pl-12 pr-4 py-4 bg-surface-container-low rounded-xl text-left font-semibold text-on-surface flex items-center justify-between hover:cursor-pointer"
+                    className="w-full pl-12 pr-4 py-4 bg-surface-container-low rounded-lg text-left font-semibold text-on-surface flex items-center justify-between hover:cursor-pointer"
                   >
                     {selectedFrom}
                     <img src={iconDropdown} alt="" className="w-5 h-5" />
                   </button>
                   {openFrom && (
-                    <ul className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-outline-variant/30 z-50 overflow-hidden max-h-72 overflow-y-auto">
+                    <ul className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-sm border border-outline-variant z-50 overflow-hidden max-h-72 overflow-y-auto">
                       {fromCities.map((city) => (
                         <li
                           key={city}
@@ -148,7 +149,7 @@ export default function Home() {
 
               {/* Điểm đến */}
               <div className="space-y-2">
-                <label className="block text-[10px] font-bold tracking-widest text-secondary uppercase px-1">
+                <label className="block text-[10px] font-semibold text-secondary px-1">
                   Điểm đến
                 </label>
                 <div className="relative">
@@ -160,13 +161,13 @@ export default function Home() {
                   <button
                     type="button"
                     onClick={() => setOpenTo(!openTo)}
-                    className="w-full pl-12 pr-4 py-4 bg-surface-container-low rounded-xl text-left font-semibold text-on-surface flex items-center justify-between hover:cursor-pointer"
+                    className="w-full pl-12 pr-4 py-4 bg-surface-container-low rounded-lg text-left font-semibold text-on-surface flex items-center justify-between hover:cursor-pointer"
                   >
                     {selectedTo}
                     <img src={iconDropdown} alt="" className="w-5 h-5" />
                   </button>
                   {openTo && (
-                    <ul className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-outline-variant/30 z-50 overflow-hidden max-h-72 overflow-y-auto">
+                    <ul className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-sm border border-outline-variant z-50 overflow-hidden max-h-72 overflow-y-auto">
                       {toCities.map((city) => (
                         <li
                           key={city}
@@ -186,7 +187,7 @@ export default function Home() {
 
               {/* Ngày đi */}
               <div className="space-y-2">
-                <label className="block text-[10px] font-bold tracking-widest text-secondary uppercase px-1">
+                <label className="block text-[10px] font-semibold text-secondary px-1">
                   NGÀY ĐI
                 </label>
                 <div
@@ -198,7 +199,7 @@ export default function Home() {
                     alt=""
                     className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 pointer-events-none"
                   />
-                  <div className="w-full pl-12 pr-4 py-4 bg-surface-container-low rounded-xl font-semibold text-on-surface">
+                  <div className="w-full pl-12 pr-4 py-4 bg-surface-container-low rounded-lg font-semibold text-on-surface">
                     {date
                       ? new Date(date + "T00:00:00").toLocaleDateString(
                           "vi-VN",
@@ -226,7 +227,7 @@ export default function Home() {
                       `/search?from=${encodeURIComponent(selectedFrom)}&to=${encodeURIComponent(selectedTo)}&date=${date}`,
                     )
                   }
-                  className="w-full py-4 bg-linear-to-br from-primary-container to-primary text-white font-bold rounded-xl shadow-lg hover:opacity-95 active:scale-[0.98] transition-all flex items-center justify-center gap-2 hover:cursor-pointer"
+                  className="w-full py-4 bg-primary text-white font-bold rounded-lg hover:bg-primary-container transition-colors flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <img
                     src={iconSearch}
@@ -243,18 +244,13 @@ export default function Home() {
 
       {/* ===== TUYẾN PHỔ BIẾN ===== */}
       <section className="py-12 lg:py-24 max-w-360 mx-auto px-6">
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 lg:mb-12 gap-3">
-          <div>
-            <span className="text-primary font-bold tracking-widest text-xs uppercase mb-2 block">
-              KHÁM PHÁ VIỆT NAM
-            </span>
-            <h2 className="text-3xl lg:text-5xl font-extrabold text-on-surface tracking-tight">
-              Tuyến đường phổ biến
-            </h2>
-          </div>
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 gap-3">
+          <h2 className="text-3xl lg:text-4xl font-extrabold text-on-surface tracking-tight">
+            Tuyến đường phổ biến
+          </h2>
           <button
             onClick={() => navigate("/routes")}
-            className="flex items-center gap-2 text-primary font-bold hover:gap-3 transition-all self-start sm:self-auto"
+            className="flex items-center gap-2 text-primary font-semibold hover:text-primary-container transition-colors self-start sm:self-auto"
           >
             Xem tất cả
             <img src={iconArrow} alt="" className="w-5 h-5" />
@@ -286,62 +282,53 @@ export default function Home() {
 
         {/* Chuyến sắp khởi hành */}
         <div className="mt-16">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 gap-3">
-            <div>
-              <span className="text-primary font-bold tracking-widest text-xs uppercase mb-2 block">
-                TRONG 24 GIỜ TỚI
-              </span>
-              <h2 className="text-3xl lg:text-4xl font-extrabold text-on-surface tracking-tight">
-                Chuyến sắp khởi hành
-              </h2>
-            </div>
+          <div className="mb-8">
+            <h2 className="text-3xl lg:text-4xl font-extrabold text-on-surface tracking-tight">
+              Chuyến sắp khởi hành
+            </h2>
+            <p className="text-secondary mt-1">Khởi hành trong 24 giờ tới</p>
           </div>
           <RouteCarousel />
         </div>
       </section>
 
       {/* ===== TẠI SAO CHỌN BUSGO ===== */}
-      <section className="py-12 lg:py-24 bg-surface-container-low">
-        <div className="max-w-360 mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
-          <div className="relative">
-            <div className="aspect-square bg-primary/5 rounded-[3rem] absolute -top-8 -left-8 w-full h-full -z-10" />
-            <div className="rounded-[2.5rem] bg-surface-container-high h-125 w-full" />
-          </div>
-          <div>
-            <h2 className="text-4xl md:text-5xl font-extrabold text-on-surface tracking-tight mb-8">
-              Tại sao chọn BusGo?
-            </h2>
-            <div className="space-y-8">
-              {[
-                {
-                  icon: iconVerified,
-                  title: "Đối tác uy tín",
-                  desc: "Kết nối với hơn 500 nhà xe chất lượng cao trên toàn quốc.",
-                },
-                {
-                  icon: iconPayments,
-                  title: "Thanh toán an toàn",
-                  desc: "Đa dạng phương thức thanh toán bảo mật tuyệt đối thông tin khách hàng.",
-                },
-                {
-                  icon: iconSupport,
-                  title: "Hỗ trợ 24/7",
-                  desc: "Đội ngũ CSKH chuyên nghiệp luôn sẵn sàng giải quyết mọi vấn đề của bạn.",
-                },
-              ].map((item) => (
-                <div key={item.title} className="flex gap-6">
-                  <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
-                    <img src={item.icon} alt="" className="w-7 h-7" />
-                  </div>
-                  <div>
-                    <h4 className="text-xl font-bold mb-2">{item.title}</h4>
-                    <p className="text-secondary leading-relaxed">
-                      {item.desc}
-                    </p>
-                  </div>
+      <section className="py-12 lg:py-24 bg-surface-container-low border-t border-outline-variant">
+        <div className="max-w-360 mx-auto px-6">
+          <h2 className="text-3xl lg:text-4xl font-extrabold text-on-surface tracking-tight mb-10">
+            Tại sao chọn BusGo?
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[
+              {
+                icon: iconVerified,
+                title: "So sánh nhiều nhà xe",
+                desc: "Nhiều nhà xe trên cùng một tuyến, hiển thị cạnh nhau để bạn so giá và giờ chạy.",
+              },
+              {
+                icon: iconPayments,
+                title: "Thanh toán trực tuyến",
+                desc: "Thanh toán qua VNPay, vé điện tử kèm mã QR gửi về email ngay sau khi đặt.",
+              },
+              {
+                icon: iconSupport,
+                title: "Trợ lý ảo AI",
+                desc: "Hỏi đáp về tuyến, giá vé và lịch chạy. Trợ lý gợi ý chuyến phù hợp tức thì.",
+              },
+            ].map((item) => (
+              <div
+                key={item.title}
+                className="bg-white border border-outline-variant rounded-xl p-6"
+              >
+                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+                  <img src={item.icon} alt="" className="w-6 h-6" />
                 </div>
-              ))}
-            </div>
+                <h4 className="text-lg font-bold mb-2">{item.title}</h4>
+                <p className="text-secondary leading-relaxed text-sm">
+                  {item.desc}
+                </p>
+              </div>
+            ))}
           </div>
         </div>
       </section>

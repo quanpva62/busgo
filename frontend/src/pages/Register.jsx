@@ -79,28 +79,28 @@ export default function Register() {
   };
 
   const inputClass =
-    "w-full pl-12 pr-4 py-4 bg-surface-container-low rounded-xl text-on-surface font-medium placeholder:text-secondary/40 focus:outline-none focus:ring-2 focus:ring-primary/30";
+    "w-full pl-12 pr-4 py-4 bg-surface-container-low rounded-lg text-on-surface font-medium placeholder:text-secondary/40 focus:outline-none focus:ring-2 focus:ring-primary/30";
 
   return (
     <main className="min-h-screen bg-white sm:bg-surface-container-low flex flex-col items-center justify-center px-6 py-12">
       {/* Logo ngoài card */}
       <div className="flex items-center gap-3 mb-2">
-        <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shrink-0">
+        <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center shrink-0">
           <img src={iconBus} alt="" className="w-6 h-6 brightness-0 invert" />
         </div>
-        <span className="text-xl font-black tracking-tighter text-primary">BusGo</span>
+        <span className="text-xl font-extrabold tracking-tight text-primary">BusGo</span>
       </div>
-      <p className="text-secondary text-sm mb-8">Tham gia cộng đồng người di chuyển hiện đại</p>
+      <p className="text-secondary text-sm mb-8">Tạo tài khoản để đặt vé và quản lý chuyến đi</p>
 
       {/* Card */}
-      <div className="bg-white sm:rounded-3xl sm:shadow-lg p-0 sm:p-10 w-full max-w-lg">
+      <div className="bg-white sm:rounded-lg sm:border sm:border-outline-variant p-0 sm:p-10 w-full max-w-lg">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-on-surface mb-1">Tạo tài khoản</h1>
           <p className="text-secondary text-sm">Điền thông tin để bắt đầu đặt vé</p>
         </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-xl text-sm font-medium">
+          <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-lg text-sm font-medium">
             {error}
           </div>
         )}
@@ -108,7 +108,7 @@ export default function Register() {
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Họ và tên */}
           <div className="space-y-1.5">
-            <label className="block text-[10px] font-bold tracking-widest text-secondary uppercase">
+            <label className="block text-xs font-semibold text-secondary">
               Họ và tên
             </label>
             <div className="relative">
@@ -127,7 +127,7 @@ export default function Register() {
           {/* Email + Phone */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="block text-[10px] font-bold tracking-widest text-secondary uppercase">
+              <label className="block text-xs font-semibold text-secondary">
                 Địa chỉ Email
               </label>
               <div className="relative">
@@ -143,7 +143,7 @@ export default function Register() {
               </div>
             </div>
             <div className="space-y-1.5">
-              <label className="block text-[10px] font-bold tracking-widest text-secondary uppercase">
+              <label className="block text-xs font-semibold text-secondary">
                 Số điện thoại
               </label>
               <div className="relative">
@@ -163,7 +163,7 @@ export default function Register() {
           {/* Password + Confirm */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="block text-[10px] font-bold tracking-widest text-secondary uppercase">
+              <label className="block text-xs font-semibold text-secondary">
                 Mật khẩu
               </label>
               <div className="relative">
@@ -174,7 +174,7 @@ export default function Register() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="w-full pl-12 pr-12 py-4 bg-surface-container-low rounded-xl text-on-surface font-medium placeholder:text-secondary/40 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  className="w-full pl-12 pr-12 py-4 bg-surface-container-low rounded-lg text-on-surface font-medium placeholder:text-secondary/40 focus:outline-none focus:ring-2 focus:ring-primary/30"
                 />
                 <button type="button" onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-4 top-1/2 -translate-y-1/2">
@@ -183,7 +183,7 @@ export default function Register() {
               </div>
             </div>
             <div className="space-y-1.5">
-              <label className="block text-[10px] font-bold tracking-widest text-secondary uppercase">
+              <label className="block text-xs font-semibold text-secondary">
                 Xác nhận mật khẩu
               </label>
               <div className="relative">
@@ -194,7 +194,7 @@ export default function Register() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
-                  className="w-full pl-12 pr-12 py-4 bg-surface-container-low rounded-xl text-on-surface font-medium placeholder:text-secondary/40 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  className="w-full pl-12 pr-12 py-4 bg-surface-container-low rounded-lg text-on-surface font-medium placeholder:text-secondary/40 focus:outline-none focus:ring-2 focus:ring-primary/30"
                 />
                 <button type="button" onClick={() => setShowConfirm(!showConfirm)}
                   className="absolute right-4 top-1/2 -translate-y-1/2">
@@ -226,7 +226,7 @@ export default function Register() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-4 bg-linear-to-br from-primary-container to-primary text-white font-bold rounded-xl shadow-lg hover:opacity-95 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-60 hover:cursor-pointer"
+            className="w-full py-4 bg-primary text-white font-bold rounded-lg hover:bg-primary-container transition-colors flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
           >
             {loading ? "Đang tạo tài khoản..." : (
               <>
@@ -240,12 +240,12 @@ export default function Register() {
         {/* Divider */}
         <div className="flex items-center gap-4 my-6">
           <div className="flex-1 h-px bg-outline-variant/30" />
-          <span className="text-[10px] font-bold tracking-widest text-secondary uppercase">Hoặc đăng ký bằng</span>
+          <span className="text-xs font-semibold text-secondary">Hoặc đăng ký bằng</span>
           <div className="flex-1 h-px bg-outline-variant/30" />
         </div>
 
         {/* Google sign-in */}
-        <div className="flex justify-center overflow-hidden rounded-2xl">
+        <div className="flex justify-center overflow-hidden rounded-lg">
           <GoogleLogin
             onSuccess={handleGoogleSubmit}
             onError={() => setError("Đăng ký Google thất bại")}
@@ -265,8 +265,8 @@ export default function Register() {
         </p>
       </div>
 
-      <p className="mt-8 text-[10px] font-bold tracking-widest text-secondary/40 uppercase text-center">
-        © 2026 BusGo Việt Nam
+      <p className="mt-8 text-xs text-secondary/60 text-center">
+        © 2026 BusGo
       </p>
     </main>
   );

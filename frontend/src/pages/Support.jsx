@@ -44,8 +44,8 @@ export default function Support() {
       <div className="max-w-3xl mx-auto px-6">
         {/* Header */}
         <div className="text-center mb-10">
-          <span className="text-primary font-bold tracking-widest text-xs uppercase mb-2 block">
-            HỖ TRỢ KHÁCH HÀNG
+          <span className="text-primary font-semibold text-sm mb-2 block">
+            Hỗ trợ khách hàng
           </span>
           <h1 className="text-3xl sm:text-4xl font-extrabold text-on-surface mb-3">
             Chúng tôi có thể giúp gì?
@@ -89,7 +89,10 @@ export default function Support() {
               <details
                 key={idx}
                 open={openIdx === idx}
-                onToggle={(e) => e.target.open && setOpenIdx(idx)}
+                onToggle={(e) => {
+                  if (e.target.open) setOpenIdx(idx);
+                  else if (openIdx === idx) setOpenIdx(null);
+                }}
                 className="border-b border-outline-variant/20 last:border-b-0 pb-2"
               >
                 <summary className="cursor-pointer py-3 font-bold text-on-surface flex items-center justify-between gap-3 list-none hover:text-primary transition-colors">
@@ -130,8 +133,8 @@ function ContactCard({ icon, label, value, href, note }) {
       href={href}
       className="bg-white rounded-2xl shadow-sm p-5 text-center hover:shadow-md transition-shadow block"
     >
-      <Icon name={icon} className="w-7 h-7 text-primary" />
-      <p className="text-[10px] font-bold tracking-widest text-secondary uppercase mt-2">
+      <Icon name={icon} className="w-7 h-7 text-primary mx-auto" />
+      <p className="text-xs font-medium text-secondary mt-2">
         {label}
       </p>
       <p className="font-bold text-on-surface mt-1">{value}</p>

@@ -18,7 +18,7 @@ export default function CookieConsent() {
   if (!show) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 bg-on-surface text-white shadow-2xl">
+    <div className="fixed bottom-0 left-0 right-0 z-50 bg-on-surface text-white border-t border-white/10">
       <div className="max-w-360 mx-auto px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center gap-4">
         <p className="flex-1 text-sm leading-relaxed">
           🍪 BusGo dùng cookie và localStorage để duy trì đăng nhập, ghi nhớ tuỳ

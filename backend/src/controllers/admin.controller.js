@@ -6,14 +6,17 @@ const { notify, notifyMany } = require("../lib/notify");
 const { refundVnpay } = require("./payment.controller");
 
 const getCompanyFilter = async (req) => {
-  if (req.user.role !== "company_admin") return Prisma.empty;
+  // admin → xem toàn sàn (không lọc)
+  if (req.user.role === "admin") return Prisma.empty;
 
+  // Mọi role khác → bắt buộc lọc theo companyId của họ.
+  // Fail-closed: nếu không có companyId → trả filter không khớp gì để không lộ dữ liệu.
   const u = await prisma.user.findUnique({
     where: { id: req.user.userId },
     select: { companyId: true },
   });
 
-  if (!u || !u.companyId) return Prisma.empty;
+  if (!u || !u.companyId) return Prisma.sql`AND 1 = 0`;
 
   return Prisma.sql`AND bus."companyId" = ${u.companyId}`;
 };
@@ -64,6 +67,15 @@ const toggleUserStatus = async (req, res, next) => {
       where: { id: userId },
       data: { isActive: !user.isActive },
     });
+
+    // Khoá tài khoản → revoke hết refresh token để không refresh tiếp được
+    if (!updatedUser.isActive) {
+      await prisma.refreshToken.updateMany({
+        where: { userId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+    }
+
     res.json({
       message: `Đã ${updatedUser.isActive ? "kích hoạt" : "vô hiệu hoá"} tài khoản`,
     });
@@ -121,7 +133,12 @@ const getCompanyBookings = async (req, res, next) => {
     const page = Number(req.query.page) || 1;
     const limit = Number(req.query.limit) || 15;
     const skip = (page - 1) * limit;
-    const where = { trip: { bus: { companyId } } };
+    const { status, tripId } = req.query;
+    const where = {
+      trip: { bus: { companyId } },
+      ...(status && { status }),
+      ...(tripId && { tripId }),
+    };
 
     const [bookings, total] = await Promise.all([
       prisma.booking.findMany({
@@ -213,6 +230,9 @@ const getCompanyReports = async (req, res, next) => {
     const user = await prisma.user.findUnique({
       where: { id: req.user.userId },
     });
+    if (!user?.companyId) {
+      return res.status(400).json({ error: "Tài khoản chưa gắn doanh nghiệp" });
+    }
     const reports = await prisma.report.findMany({
       where: { driver: { companyId: user.companyId } },
       include: {
@@ -274,7 +294,12 @@ const updateTripStatus = async (req, res, next) => {
           });
           if (!refundRes.success) {
             refundFailures.push(b.id);
-            continue; // refund fail → KHÔNG đổi DB, để xử lý tay
+            // refund lỗi → đánh dấu refund_failed để lọc/xử lý sau (tiền chưa về, ghế giữ nguyên)
+            await prisma.booking.update({
+              where: { id: b.id },
+              data: { status: "refund_failed" },
+            });
+            continue;
           }
         }
 
@@ -329,10 +354,10 @@ const createUser = async (req, res, next) => {
     if (!["admin", "company_admin", "staff"].includes(role)) {
       return res.status(400).json({ error: "Role không hợp lệ" });
     }
-    if (role === "company_admin" && !companyId) {
+    if ((role === "company_admin" || role === "staff") && !companyId) {
       return res
         .status(400)
-        .json({ error: "Cần chọn doanh nghiệp cho company_admin" });
+        .json({ error: "Cần chọn doanh nghiệp cho company_admin / staff" });
     }
 
     const existingEmail = await prisma.user.findUnique({ where: { email } });
@@ -357,7 +382,8 @@ const createUser = async (req, res, next) => {
         fullName,
         phone,
         role,
-        companyId: role === "company_admin" ? companyId : null,
+        companyId:
+          role === "company_admin" || role === "staff" ? companyId : null,
       },
       select: {
         id: true,
@@ -507,6 +533,15 @@ const updateCompanyStaffStatus = async (req, res, next) => {
       data: { isActive: !!isActive },
       select: { id: true, isActive: true },
     });
+
+    // Khoá nhân viên → revoke refresh token đang hoạt động
+    if (!updated.isActive) {
+      await prisma.refreshToken.updateMany({
+        where: { userId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+    }
+
     res.json({ message: "Đã cập nhật trạng thái", user: updated });
   } catch (error) {
     next(error);
@@ -598,10 +633,10 @@ const createCompany = async (req, res, next) => {
 
 // ─── Helpers ────────────────────────────────────────────────────────
 
-async function getCompanyId(req, res, next) {
+async function getCompanyId(req, res) {
   const user = await prisma.user.findUnique({ where: { id: req.user.userId } });
   if (!user?.companyId) {
-    return next(new Error("Tài khoản không thuộc doanh nghiệp nào"));
+    res.status(403).json({ error: "Tài khoản không thuộc doanh nghiệp nào" });
     return null;
   }
   return user.companyId;
