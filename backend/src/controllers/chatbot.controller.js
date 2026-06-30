@@ -225,7 +225,6 @@ const chat = async (req, res, next) => {
         tools,
         messages,
       });
-
       if (response.stop_reason === "end_turn") {
         return res.json({ reply: response.content[0].text });
       }

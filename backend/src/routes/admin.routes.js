@@ -118,6 +118,7 @@ router.get(
   adminController.getRoutes,
 );
 router.post("/routes", authMiddleware, isAdmin, adminController.createRoute);
+router.put("/routes/:id", authMiddleware, isAdmin, adminController.updateRoute);
 router.post(
   "/routes/:id/image",
   authMiddleware,

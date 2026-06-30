@@ -158,7 +158,7 @@ export function AuthProvider({ children }) {
   if (bootstrapping && user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        Đang khôi phục phiên...
+        Đang tải...
       </div>
     );
   }

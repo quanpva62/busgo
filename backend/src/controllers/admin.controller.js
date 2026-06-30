@@ -1,5 +1,6 @@
 const prisma = require("../lib/prisma");
 const { Prisma } = require("@prisma/client");
+const sharp = require("sharp");
 const bcrypt = require("bcryptjs");
 const supabase = require("../lib/supabase");
 const { notify, notifyMany } = require("../lib/notify");
@@ -1108,6 +1109,26 @@ const createRoute = async (req, res, next) => {
   }
 };
 
+const updateRoute = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { fromCity, toCity, distanceKm, estimatedDuration, isActive } = req.body;
+    const route = await prisma.route.update({
+      where: { id },
+      data: {
+        fromCity: fromCity?.trim(),
+        toCity: toCity?.trim(),
+        distanceKm: distanceKm !== undefined ? parseInt(distanceKm) : undefined,
+        estimatedDuration: estimatedDuration !== undefined ? parseInt(estimatedDuration) : undefined,
+        isActive,
+      },
+    });
+    res.json(route);
+  } catch (error) {
+    next(error);
+  }
+};
+
 const updateCompany = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -1339,12 +1360,17 @@ const uploadRouteImage = async (req, res, next) => {
       return res.status(400).json({ error: "File không phải ảnh hợp lệ" });
     }
 
-    const fileName = `${id}.${detected.ext}`;
+    const optimized = await sharp(req.file.buffer)
+      .resize(1280, null, { withoutEnlargement: true })
+      .webp({ quality: 80 })
+      .toBuffer();
+
+    const fileName = `${id}.webp`;
 
     const { error } = await supabase.storage
       .from("route-image")
-      .upload(fileName, req.file.buffer, {
-        contentType: detected.mime,
+      .upload(fileName, optimized, {
+        contentType: "image/webp",
         upsert: true,
       });
     if (error) return res.status(500).json({ error: error.message });
@@ -1389,6 +1415,7 @@ module.exports = {
   deleteCompanyTripSeries,
   getRoutes,
   createRoute,
+  updateRoute,
   uploadRouteImage,
   totalRevenueChart,
   totalBookingsChart,

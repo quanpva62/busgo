@@ -1,4 +1,5 @@
 const prisma = require("../lib/prisma");
+const sharp = require("sharp");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
@@ -632,12 +633,17 @@ const uploadAvatar = async (req, res, next) => {
         error: "File không hợp lệ. Vui lòng chọn ảnh JPEG, PNG hoặc WEBP.",
       });
     }
+    const optimized = await sharp(req.file.buffer)
+      .resize(400, 400, { fit: "cover", withoutEnlargement: true })
+      .webp({ quality: 85 })
+      .toBuffer();
+
     const userId = req.user.userId;
-    const fileName = `${userId}.${detected.ext}`;
+    const fileName = `${userId}.webp`;
     const { error } = await supabase.storage
       .from("avatars")
-      .upload(fileName, req.file.buffer, {
-        contentType: detected.mime,
+      .upload(fileName, optimized, {
+        contentType: "image/webp",
         upsert: true,
       });
     if (error) return res.status(500).json({ error: error.message });

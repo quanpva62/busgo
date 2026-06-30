@@ -14,6 +14,4 @@ async function chat({ system, tools, messages }) {
   });
 }
 
-module.exports = {
-  chat,
-};
+module.exports = { chat };

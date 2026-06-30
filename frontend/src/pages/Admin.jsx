@@ -2480,6 +2480,10 @@ function RoutesView({ authFetch }) {
   const [imageFile, setImageFile] = useState(null);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState({});
+  const [editSaving, setEditSaving] = useState(false);
+  const [editErr, setEditErr] = useState("");
 
   useEffect(() => {
     authFetch(`${API}/api/admin/routes`)
@@ -2509,6 +2513,43 @@ function RoutesView({ authFetch }) {
         );
     } finally {
       setUploading(null);
+    }
+  }
+
+  function startEdit(r) {
+    setEditingId(r.id);
+    setEditForm({
+      fromCity: r.fromCity,
+      toCity: r.toCity,
+      distanceKm: r.distanceKm,
+      estimatedDuration: r.estimatedDuration,
+      isActive: r.isActive,
+    });
+    setEditErr("");
+  }
+
+  async function handleUpdate(e) {
+    e.preventDefault();
+    setEditSaving(true);
+    setEditErr("");
+    try {
+      const res = await authFetch(`${API}/api/admin/routes/${editingId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fromCity: editForm.fromCity,
+          toCity: editForm.toCity,
+          distanceKm: parseInt(editForm.distanceKm),
+          estimatedDuration: parseInt(editForm.estimatedDuration),
+          isActive: editForm.isActive,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) return setEditErr(data.error ?? "Lỗi cập nhật");
+      setRoutes((prev) => prev.map((r) => (r.id === editingId ? { ...r, ...data } : r)));
+      setEditingId(null);
+    } finally {
+      setEditSaving(false);
     }
   }
 
@@ -2669,46 +2710,125 @@ function RoutesView({ authFetch }) {
       )}
 
       {routes.map((r) => (
-        <div
-          key={r.id}
-          className="bg-white rounded-2xl p-4 shadow-sm flex items-center gap-4"
-        >
-          <div className="w-20 h-14 rounded-xl overflow-hidden shrink-0 bg-surface-container-low">
-            {r.imageUrl ? (
-              <img
-                src={r.imageUrl}
-                alt=""
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <Icon name="image" className="w-6 h-6 text-outline-variant" />
+        <div key={r.id} className="bg-white rounded-2xl shadow-sm overflow-hidden">
+          <div className="p-4 flex items-center gap-4">
+            <div className="w-20 h-14 rounded-xl overflow-hidden shrink-0 bg-surface-container-low">
+              {r.imageUrl ? (
+                <img src={r.imageUrl} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <Icon name="image" className="w-6 h-6 text-outline-variant" />
+                </div>
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-sm">
+                {r.fromCity} → {r.toCity}
+                {!r.isActive && (
+                  <span className="ml-2 text-xs font-normal text-red-500">(Ẩn)</span>
+                )}
+              </p>
+              <p className="text-xs text-secondary">
+                {r.distanceKm} km · ~{Math.floor(r.estimatedDuration / 60)}h
+                {r.estimatedDuration % 60 > 0 ? `${r.estimatedDuration % 60}p` : ""}
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => editingId === r.id ? setEditingId(null) : startEdit(r)}
+                className="px-3 py-1.5 text-xs font-bold rounded-xl bg-surface-container text-secondary hover:bg-surface-container-high transition-all"
+              >
+                {editingId === r.id ? "Đóng" : "Sửa"}
+              </button>
+              <label
+                className={`px-3 py-1.5 text-xs font-bold rounded-xl cursor-pointer transition-all ${uploading === r.id ? "bg-surface-container text-secondary" : "bg-primary/10 text-primary hover:bg-primary/20"}`}
+              >
+                {uploading === r.id ? "Đang tải..." : "Tải ảnh"}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  disabled={uploading === r.id}
+                  onChange={(e) => handleUpload(r.id, e.target.files[0])}
+                />
+              </label>
+            </div>
+          </div>
+
+          {editingId === r.id && (
+            <form
+              onSubmit={handleUpdate}
+              className="border-t border-outline-variant px-4 pb-4 pt-3 space-y-3"
+            >
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-secondary block mb-1">Điểm đi</label>
+                  <input
+                    className="w-full border border-outline-variant rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                    value={editForm.fromCity}
+                    onChange={(e) => setEditForm((f) => ({ ...f, fromCity: e.target.value }))}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-secondary block mb-1">Điểm đến</label>
+                  <input
+                    className="w-full border border-outline-variant rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                    value={editForm.toCity}
+                    onChange={(e) => setEditForm((f) => ({ ...f, toCity: e.target.value }))}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-secondary block mb-1">Khoảng cách (km)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    className="w-full border border-outline-variant rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                    value={editForm.distanceKm}
+                    onChange={(e) => setEditForm((f) => ({ ...f, distanceKm: e.target.value }))}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-secondary block mb-1">Thời gian ước tính (phút)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    className="w-full border border-outline-variant rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                    value={editForm.estimatedDuration}
+                    onChange={(e) => setEditForm((f) => ({ ...f, estimatedDuration: e.target.value }))}
+                    required
+                  />
+                </div>
               </div>
-            )}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-bold text-sm">
-              {r.fromCity} → {r.toCity}
-            </p>
-            <p className="text-xs text-secondary">
-              {r.distanceKm} km · ~{Math.floor(r.estimatedDuration / 60)}h
-              {r.estimatedDuration % 60 > 0
-                ? `${r.estimatedDuration % 60}p`
-                : ""}
-            </p>
-          </div>
-          <label
-            className={`px-3 py-1.5 text-xs font-bold rounded-xl cursor-pointer transition-all ${uploading === r.id ? "bg-surface-container text-secondary" : "bg-primary/10 text-primary hover:bg-primary/20"}`}
-          >
-            {uploading === r.id ? "Đang tải..." : "Tải ảnh"}
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              disabled={uploading === r.id}
-              onChange={(e) => handleUpload(r.id, e.target.files[0])}
-            />
-          </label>
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={editForm.isActive}
+                  onChange={(e) => setEditForm((f) => ({ ...f, isActive: e.target.checked }))}
+                />
+                Hiển thị tuyến
+              </label>
+              {editErr && <p className="text-red-500 text-xs">{editErr}</p>}
+              <div className="flex gap-2 justify-end">
+                <button
+                  type="button"
+                  onClick={() => setEditingId(null)}
+                  className="px-4 py-2 text-sm font-bold text-secondary hover:bg-surface-container rounded-xl"
+                >
+                  Huỷ
+                </button>
+                <button
+                  type="submit"
+                  disabled={editSaving}
+                  className="px-4 py-2 text-sm font-bold bg-primary text-white rounded-xl hover:bg-primary/90 disabled:opacity-60"
+                >
+                  {editSaving ? "Đang lưu..." : "Lưu"}
+                </button>
+              </div>
+            </form>
+          )}
         </div>
       ))}
     </div>
