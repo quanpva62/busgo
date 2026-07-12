@@ -24,12 +24,6 @@ function hashToken(raw) {
 
 const REFRESH_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
-// Options cho cookie refresh token — phân biệt prod vs dev:
-//   - httpOnly: chặn JS đọc → không bị XSS lấy token
-//   - secure: HTTPS only (prod). Dev http không set vì localhost không HTTPS.
-//   - sameSite "none" (prod): cho phép cross-site (Vercel→Render khác domain) — bắt buộc khi secure=true
-//   - sameSite "lax" (dev): same-origin OK cho dev localhost
-//   - path: chỉ /api/auth/* → các endpoint khác KHÔNG nhận cookie này (giảm surface)
 function refreshCookieOptions() {
   const isProd = process.env.NODE_ENV === "production";
   return {
@@ -100,7 +94,6 @@ const register = async (req, res, next) => {
         verifyUrl,
       });
     } catch (mailErr) {
-      // Cố ý nuốt lỗi — register vẫn thành công, user dùng resend nếu cần
       console.error("Send verification email failed:", mailErr);
     }
 
@@ -178,8 +171,6 @@ const login = async (req, res, next) => {
       },
     });
 
-    // Set refresh token vào httpOnly cookie thay vì trả về body
-    // → JS frontend không đọc được → an toàn trước XSS
     res.cookie(REFRESH_COOKIE_NAME, refreshTokenJwt, refreshCookieOptions());
 
     res.json({
@@ -216,7 +207,7 @@ const verifyEmail = async (req, res, next) => {
     ) {
       return res
         .status(400)
-        .json({ error: "Token không hợp lệ hoặc đã hết hạn" });
+        .json({ error: "Xác thực email không hợp lệ hoặc đã hết hạn" });
     }
 
     await prisma.user.update({
@@ -390,28 +381,14 @@ const refreshToken = async (req, res, next) => {
         .json({ error: "Refresh token không hợp lệ hoặc đã hết hạn" });
     }
 
-    // 3. Đọc lại user từ DB — không tin role/trạng thái đóng băng trong token cũ.
-    //    Nếu bị khoá hoặc xoá → revoke token hiện tại, từ chối refresh.
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.userId },
-      select: { id: true, role: true, isActive: true },
-    });
-    if (!user || !user.isActive) {
-      await prisma.refreshToken.update({
-        where: { id: record.id },
-        data: { revokedAt: new Date() },
-      });
-      return res.status(403).json({ error: "Tài khoản không hợp lệ hoặc đã bị khoá" });
-    }
-
-    // 4. Rotate: revoke current + issue new (role lấy từ DB, không từ token cũ)
+    // 3. Rotate: revoke current + issue new
     const newAccessToken = jwt.sign(
-      { userId: user.id, role: user.role },
+      { userId: decoded.userId, role: decoded.role },
       process.env.JWT_SECRET,
       { expiresIn: JWT_ACCESS_EXPIRES },
     );
     const newRefreshToken = jwt.sign(
-      { userId: user.id, role: user.role },
+      { userId: decoded.userId, role: decoded.role },
       process.env.JWT_REFRESH_SECRET,
       { expiresIn: JWT_REFRESH_EXPIRES },
     );
@@ -424,7 +401,7 @@ const refreshToken = async (req, res, next) => {
       }),
       prisma.refreshToken.create({
         data: {
-          userId: user.id,
+          userId: decoded.userId,
           tokenHash: hashToken(newRefreshToken),
           expiresAt: new Date(Date.now() + REFRESH_TTL_MS),
           userAgent: req.headers["user-agent"] || null,
@@ -491,6 +468,11 @@ const googleLogin = async (req, res, next) => {
       { userId: user.id, role: user.role },
       process.env.JWT_SECRET,
       { expiresIn: JWT_ACCESS_EXPIRES },
+    );
+    const refreshToken = jwt.sign(
+      { userId: user.id, role: user.role },
+      process.env.JWT_REFRESH_SECRET,
+      { expiresIn: JWT_REFRESH_EXPIRES },
     );
     const refreshTokenJwt = jwt.sign(
       { userId: user.id, role: user.role },
@@ -633,17 +615,12 @@ const uploadAvatar = async (req, res, next) => {
         error: "File không hợp lệ. Vui lòng chọn ảnh JPEG, PNG hoặc WEBP.",
       });
     }
-    const optimized = await sharp(req.file.buffer)
-      .resize(400, 400, { fit: "cover", withoutEnlargement: true })
-      .webp({ quality: 85 })
-      .toBuffer();
-
     const userId = req.user.userId;
-    const fileName = `${userId}.webp`;
+    const fileName = `${userId}.${detected.ext}`;
     const { error } = await supabase.storage
       .from("avatars")
-      .upload(fileName, optimized, {
-        contentType: "image/webp",
+      .upload(fileName, req.file.buffer, {
+        contentType: detected.mime,
         upsert: true,
       });
     if (error) return res.status(500).json({ error: error.message });
