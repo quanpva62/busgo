@@ -432,12 +432,12 @@ function SeatGrid({
     grid.push(row);
   }
 
-  const sleeperW = maxCol <= 2 ? "w-14 sm:w-16" : "w-11 sm:w-12";
+  const sleeperW = maxCol <= 2 ? "w-18 sm:w-20" : "w-14 sm:w-16";
   const seatClass = isSleeper
-    ? `${sleeperW} h-20 sm:h-22`
+    ? `${sleeperW} h-24 sm:h-26`
     : "w-11 h-11 sm:w-13 sm:h-13";
   const emptyClass = isSleeper
-    ? `${sleeperW} h-20 sm:h-22`
+    ? `${sleeperW} h-24 sm:h-26`
     : "w-11 h-11 sm:w-13 sm:h-13";
 
   const renderSeat = (ts, cIdx) =>
@@ -451,7 +451,9 @@ function SeatGrid({
       >
         {isSleeper ? (
           <div className="flex flex-col items-center justify-between h-full w-full px-1.5 py-2">
-            <span className="text-[10px] font-bold">{ts.seat.seatLabel}</span>
+            <span className="text-xs font-bold whitespace-nowrap">
+              {ts.seat.seatLabel}
+            </span>
             <div className="w-full h-3 rounded-sm border-2 border-current opacity-40" />
           </div>
         ) : (

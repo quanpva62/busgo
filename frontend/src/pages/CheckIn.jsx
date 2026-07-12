@@ -79,7 +79,7 @@ export default function CheckIn() {
               </p>
               <p>
                 Biển số:{" "}
-                <b>{result.ticket.booking.trip.bus?.plateNumber ?? "—"}</b>
+                <b>{result.ticket.booking.trip.bus?.licensePlate ?? "—"}</b>
               </p>
               <p>
                 Giờ khởi hành:{" "}
@@ -95,7 +95,7 @@ export default function CheckIn() {
                 Ghế (<b>{result.ticket.booking.bookingSeats.length}</b>):{" "}
                 <b>
                   {result.ticket.booking.bookingSeats
-                    .map((bs) => bs.seat.seat.seatCode)
+                    .map((bs) => bs.seat.seat.seatLabel)
                     .join(", ")}
                 </b>
               </p>

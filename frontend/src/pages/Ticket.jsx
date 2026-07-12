@@ -95,6 +95,21 @@ export default function Ticket() {
             <div className="absolute -right-9 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-surface-container-low" />
           </div>
 
+          {/* Nhà xe */}
+          {trip.bus && (
+            <div className="mx-6 mb-3 px-4 py-3 bg-surface-container-low rounded-xl flex items-center gap-3">
+              <Icon name="directions_bus" className="w-5 h-5 text-primary shrink-0" />
+              <div className="min-w-0">
+                <p className="font-bold text-on-surface text-sm truncate">
+                  {trip.bus.company?.name}
+                </p>
+                <p className="text-secondary text-xs">
+                  {trip.bus.typeName} · {trip.bus.licensePlate}
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Details grid */}
           <div className="px-6 pb-5 grid grid-cols-2 gap-4">
             <div>

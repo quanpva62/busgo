@@ -160,7 +160,7 @@ async function main() {
       });
     });
 
-    const totalSeatsByType = { standard: 29, sleeper: 36, minibus: 16 };
+    const totalSeatsByType = { standard: 29, sleeper: 36, minibus: 15 };
     const busConfigs = [
       { licensePlate: `5${ci + 1}A-${10000 + ci * 100}`, busType: "sleeper", typeName: "Giường nằm VIP", layout: "2-1", amenities: { wifi: true, ac: true, usb: true, blanket: true } },
       { licensePlate: `5${ci + 1}B-${10100 + ci * 100}`, busType: "sleeper", typeName: "Giường nằm", layout: "2-1", amenities: { ac: true, usb: true } },
@@ -313,6 +313,7 @@ async function main() {
             data: bookingRows.map(({ bookingId, bookingDate, user, passenger }) => ({
               id: bookingId, userId: user.id, tripId: trip.id, companyId: company.id,
               status: "paid", totalPrice: price,
+              commissionAmount: Math.round(price * (company.commissionRate ?? 0.1)),
               passengerName: passenger,
               passengerPhone: `09${rand(10000000, 99999999)}`,
               passengerEmail: `passenger${rand(100, 999)}@gmail.com`,

@@ -8,7 +8,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-const sendTicketEmail = async ({ to, passengerName, ticketCode, fromCity, toCity, departureTime, seats, totalPrice }) => {
+const sendTicketEmail = async ({ to, passengerName, ticketCode, fromCity, toCity, departureTime, seats, totalPrice, companyName }) => {
   const dateStr = new Date(departureTime).toLocaleString("vi-VN", {
     weekday: "long", day: "numeric", month: "numeric", year: "numeric",
     hour: "2-digit", minute: "2-digit", hour12: false,
@@ -54,6 +54,10 @@ const sendTicketEmail = async ({ to, passengerName, ticketCode, fromCity, toCity
     <!-- Details -->
     <div style="margin:0 32px;border-top:1px dashed #e2e8f0;border-bottom:1px dashed #e2e8f0;padding:16px 0;">
       <table style="width:100%;border-collapse:collapse;">
+        ${companyName ? `<tr>
+          <td style="padding:6px 0;font-size:12px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:1px;">Nhà xe</td>
+          <td style="padding:6px 0;font-size:14px;font-weight:700;color:#1e293b;text-align:right;">${companyName}</td>
+        </tr>` : ""}
         <tr>
           <td style="padding:6px 0;font-size:12px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:1px;">Ghế</td>
           <td style="padding:6px 0;font-size:14px;font-weight:700;color:#3b82f6;text-align:right;">${seats}</td>
