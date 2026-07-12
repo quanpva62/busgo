@@ -4,19 +4,23 @@ const qs = require("qs");
 const { sendTicketEmail } = require("../lib/mailer");
 const { notify } = require("../lib/notify");
 
-const buildVnpUrl = (booking, vnpTxnRef, ipAddr) => {
-  const date = new Date();
-  const createDate = date
+// VNPay yêu cầu timestamp theo giờ Việt Nam (GMT+7), format yyyyMMddHHmmss
+const formatVnpDate = (date) =>
+  new Date(date.getTime() + 7 * 60 * 60 * 1000)
     .toISOString()
     .replace(/[-T:.Z]/g, "")
     .slice(0, 14);
+
+const buildVnpUrl = (booking, vnpTxnRef, ipAddr) => {
+  const now = new Date();
 
   const vnpParams = {
     vnp_Version: "2.1.0",
     vnp_Command: "pay",
     vnp_TmnCode: process.env.VNP_TMN_CODE,
     vnp_Amount: booking.totalPrice * 100,
-    vnp_CreateDate: createDate,
+    vnp_CreateDate: formatVnpDate(now),
+    vnp_ExpireDate: formatVnpDate(new Date(now.getTime() + 15 * 60 * 1000)),
     vnp_CurrCode: "VND",
     vnp_IpAddr: ipAddr.includes("::ffff:")
       ? ipAddr.replace("::ffff:", "")
@@ -176,7 +180,12 @@ const finalizePayment = async (payment, vnpParams) => {
     .findUnique({
       where: { id: bookingId },
       include: {
-        trip: { include: { route: true } },
+        trip: {
+          include: {
+            route: true,
+            bus: { include: { company: true } },
+          },
+        },
         bookingSeats: { include: { seat: { include: { seat: true } } } },
       },
     })
@@ -201,6 +210,7 @@ const finalizePayment = async (payment, vnpParams) => {
         departureTime: booking.trip.departureTime,
         seats,
         totalPrice: booking.totalPrice,
+        companyName: booking.trip.bus?.company?.name,
       });
     })
     .catch((err) => console.error("Send email failed:", err));
@@ -286,10 +296,7 @@ const vnpayReturn = async (req, res, next) => {
 // Gọi VNPay sandbox refund API. Trả về { success, code, message, raw }
 const refundVnpay = async ({ payment, refundAmount, ipAddr, createBy }) => {
   const requestId = `${Date.now()}`;
-  const createDate = new Date()
-    .toISOString()
-    .replace(/[-T:.Z]/g, "")
-    .slice(0, 14);
+  const createDate = formatVnpDate(new Date());
 
   const raw = payment.vnpRaw || {};
   const transactionNo = String(raw.vnp_TransactionNo || "0");
@@ -360,17 +367,11 @@ const refundVnpay = async ({ payment, refundAmount, ipAddr, createBy }) => {
 
 const queryVnpayDR = async ({ payment, ipAddr = "127.0.0.1" }) => {
   const requestId = `${Date.now()}`;
-  const createDate = new Date()
-    .toISOString()
-    .replace(/[-T:.Z]/g, "")
-    .slice(0, 14);
+  const createDate = formatVnpDate(new Date());
   const ts = Number(
     payment.vnpTxnRef.substring(payment.vnpTxnRef.lastIndexOf("-") + 1),
   );
-  const transactionDate = new Date(ts)
-    .toISOString()
-    .replace(/[-T:.Z]/g, "")
-    .slice(0, 14);
+  const transactionDate = formatVnpDate(new Date(ts));
   const orderInfo = `Truy vấn giao dịch: ${payment.bookingId}`;
   const ip = ipAddr.includes("::ffff:")
     ? ipAddr.replace("::ffff:", "")

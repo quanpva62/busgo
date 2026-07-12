@@ -22,7 +22,7 @@ async function reconcilePendingPayments() {
 
   for (const payment of payments) {
     try {
-      const result = await queryVnpayDR(payment);
+      const result = await queryVnpayDR({ payment });
       if (result.paid) {
         await finalizePayment(payment, result.raw);
         console.log(`[reconcile] Đã chốt đơn ${payment.vnpTxnRef} thành công`);
