@@ -40,6 +40,12 @@ router.get(
   adminController.getCompanyTrips,
 );
 router.get(
+  "/company/routes",
+  authMiddleware,
+  isCompanyAdmin,
+  adminController.getCompanyRoutes,
+);
+router.get(
   "/company/bookings",
   authMiddleware,
   isCompanyAdmin,

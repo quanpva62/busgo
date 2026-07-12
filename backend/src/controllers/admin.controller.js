@@ -98,7 +98,24 @@ const getCompanyTrips = async (req, res, next) => {
     const page = Number(req.query.page) || 1;
     const limit = Number(req.query.limit) || 15;
     const skip = (page - 1) * limit;
-    const where = { bus: { companyId } };
+    const { search, date, routeId } = req.query;
+    const where = {
+      bus: { companyId },
+      ...(routeId && { routeId }),
+      ...(search && {
+        OR: [
+          { route: { fromCity: { contains: search, mode: "insensitive" } } },
+          { route: { toCity: { contains: search, mode: "insensitive" } } },
+          { bus: { licensePlate: { contains: search, mode: "insensitive" } } },
+        ],
+      }),
+      ...(date && {
+        departureTime: {
+          gte: new Date(date),
+          lt: new Date(new Date(date).getTime() + 24 * 60 * 60 * 1000),
+        },
+      }),
+    };
 
     const [trips, total] = await Promise.all([
       prisma.trip.findMany({
@@ -108,6 +125,12 @@ const getCompanyTrips = async (req, res, next) => {
           driver: true,
           assistant: true,
           route: true,
+          _count: {
+            select: {
+              tripSeats: { where: { status: "available" } },
+              bookings: { where: { status: "paid" } },
+            },
+          },
         },
         orderBy: { departureTime: "desc" },
         skip,
@@ -117,6 +140,25 @@ const getCompanyTrips = async (req, res, next) => {
     ]);
 
     res.json({ trips, total, page, totalPages: Math.ceil(total / limit) });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Các tuyến mà công ty đang khai thác (để làm dropdown lọc chuyến)
+const getCompanyRoutes = async (req, res, next) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.userId },
+    });
+    if (!user) {
+      return res.status(404).json({ error: "Không tìm thấy người dùng" });
+    }
+    const routes = await prisma.route.findMany({
+      where: { trips: { some: { bus: { companyId: user.companyId } } } },
+      orderBy: [{ fromCity: "asc" }, { toCity: "asc" }],
+    });
+    res.json(routes);
   } catch (error) {
     next(error);
   }
@@ -1393,6 +1435,7 @@ module.exports = {
   getUsers,
   toggleUserStatus,
   getCompanyTrips,
+  getCompanyRoutes,
   getCompanyBookings,
   getCompanyStats,
   getAdminStats,

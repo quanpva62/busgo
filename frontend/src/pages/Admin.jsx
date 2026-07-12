@@ -720,8 +720,18 @@ function CompanyTrips({ authFetch }) {
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [expandedId, setExpandedId] = useState(null);
-  const [tripBookings, setTripBookings] = useState([]);
+  const [tripDetail, setTripDetail] = useState(null);
   const [bookingsLoading, setBookingsLoading] = useState(false);
+  const [routes, setRoutes] = useState([]);
+  const [routeId, setRouteId] = useState("");
+  const [date, setDate] = useState("");
+
+  useEffect(() => {
+    authFetch(`${API}/api/admin/company/routes`)
+      .then((r) => r.json())
+      .then((data) => setRoutes(Array.isArray(data) ? data : []))
+      .catch(() => {});
+  }, [authFetch]);
 
   async function toggleBookings(tripId) {
     if (expandedId === tripId) {
@@ -730,12 +740,13 @@ function CompanyTrips({ authFetch }) {
     }
     setExpandedId(tripId);
     setBookingsLoading(true);
+    setTripDetail(null);
     try {
       const res = await authFetch(
-        `${API}/api/admin/company/bookings?tripId=${tripId}&limit=100`,
+        `${API}/api/tickets/trips/${tripId}/passengers`,
       );
       const data = await res.json();
-      setTripBookings(Array.isArray(data.bookings) ? data.bookings : []);
+      setTripDetail(res.ok ? data : null);
     } finally {
       setBookingsLoading(false);
     }
@@ -745,8 +756,11 @@ function CompanyTrips({ authFetch }) {
     async function load() {
       setLoading(true);
       try {
+        const params = new URLSearchParams({ page });
+        if (routeId) params.set("routeId", routeId);
+        if (date) params.set("date", date);
         const res = await authFetch(
-          `${API}/api/admin/company/trips?page=${page}`,
+          `${API}/api/admin/company/trips?${params}`,
         );
         const data = await res.json();
         setTrips(Array.isArray(data.trips) ? data.trips : []);
@@ -757,7 +771,7 @@ function CompanyTrips({ authFetch }) {
       }
     }
     load();
-  }, [authFetch, page]);
+  }, [authFetch, page, routeId, date]);
 
   async function changeStatus(id, status) {
     setUpdating(id);
@@ -810,9 +824,47 @@ function CompanyTrips({ authFetch }) {
     setTrips((prev) => prev.filter((t) => t.seriesId !== seriesId));
   }
 
-  if (loading) return <p className="text-secondary text-sm">Đang tải...</p>;
   return (
     <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-3">
+        <select
+          value={routeId}
+          onChange={(e) => {
+            setRouteId(e.target.value);
+            setPage(1);
+          }}
+          className="flex-1 min-w-48 px-4 py-2 bg-white border border-outline-variant/30 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+        >
+          <option value="">Tất cả tuyến</option>
+          {routes.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.fromCity} → {r.toCity}
+            </option>
+          ))}
+        </select>
+        <input
+          type="date"
+          value={date}
+          onChange={(e) => {
+            setDate(e.target.value);
+            setPage(1);
+          }}
+          className="px-3 py-2 bg-white border border-outline-variant/30 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+        />
+        {(routeId || date) && (
+          <button
+            onClick={() => {
+              setRouteId("");
+              setDate("");
+              setPage(1);
+            }}
+            className="px-3 py-2 text-sm font-semibold text-secondary hover:bg-white rounded-xl"
+          >
+            Xoá lọc
+          </button>
+        )}
+      </div>
+
       {!adding ? (
         <button
           onClick={() => setAdding(true)}
@@ -840,8 +892,11 @@ function CompanyTrips({ authFetch }) {
         />
       )}
 
-      {trips.length === 0 && (
-        <p className="text-secondary text-sm">Chưa có chuyến nào.</p>
+      {loading && <p className="text-secondary text-sm">Đang tải...</p>}
+      {!loading && trips.length === 0 && (
+        <p className="text-secondary text-sm">
+          {routeId || date ? "Không tìm thấy chuyến nào." : "Chưa có chuyến nào."}
+        </p>
       )}
       {trips.map((t) => (
         <div
@@ -867,6 +922,16 @@ function CompanyTrips({ authFetch }) {
               <p className="text-secondary text-sm">
                 {formatDateTime(t.departureTime)} · {t.bus.typeName} ·{" "}
                 {t.driver.fullName}
+                {t._count && (
+                  <>
+                    {" "}
+                    ·{" "}
+                    <span className="font-semibold text-green-600">
+                      Còn {t._count.tripSeats}/{t.bus.totalSeats} ghế
+                    </span>{" "}
+                    · {t._count.bookings} vé đã bán
+                  </>
+                )}
               </p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
@@ -913,32 +978,70 @@ function CompanyTrips({ authFetch }) {
           {expandedId === t.id && (
             <div className="border-t border-outline-variant/30 px-4 py-3 bg-surface-container-low/50 space-y-2">
               {bookingsLoading ? (
-                <p className="text-secondary text-sm">Đang tải vé...</p>
-              ) : tripBookings.length === 0 ? (
-                <p className="text-secondary text-sm">Chuyến này chưa có vé.</p>
+                <p className="text-secondary text-sm">Đang tải...</p>
+              ) : !tripDetail ? (
+                <p className="text-secondary text-sm">
+                  Không tải được dữ liệu chuyến.
+                </p>
               ) : (
-                tripBookings.map((b) => (
-                  <div
-                    key={b.id}
-                    className="flex items-center justify-between gap-3 text-sm"
-                  >
-                    <div className="min-w-0 truncate">
-                      <span className="font-semibold">
-                        {b.user?.fullName ?? b.passengerName}
+                <>
+                  {tripDetail.seatSummary && (
+                    <div className="flex flex-wrap gap-2 text-xs font-bold pb-1">
+                      <span className="px-2 py-1 rounded-full bg-green-50 text-green-600">
+                        Trống: {tripDetail.seatSummary.available}
                       </span>
-                      <span className="text-secondary">
-                        {" "}
-                        · {b.passengerPhone}
+                      <span className="px-2 py-1 rounded-full bg-amber-50 text-amber-600">
+                        Đang giữ: {tripDetail.seatSummary.held}
                       </span>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <Badge map={BOOKING_STATUS} value={b.status} />
-                      <span className="text-primary font-semibold">
-                        {formatPrice(b.totalPrice)}
+                      <span className="px-2 py-1 rounded-full bg-blue-50 text-blue-600">
+                        Đã đặt: {tripDetail.seatSummary.booked}
+                      </span>
+                      <span className="px-2 py-1 rounded-full bg-surface-container-highest text-secondary">
+                        Đã lên xe:{" "}
+                        {tripDetail.passengers.filter((p) => p.checkedIn).length}
+                        /{tripDetail.passengers.length}
                       </span>
                     </div>
-                  </div>
-                ))
+                  )}
+                  {tripDetail.passengers.length === 0 ? (
+                    <p className="text-secondary text-sm">
+                      Chuyến này chưa có hành khách.
+                    </p>
+                  ) : (
+                    tripDetail.passengers.map((p) => (
+                      <div
+                        key={p.bookingId}
+                        className="flex items-center justify-between gap-3 text-sm"
+                      >
+                        <div className="min-w-0 truncate">
+                          <span className="font-semibold">
+                            {p.passengerName}
+                          </span>
+                          <span className="text-secondary">
+                            {" "}
+                            · {p.passengerPhone}
+                          </span>
+                          <span className="text-primary font-semibold">
+                            {" "}
+                            · Ghế {p.seats.join(", ")}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Badge map={BOOKING_STATUS} value={p.status} />
+                          {p.checkedIn ? (
+                            <span className="text-xs font-bold text-green-600">
+                              ✓ Đã lên xe
+                            </span>
+                          ) : (
+                            <span className="text-xs font-semibold text-secondary">
+                              Chưa lên xe
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </>
               )}
             </div>
           )}

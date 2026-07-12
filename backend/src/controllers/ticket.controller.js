@@ -18,7 +18,12 @@ const getTicketsByBooking = async (req, res, next) => {
       include: {
         booking: {
           include: {
-            trip: { include: { route: true } },
+            trip: {
+              include: {
+                route: true,
+                bus: { include: { company: true } },
+              },
+            },
             bookingSeats: { include: { seat: { include: { seat: true } } } },
           },
         },
@@ -103,7 +108,103 @@ const checkinTicket = async (req, res, next) => {
     next(error);
   }
 };
+// Danh sách chuyến (hôm nay trở đi) của công ty mà staff thuộc về
+const getStaffTrips = async (req, res, next) => {
+  try {
+    let companyFilter = {};
+    if (req.user.role !== "admin") {
+      const u = await prisma.user.findUnique({
+        where: { id: req.user.userId },
+        select: { companyId: true },
+      });
+      if (!u?.companyId) {
+        return res
+          .status(403)
+          .json({ error: "Tài khoản chưa thuộc công ty nào" });
+      }
+      companyFilter = { bus: { companyId: u.companyId } };
+    }
+
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    const trips = await prisma.trip.findMany({
+      where: { ...companyFilter, departureTime: { gte: startOfToday } },
+      include: {
+        route: true,
+        bus: true,
+        _count: { select: { bookings: { where: { status: "paid" } } } },
+      },
+      orderBy: { departureTime: "asc" },
+      take: 50,
+    });
+    res.json(trips);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Danh sách hành khách của 1 chuyến (staff cùng công ty hoặc admin)
+const getTripPassengers = async (req, res, next) => {
+  try {
+    const { tripId } = req.params;
+    const trip = await prisma.trip.findUnique({
+      where: { id: tripId },
+      include: { route: true, bus: true },
+    });
+    if (!trip) {
+      return res.status(404).json({ error: "Không tìm thấy chuyến xe" });
+    }
+
+    if (req.user.role !== "admin") {
+      const u = await prisma.user.findUnique({
+        where: { id: req.user.userId },
+        select: { companyId: true },
+      });
+      if (!u?.companyId || u.companyId !== trip.bus.companyId) {
+        return res
+          .status(403)
+          .json({ error: "Chuyến xe này không thuộc công ty của bạn!" });
+      }
+    }
+
+    const bookings = await prisma.booking.findMany({
+      where: { tripId, status: { in: ["paid", "pending"] } },
+      include: {
+        bookingSeats: { include: { seat: { include: { seat: true } } } },
+        ticket: true,
+      },
+      orderBy: { createdAt: "asc" },
+    });
+
+    const passengers = bookings.map((b) => ({
+      bookingId: b.id,
+      passengerName: b.passengerName,
+      passengerPhone: b.passengerPhone,
+      status: b.status,
+      seats: b.bookingSeats.map((bs) => bs.seat.seat.seatLabel),
+      ticketCode: b.ticket?.ticketCode ?? null,
+      checkedIn: b.ticket?.isUsed ?? false,
+      usedAt: b.ticket?.usedAt ?? null,
+    }));
+
+    const seatGroups = await prisma.tripSeat.groupBy({
+      by: ["status"],
+      where: { tripId },
+      _count: { _all: true },
+    });
+    const seatSummary = { available: 0, held: 0, booked: 0 };
+    for (const g of seatGroups) seatSummary[g.status] = g._count._all;
+
+    res.json({ trip, passengers, seatSummary });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getTicketsByBooking,
   checkinTicket,
+  getStaffTrips,
+  getTripPassengers,
 };
